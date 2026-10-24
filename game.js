@@ -1,7 +1,13 @@
 (() => {
   "use strict";
   const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d");
+  const screenCtx = canvas.getContext("2d");
+  // Render at half resolution and scale up without smoothing for a crisp pixel-art look.
+  const pixelCanvas = document.createElement("canvas");
+  pixelCanvas.width = Math.floor(canvas.width / 2);
+  pixelCanvas.height = Math.floor(canvas.height / 2);
+  const ctx = pixelCanvas.getContext("2d");
+  ctx.scale(0.5, 0.5);
   const W = canvas.width, H = canvas.height;
   const ui = {
     score: document.getElementById("score"),
@@ -163,27 +169,70 @@
     ctx.strokeStyle="#fff4b0";ctx.lineWidth=1.5*scale;ctx.beginPath();ctx.arc(x-2*scale,y-3*scale,4*scale,3.7,5.2);ctx.stroke();
   }
   function drawPlayer(){
-    const x=player.x-camera,y=player.y;ctx.save();ctx.translate(x+player.w/2,y+player.h/2);if(player.face<0)ctx.scale(-1,1);
+    const x=player.x-camera,y=player.y;
+    ctx.save();
+    ctx.translate(x+player.w/2,y+player.h/2);
+    if(player.face<0)ctx.scale(-1,1);
     if(invulnerable>0&&Math.floor(invulnerable*12)%2===0){ctx.restore();return;}
-    // Original speedy blue mascot, drawn with canvas shapes (no external sprites).
-    if(Math.abs(player.vx)>4){ctx.strokeStyle="#b5eeff";ctx.lineWidth=3;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-19-i*4,-4+i*7);ctx.lineTo(-30-i*4,-4+i*7);ctx.stroke();}}
-    ctx.fillStyle="#0872d9";ctx.beginPath();ctx.moveTo(-10,-11);ctx.lineTo(-28,-22);ctx.lineTo(-18,-5);ctx.lineTo(-30,2);ctx.lineTo(-15,5);ctx.lineTo(-18,18);ctx.lineTo(-3,12);ctx.lineTo(9,17);ctx.lineTo(15,5);ctx.lineTo(13,-11);ctx.closePath();ctx.fill();
-    ctx.fillStyle="#159bff";ctx.beginPath();ctx.ellipse(0,0,15,19,-.1,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#ffdfb0";ctx.beginPath();ctx.ellipse(6,7,9,10,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(6,-8,6,10,-.2,0,Math.PI*2);ctx.ellipse(12,-7,5,8,-.1,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#172d55";ctx.beginPath();ctx.ellipse(9,-5,2.5,4,0,0,Math.PI*2);ctx.ellipse(14,-4,2,3.5,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle="#17385e";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(6,10);ctx.quadraticCurveTo(12,14,17,8);ctx.stroke();
-    // Gloves
-    ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(-13,7,5,7,-.3,0,Math.PI*2);ctx.fill();
-    // Red shoes
-    ctx.fillStyle="#ed3d4e";ctx.beginPath();ctx.ellipse(-3,20,11,6,-.12,0,Math.PI*2);ctx.ellipse(13,20,10,6,.12,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.fillRect(-8,18,9,3);ctx.fillRect(9,18,8,3);
+    // Hand-built pixel sprite: blue swept-back quills, peach muzzle, gloves and red shoes.
+    if(Math.abs(player.vx)>4){
+      ctx.fillStyle="#c8f4ff";
+      for(let i=0;i<3;i++)ctx.fillRect(-25-i*4,-7+i*7,7,2);
+    }
+    const sprite = [
+      ".....BBBBBB......",
+      "...BBBBBBBBBB....",
+      "..BBBBBBBBBBBB...",
+      ".BBBBBBBBBBBBBB..",
+      "BBBBBBBBBBBBBB...",
+      "BBBBBBBBBBBB.....",
+      "BBBBBBBBBBB......",
+      ".BBBBBBBBBBBB....",
+      "..BBBBBBBBBBB....",
+      "...BBBBBBBBBBWW..",
+      "....BBBBBBBWWWW..",
+      "....BBBBBBWWWWEE.",
+      ".....BBBBBSSSSSE.",
+      ".....BBBBBSSSSSE.",
+      "......BBBBSSSS...",
+      "......BBBBFFFF...",
+      ".......BBBBFFF...",
+      ".......BBBBBB....",
+      "......BBBB.......",
+      ".....BBBB..RRRR..",
+      "....BBBBB.RRRRRR.",
+      "...BBBB...RRGGRR.",
+      "...........RRRR..",
+      "..........RRRR..."
+    ];
+    const colors = {
+      B:"#0754b8", b:"#168cff", C:"#53c2ff",
+      S:"#ffd0a0", W:"#ffffff", E:"#142b50",
+      F:"#ffffff", R:"#e52f43", G:"#fff3d8"
+    };
+    const cellW=2, cellH=2;
+    for(let row=0;row<sprite.length;row++){
+      for(let col=0;col<sprite[row].length;col++){
+        const ch=sprite[row][col];
+        if(ch===".")continue;
+        // Use blue highlights and dark outline pixels to add depth.
+        let color=colors[ch]||"#168cff";
+        if(ch==="B" && ((row+col)%5===0))color="#168cff";
+        if(ch==="B" && row>14 && col>7)color="#0872d9";
+        ctx.fillStyle=color;
+        ctx.fillRect(-17+col*cellW,-24+row*cellH,cellW,cellH);
+      }
+    }
+    // A tiny pixel nose and smile keep the face readable at game speed.
+    ctx.fillStyle="#e9a56f";ctx.fillRect(14,-2,3,3);
+    ctx.fillStyle="#7e2638";ctx.fillRect(9,9,7,2);
     ctx.restore();
   }
   function drawBoss(){if(!boss.alive||boss.x-camera< -100||boss.x-camera>W+100)return;const x=boss.x-camera,y=boss.y;ctx.save();ctx.fillStyle=bossFlash>0?"#fff2a6":"#b83d57";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+31,29,33,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e9e7ef";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+8,24,18,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e84d5b";ctx.fillRect(x+7,y+2,44,8);ctx.fillStyle="#fff";ctx.fillRect(x+14,y+7,10,11);ctx.fillRect(x+34,y+7,10,11);ctx.fillStyle="#172642";ctx.fillRect(x+18,y+10,4,6);ctx.fillRect(x+38,y+10,4,6);ctx.fillStyle="#31354b";ctx.fillRect(x+3,y+53,17,17);ctx.fillRect(x+38,y+53,17,17);ctx.fillStyle="#f7b744";ctx.fillRect(x+20,y+28,18,12);rounded(x-8,y-20,74,9,4,"#3a1735");rounded(x-6,y-18,70,5,2,"#ffffff");if(boss.hp>0)rounded(x-6,y-18,70*(boss.hp/6),5,2,"#ff526b");ctx.restore();}
   function drawEnemy(e){const x=e.x-camera,y=e.y;rounded(x,y+7,e.w,e.h-7,8,"#d84b48");rounded(x+3,y,e.w-6,17,7,"#ff765e");ctx.fillStyle="#fff";ctx.fillRect(x+7,y+7,6,8);ctx.fillRect(x+19,y+7,6,8);ctx.fillStyle="#182a48";ctx.fillRect(x+9,y+10,3,4);ctx.fillRect(x+21,y+10,3,4);ctx.fillStyle="#d4e4f0";ctx.fillRect(x+3,y+e.h-4,9,5);ctx.fillRect(x+20,y+e.h-4,9,5);}
   function drawSpring(s){const x=s.x-camera;if(x< -30||x>W+30)return;ctx.fillStyle="#d84442";ctx.fillRect(x-13,s.y+9,26,9);ctx.fillStyle="#f8e45c";ctx.fillRect(x-11,s.y+3,22,7);ctx.fillStyle="#e8f4ff";ctx.fillRect(x-13,s.y+17,26,3);}
   function draw(){
+    ctx.clearRect(0,0,W,H);
     drawBackground();drawGround();
     ringItems.forEach(r=>{if(!r.got){const x=r.x-camera;if(x>-15&&x<W+15)drawRing(x,r.y);}});
     springs.forEach(drawSpring);
@@ -193,6 +242,9 @@
     drawPlayer();const activeZone=zones.find(z=>player.x>=z.start&&player.x<z.end)||zones[zones.length-1];ctx.textAlign="left";ctx.fillStyle="#ffffff";ctx.font="900 14px Nunito, sans-serif";ctx.shadowColor="#102747";ctx.shadowBlur=5;ctx.fillText(activeZone.name,18,28);ctx.shadowBlur=0;if(zoneToast>0){ctx.globalAlpha=Math.min(1,zoneToast*2);rounded(W/2-190,70,380,58,14,"#082849dd");ctx.textAlign="center";ctx.fillStyle="#8ee4ff";ctx.font="900 10px Nunito, sans-serif";ctx.fillText("NUEVA ZONA",W/2,89);ctx.fillStyle="#fff";ctx.font="900 21px Nunito, sans-serif";ctx.fillText(activeZone.name,W/2,114);ctx.globalAlpha=1;}if(player.x>5100&&boss.alive){rounded(W-182,20,160,34,9,"#3b1c3bde");ctx.fillStyle="#fff";ctx.font="900 10px Nunito, sans-serif";ctx.textAlign="center";ctx.fillText("GUARDIÁN FINAL",W-102,33);ctx.fillStyle="#ffb4c4";ctx.font="900 12px Nunito, sans-serif";ctx.fillText("VIDA: "+boss.hp+"/6",W-102,47);}
     particles.forEach(p=>{ctx.globalAlpha=Math.max(0,1-p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-camera,p.y,p.size,p.size);});ctx.globalAlpha=1;
     if(mode==="title"){ctx.fillStyle="#06315b";ctx.font="900 20px Nunito, sans-serif";ctx.fillText("¡LISTO PARA LA AVENTURA!",W/2-155,H-25);}
+    screenCtx.imageSmoothingEnabled=false;
+    screenCtx.clearRect(0,0,canvas.width,canvas.height);
+    screenCtx.drawImage(pixelCanvas,0,0,canvas.width,canvas.height);
   }
   function loop(now){const dt=Math.min((now-last)/1000||0,0.033);last=now;update(dt);draw();requestAnimationFrame(loop);}
   updateHud();requestAnimationFrame(loop);
