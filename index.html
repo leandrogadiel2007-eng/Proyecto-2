@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07152f">
+  <title>Blue Rush — Primer nivel</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Blue Rush inicio"><span class="brand-mark">B</span><span>BLUE <b>RUSH</b></span></a>
+      <span class="phase">FASE 1 · MOVIMIENTO</span>
+    </header>
+    <section class="intro">
+      <p class="eyebrow">LISTO PARA CORRER</p>
+      <h1>La velocidad empieza <span>aquí.</span></h1>
+      <p class="subtitle">Muévete, salta y encuentra tu ritmo. Esta es la primera prueba de Blue Rush.</p>
+    </section>
+    <section class="game-shell" aria-label="Videojuego Blue Rush">
+      <div class="hud"><span class="hud-label">NIVEL 01</span><span id="status" aria-live="polite">PULSA JUGAR PARA EMPEZAR</span><span class="hud-label">BLUE RUSH</span></div>
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="500" aria-label="Juego de plataformas. Usa A y D o las flechas para moverte, y espacio para saltar."></canvas>
+        <div class="start-screen" id="startScreen">
+          <div class="start-orb" aria-hidden="true">B</div><p class="start-kicker">TU AVENTURA COMIENZA</p><h2>¿Preparado?</h2>
+          <p>Corre por la plataforma y prueba el salto.</p>
+          <button id="startButton" class="primary-button" type="button">JUGAR <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
+      <div class="game-footer">
+        <div class="key-help"><span class="key">←</span><span class="key">A</span><small>IZQUIERDA</small></div>
+        <div class="key-help"><span class="key">→</span><span class="key">D</span><small>DERECHA</small></div>
+        <div class="key-help"><span class="key wide">SPACE</span><small>SALTAR</small></div>
+        <button id="resetButton" class="reset-button" type="button">REINICIAR ↻</button>
+      </div>
+      <div class="touch-controls" aria-label="Controles táctiles">
+        <button type="button" data-control="left" aria-label="Mover a la izquierda">◀</button><button type="button" data-control="right" aria-label="Mover a la derecha">▶</button><button type="button" data-control="jump" class="jump-button">SALTAR ↑</button>
+      </div>
+    </section>
+    <p class="tip"><span aria-hidden="true">✦</span> Consejo: puedes mantener pulsada la tecla para correr. El salto funciona mientras estás en el suelo.</p>
+    <footer>BLUE RUSH <span>·</span> PROTOTIPO JUGABLE</footer>
+  </main>
+</body>
+</html>
