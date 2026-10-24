@@ -16,7 +16,7 @@
   };
   const keys = Object.create(null);
   let mode = "title", last = 0, elapsed = 0, score = 0, rings = 0, lives = 3;
-  let camera = 0, particles = [], invulnerable = 0, jumpQueued = false;
+  let camera = 0, particles = [], invulnerable = 0, jumpQueued = false, zoneToast = 0, currentZone = -1, bossFlash = 0;
   const worldWidth = 5700;
   const floorY = 430;
   const player = {x:70,y:floorY-48,w:34,h:48,vx:0,vy:0,onGround:false,face:1,rolling:false};
@@ -43,10 +43,19 @@
   const enemies = [440,980,1190,1610,2200,2410,2840,3090,3540,3780,4240,4440,4920,5330].map((x,i)=>({x,y:floorY-30,w:32,h:30,vx:i%2?0.8:-0.8,alive:true,home:x,range:70}));
   const checkpoints = [1450,2700,4050];
   let checkpoint = 70;
-  const finishX = 5520;
+  const finishX = 5580;
+  const zones = [
+    {start:0,end:1050,name:"SUNNY COAST",sky:["#62d9f7","#d6f8ff"],hill:"#65d5a0",top:"#47c957",soil:"#9b6035",accent:"#fff4a3"},
+    {start:1050,end:2100,name:"EMBER RUINS",sky:["#f7a25b","#ffe4a0"],hill:"#d77b58",top:"#ee6b3d",soil:"#75424a",accent:"#fff0a0"},
+    {start:2100,end:3150,name:"NEON HEIGHTS",sky:["#413f9c","#e99de9"],hill:"#7668bd",top:"#5de5bd",soil:"#493b79",accent:"#ffe46c"},
+    {start:3150,end:4200,name:"MISTY LAGOON",sky:["#38a8bd","#b9f2e8"],hill:"#4eb7a5",top:"#48d4a0",soil:"#477b72",accent:"#d4fff4"},
+    {start:4200,end:5100,name:"IRON FACTORY",sky:["#384b6c","#a8b4c7"],hill:"#68798d",top:"#f0a044",soil:"#4d5364",accent:"#ffe46c"},
+    {start:5100,end:5700,name:"FINAL CORE",sky:["#321b56","#e85b78"],hill:"#6c315f",top:"#ef5265",soil:"#482b48",accent:"#ffdf65"}
+  ];
+  const boss = {x:5410,y:floorY-78,w:58,h:72,hp:6,vx:1.1,alive:true};
 
   function resetGame(){
-    mode="playing"; elapsed=0; score=0; rings=0; lives=3; camera=0; particles=[]; invulnerable=0; checkpoint=70;
+    mode="playing"; elapsed=0; score=0; rings=0; lives=3; camera=0; particles=[]; invulnerable=0; checkpoint=70; zoneToast=2.5; currentZone=0; boss.x=5410; boss.hp=6; boss.alive=true; bossFlash=0;
     player.x=70;player.y=floorY-player.h;player.vx=0;player.vy=0;player.onGround=false;player.face=1;
     ringItems.forEach(r=>r.got=false);enemies.forEach(e=>{e.alive=true;e.x=e.home;e.vx=Math.abs(e.vx)*(e.home%2?1:-1);});
     springs.forEach(s=>s.used=false); updateHud(); ui.overlay.classList.add("hidden"); ui.pause.textContent="Pausar";
@@ -87,7 +96,8 @@
   }
   function update(dt){
     if(mode!=="playing")return;
-    elapsed+=dt;invulnerable=Math.max(0,invulnerable-dt);
+    elapsed+=dt;invulnerable=Math.max(0,invulnerable-dt);zoneToast=Math.max(0,zoneToast-dt);bossFlash=Math.max(0,bossFlash-dt);
+    const zoneIndex=zones.findIndex(z=>player.x>=z.start&&player.x<z.end);if(zoneIndex>=0&&zoneIndex!==currentZone){currentZone=zoneIndex;zoneToast=2.5;burst(player.x+20,player.y,"#fff2a6",8);}
     const left=down("arrowleft","a"),right=down("arrowright","d");
     if(left){player.vx-=22*dt;player.face=-1;} if(right){player.vx+=22*dt;player.face=1;}
     if(!left&&!right)player.vx*=Math.pow(player.onGround?0.80:0.985,dt*60);
@@ -116,7 +126,8 @@
         else hurt();
       }
     }
-    if(player.x>finishX){score+=rings*25;mode="won";showOverlay("¡Nivel completado!","¡Excelente carrera! Has recogido "+rings+" anillos y conseguido "+score+" puntos.");}
+    if(player.x>5100&&boss.alive){boss.x+=boss.vx*60*dt;if(boss.x<5310||boss.x>5480)boss.vx*=-1;if(rects(player,{x:boss.x,y:boss.y,w:boss.w,h:boss.h})){if(player.vy>1&&oldY+player.h<=boss.y+20){boss.hp--;bossFlash=.24;player.vy=-8;player.vx=-player.face*3;score+=500;burst(boss.x+boss.w/2,boss.y+12,"#ffe56a",12);if(boss.hp<=0){boss.alive=false;score+=3000;burst(boss.x+boss.w/2,boss.y+25,"#ff8555",25);}}else hurt();}}
+    if(player.x>finishX&&!boss.alive){score+=rings*25;mode="won";showOverlay("¡Aventura completada!","¡Derrotaste al guardián y salvaste las zonas! Anillos: "+rings+" · Puntuación: "+score,"JUGAR OTRA VEZ");}
     camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.32));
     updateHud();
     particles=particles.filter(p=>p.life<1);
@@ -125,11 +136,11 @@
 
   function rounded(x,y,w,h,r,fill){ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
   function drawBackground(){
-    const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,"#62d9f7");sky.addColorStop(1,"#d6f8ff");ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+    const z=zones.find(item=>camera+W*.35>=item.start&&camera+W*.35<item.end)||zones[zones.length-1];const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,z.sky[0]);sky.addColorStop(1,z.sky[1]);ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
     // Sun
-    ctx.fillStyle="#fff4a3";ctx.beginPath();ctx.arc(790-camera*.04,88,39,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=z.accent;ctx.beginPath();ctx.arc(790-camera*.04,88,39,0,Math.PI*2);ctx.fill();
     // Distant hills
-    for(let i=0;i<8;i++){const x=((i*210-camera*.16)%(W+260))-130;ctx.fillStyle=i%2?"#8ce1b2":"#65d5a0";ctx.beginPath();ctx.ellipse(x,400,160,105,0,Math.PI,Math.PI*2);ctx.fill();}
+    for(let i=0;i<8;i++){const x=((i*210-camera*.16)%(W+260))-130;ctx.fillStyle=i%2?"#8ce1b2":z.hill;ctx.beginPath();ctx.ellipse(x,400,160,105,0,Math.PI,Math.PI*2);ctx.fill();}
     // Puffy clouds
     for(let i=0;i<7;i++){const x=((i*235-camera*.28)%(W+190))-80,y=65+(i%3)*58;ctx.fillStyle="#ffffffd9";ctx.beginPath();ctx.arc(x,y,22,0,Math.PI*2);ctx.arc(x+23,y-12,27,0,Math.PI*2);ctx.arc(x+49,y,21,0,Math.PI*2);ctx.fill();}
     // Distant checkerboard cliffs
@@ -137,9 +148,9 @@
   }
   function drawGround(){
     for(const [x,y,w,h] of platforms){const sx=x-camera;if(sx+w< -10||sx>W+10)continue;
-      ctx.fillStyle="#9b6035";ctx.fillRect(sx,y,w,h);
-      ctx.fillStyle="#47c957";ctx.fillRect(sx,y,w,12);
-      ctx.fillStyle="#168f49";ctx.fillRect(sx,y+12,w,5);
+      const zone=zones.find(z=>x>=z.start&&x<z.end)||zones[zones.length-1];ctx.fillStyle=zone.soil;ctx.fillRect(sx,y,w,h);
+      ctx.fillStyle=zone.top;ctx.fillRect(sx,y,w,12);
+      ctx.fillStyle=zone.accent;ctx.globalAlpha=.35;ctx.fillRect(sx,y+12,w,5);ctx.globalAlpha=1;
       for(let xx=sx;xx<sx+w;xx+=28){ctx.fillStyle=((Math.floor((xx+camera)/28)+Math.floor(y/20))%2)?"#c1814b":"#ad6c3d";ctx.fillRect(xx,y+22,14,14);ctx.fillStyle="#77442f";ctx.fillRect(xx+14,y+36,14,14);}
     }
     gaps.forEach(([x])=>{const sx=x-camera;ctx.fillStyle="#123f55";ctx.fillRect(sx,floorY,80,H-floorY);});
@@ -169,16 +180,17 @@
     ctx.fillStyle="#fff";ctx.fillRect(-8,18,9,3);ctx.fillRect(9,18,8,3);
     ctx.restore();
   }
+  function drawBoss(){if(!boss.alive||boss.x-camera< -100||boss.x-camera>W+100)return;const x=boss.x-camera,y=boss.y;ctx.save();ctx.fillStyle=bossFlash>0?"#fff2a6":"#b83d57";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+31,29,33,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e9e7ef";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+8,24,18,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e84d5b";ctx.fillRect(x+7,y+2,44,8);ctx.fillStyle="#fff";ctx.fillRect(x+14,y+7,10,11);ctx.fillRect(x+34,y+7,10,11);ctx.fillStyle="#172642";ctx.fillRect(x+18,y+10,4,6);ctx.fillRect(x+38,y+10,4,6);ctx.fillStyle="#31354b";ctx.fillRect(x+3,y+53,17,17);ctx.fillRect(x+38,y+53,17,17);ctx.fillStyle="#f7b744";ctx.fillRect(x+20,y+28,18,12);rounded(x-8,y-20,74,9,4,"#3a1735");rounded(x-6,y-18,70,5,2,"#ffffff");if(boss.hp>0)rounded(x-6,y-18,70*(boss.hp/6),5,2,"#ff526b");ctx.restore();}
   function drawEnemy(e){const x=e.x-camera,y=e.y;rounded(x,y+7,e.w,e.h-7,8,"#d84b48");rounded(x+3,y,e.w-6,17,7,"#ff765e");ctx.fillStyle="#fff";ctx.fillRect(x+7,y+7,6,8);ctx.fillRect(x+19,y+7,6,8);ctx.fillStyle="#182a48";ctx.fillRect(x+9,y+10,3,4);ctx.fillRect(x+21,y+10,3,4);ctx.fillStyle="#d4e4f0";ctx.fillRect(x+3,y+e.h-4,9,5);ctx.fillRect(x+20,y+e.h-4,9,5);}
   function drawSpring(s){const x=s.x-camera;if(x< -30||x>W+30)return;ctx.fillStyle="#d84442";ctx.fillRect(x-13,s.y+9,26,9);ctx.fillStyle="#f8e45c";ctx.fillRect(x-11,s.y+3,22,7);ctx.fillStyle="#e8f4ff";ctx.fillRect(x-13,s.y+17,26,3);}
   function draw(){
     drawBackground();drawGround();
     ringItems.forEach(r=>{if(!r.got){const x=r.x-camera;if(x>-15&&x<W+15)drawRing(x,r.y);}});
     springs.forEach(drawSpring);
-    enemies.forEach(e=>{if(e.alive&&e.x-camera>-40&&e.x-camera<W+40)drawEnemy(e);});
+    enemies.forEach(e=>{if(e.alive&&e.x-camera>-40&&e.x-camera<W+40)drawEnemy(e);});drawBoss();
     // Goal marker
     const fx=finishX-camera;if(fx>-40&&fx<W+40){ctx.fillStyle="#f5f9ff";ctx.fillRect(fx,280,5,150);ctx.fillStyle="#ff5b64";ctx.beginPath();ctx.moveTo(fx+5,284);ctx.lineTo(fx+70,302);ctx.lineTo(fx+5,322);ctx.closePath();ctx.fill();ctx.fillStyle="#ffd84d";ctx.beginPath();ctx.arc(fx+2,277,7,0,Math.PI*2);ctx.fill();}
-    drawPlayer();
+    drawPlayer();const activeZone=zones.find(z=>player.x>=z.start&&player.x<z.end)||zones[zones.length-1];ctx.textAlign="left";ctx.fillStyle="#ffffff";ctx.font="900 14px Nunito, sans-serif";ctx.shadowColor="#102747";ctx.shadowBlur=5;ctx.fillText(activeZone.name,18,28);ctx.shadowBlur=0;if(zoneToast>0){ctx.globalAlpha=Math.min(1,zoneToast*2);rounded(W/2-190,70,380,58,14,"#082849dd");ctx.textAlign="center";ctx.fillStyle="#8ee4ff";ctx.font="900 10px Nunito, sans-serif";ctx.fillText("NUEVA ZONA",W/2,89);ctx.fillStyle="#fff";ctx.font="900 21px Nunito, sans-serif";ctx.fillText(activeZone.name,W/2,114);ctx.globalAlpha=1;}if(player.x>5100&&boss.alive){rounded(W-182,20,160,34,9,"#3b1c3bde");ctx.fillStyle="#fff";ctx.font="900 10px Nunito, sans-serif";ctx.textAlign="center";ctx.fillText("GUARDIÁN FINAL",W-102,33);ctx.fillStyle="#ffb4c4";ctx.font="900 12px Nunito, sans-serif";ctx.fillText("VIDA: "+boss.hp+"/6",W-102,47);}
     particles.forEach(p=>{ctx.globalAlpha=Math.max(0,1-p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-camera,p.y,p.size,p.size);});ctx.globalAlpha=1;
     if(mode==="title"){ctx.fillStyle="#06315b";ctx.font="900 20px Nunito, sans-serif";ctx.fillText("¡LISTO PARA LA AVENTURA!",W/2-155,H-25);}
   }
