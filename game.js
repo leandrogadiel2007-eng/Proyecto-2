@@ -21,25 +21,47 @@ function terrainHeight(x){
  return y+Math.sin(x*.008)*3;
 }
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
-const platforms=[];
-for(let x=760,i=0;x<worldWidth-260;x+=850,i++){
- const w=[118,136,124,148][i%4];
- const ground=terrainHeight(x+w/2);
- platforms.push({x,y:Math.max(175,ground-[112,132,105,145][i%4]),w});
-}
+// Piezas colocadas a mano: cada sección tiene una función en el recorrido.
+const platformSpecs=[
+ [610,126],[1040,132],[1510,118],[1940,142],[2440,126],
+ [2940,138],[3420,120],[3890,145],[4400,126],[4870,138],
+ [5350,120],[5820,146],[6310,126],[6800,138],[7280,120],
+ [7760,145],[8240,126],[8720,138],[9210,120],[9690,145],
+ [10180,126],[10660,138],[11140,120]
+];
+const platforms=platformSpecs.map(([x,w],i)=>{
+ let highest=Infinity;
+ for(let sx=x;sx<=x+w;sx+=6) highest=Math.min(highest,terrainHeight(sx));
+ const clearance=[92,108,96,116][i%4];
+ return {x,w,y:Math.max(125,highest-clearance),section:i};
+});
 let rings=[],enemies=[],collected=new Set();
 function buildLevel(){
  rings=[];collected=new Set();
- const rows=[];
- for(let x=180,row=0;x<worldWidth-150;x+=245,row++) rows.push([x,5+(row%3),row%2]);
- rows.forEach(([x,count,high],row)=>{
+ // Anillos en grupos con intención: líneas bajas, saltos y recompensas elevadas.
+ const ringGroups=[
+  [170,6,'low'],[520,5,'arc'],[900,6,'high'],[1260,5,'low'],
+  [1640,7,'arc'],[2040,5,'high'],[2390,6,'low'],[2770,6,'arc'],
+  [3190,5,'high'],[3550,6,'low'],[3950,7,'arc'],[4390,5,'high'],
+  [4740,6,'low'],[5160,6,'arc'],[5580,5,'high'],[5930,6,'low'],
+  [6350,7,'arc'],[6800,5,'high'],[7160,6,'low'],[7580,6,'arc'],
+  [8000,5,'high'],[8360,6,'low'],[8790,7,'arc'],[9220,5,'high'],
+  [9580,6,'low'],[10000,6,'arc'],[10420,5,'high'],[10800,6,'low'],
+  [11200,7,'arc'],[11600,5,'low']
+ ];
+ ringGroups.forEach(([x,count,type],row)=>{
   for(let i=0;i<count;i++){
-   const rx=x+i*29;
-   rings.push({id:row+'-'+i,x:rx,y:(high?terrainHeight(rx)-100:terrainHeight(rx)-48)-Math.sin(i/(count-1)*Math.PI)*18,got:false});
+   const rx=x+i*27;
+   const base=terrainHeight(rx);
+   let y=base-(type==='high'?112:type==='arc'?66+Math.sin(i/(count-1)*Math.PI)*48:43);
+   // Evita que los anillos de las rutas altas queden dentro del suelo.
+   y=Math.min(y,base-38);
+   rings.push({id:row+'-'+i,x:rx,y,got:false});
   }
  });
  enemies=[];
- for(let x=820;x<worldWidth-100;x+=620) enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x});
+ // Enemigos espaciados, no puestos en cada salto ni junto a cada plataforma.
+ [840,1780,2630,3500,4630,5480,6620,7490,8610,9470,10570,11420].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
 }
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:335,jump:625,onGround:true,facing:1,invincible:0,spin:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
