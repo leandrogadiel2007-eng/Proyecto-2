@@ -3,16 +3,41 @@
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status');
 const W=canvas.width,H=canvas.height,GROUND=390,keys={left:false,right:false};
-const worldWidth=4300;
-function terrainHeight(x){const waves=[{a:620,b:900,top:315},{a:900,b:1120,top:390},{a:1350,b:1600,top:330},{a:1600,b:1810,top:390},{a:2250,b:2530,top:310},{a:2530,b:2780,top:390},{a:3000,b:3290,top:325},{a:3290,b:3510,top:390},{a:3650,b:3920,top:305},{a:3920,b:4150,top:390}];let y=390;for(const s of waves){if(x>=s.a&&x<=s.b){const t=(x-s.a)/(s.b-s.a);y=390+(s.top-390)*(t<.5?2*t:2*(1-t));break}}return y+Math.sin(x*.008)*3;}
+const worldWidth=12000;
+const terrainSections=[];
+for(let x=420,i=0;x<worldWidth-180;x+=470,i++){
+ const top=([320,285,340,305,360,295,330,275][i%8]);
+ terrainSections.push({a:x,b:x+360,top});
+}
+function terrainHeight(x){
+ let y=390;
+ for(const s of terrainSections){
+  if(x>=s.a&&x<=s.b){
+   const t=(x-s.a)/(s.b-s.a);
+   y=390+(s.top-390)*(t<.5?2*t:2*(1-t));
+   break;
+  }
+ }
+ return y+Math.sin(x*.008)*3;
+}
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
-const platforms=[{x:560,y:315,w:145},{x:970,y:275,w:145},{x:1480,y:320,w:155},{x:2100,y:285,w:160},{x:2710,y:315,w:150},{x:3350,y:270,w:170},{x:3780,y:320,w:170}];
+const platforms=[];
+for(let x=650,i=0;x<worldWidth-300;x+=720,i++){
+ platforms.push({x,y:[300,265,315,280,325,255][i%6],w:[145,175,135,190][i%4]});
+}
 let rings=[],enemies=[],collected=new Set();
 function buildLevel(){
  rings=[];collected=new Set();
- const rows=[[230,6,0],[400,5,0],[590,5,1],[810,6,0],[1000,5,1],[1220,7,0],[1490,6,1],[1740,6,0],[2000,6,1],[2240,7,0],[2500,6,1],[2740,6,0],[2990,7,0],[3270,6,1],[3530,7,0],[3810,6,1],[4070,5,0]];
- rows.forEach(([x,count,high],row)=>{for(let i=0;i<count;i++)rings.push({id:row+'-'+i,x:x+i*29,y:(high?terrainHeight(x)-100:terrainHeight(x)-48)-Math.sin(i/(count-1)*Math.PI)*18,got:false})});
- enemies=[900,1640,2460,3160,3950].map(x=>({x,y:terrainHeight(x)-28,alive:true,base:x}));
+ const rows=[];
+ for(let x=180,row=0;x<worldWidth-150;x+=245,row++) rows.push([x,5+(row%3),row%2]);
+ rows.forEach(([x,count,high],row)=>{
+  for(let i=0;i<count;i++){
+   const rx=x+i*29;
+   rings.push({id:row+'-'+i,x:rx,y:(high?terrainHeight(rx)-100:terrainHeight(rx)-48)-Math.sin(i/(count-1)*Math.PI)*18,got:false});
+  }
+ });
+ enemies=[];
+ for(let x=820;x<worldWidth-100;x+=620) enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x});
 }
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:335,jump:625,onGround:true,facing:1,invincible:0,spin:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
@@ -42,7 +67,7 @@ function update(dt){
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
-function drawBackground(){const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#07142f');sky.addColorStop(.52,'#123f70');sky.addColorStop(1,'#48c9e8');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);const sx=770-camera*.035,sy=115;const glow=ctx.createRadialGradient(sx,sy,8,sx,sy,100);glow.addColorStop(0,'#d7ffffcc');glow.addColorStop(.25,'#57e8ff88');glow.addColorStop(1,'#57e8ff00');ctx.fillStyle=glow;ctx.fillRect(sx-105,sy-105,210,210);circle(sx,sy,28,'#bafaff');for(let i=0;i<7;i++){const x=((i*177-camera*.09)%(W+150)+W+150)%(W+150)-70,y=58+(i%3)*43;ctx.fillStyle='#9feeff';ctx.globalAlpha=.55;ctx.fillRect(x,y,44,5);ctx.fillRect(x+9,y-7,26,7);ctx.globalAlpha=1}for(let layer=0;layer<3;layer++){ctx.beginPath();ctx.moveTo(0,GROUND);for(let x=-30;x<=W+40;x+=12){const wx=x+camera*(.12+layer*.09),y=265+layer*28+Math.sin(wx*.009+layer)*34+Math.sin(wx*.022)*12;ctx.lineTo(x,y)}ctx.lineTo(W,GROUND);ctx.closePath();ctx.fillStyle=['#0b5c72','#104b70','#12365c'][layer];ctx.fill();ctx.strokeStyle=['#26f0d0','#1cbedb','#1679bb'][layer];ctx.lineWidth=2;ctx.stroke()}for(let i=0;i<10;i++){const wx=i*490+145,x=wx-camera*.62;if(x< -100||x>W+100)continue;ctx.strokeStyle='#4deaff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,GROUND);ctx.lineTo(x,GROUND-105);ctx.stroke();for(let j=0;j<5;j++){ctx.save();ctx.translate(x,GROUND-105);ctx.rotate((j-2)*.55);ctx.fillStyle=j%2?'#12cfae':'#45ffce';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-10,-28);ctx.lineTo(0,-52);ctx.lineTo(10,-27);ctx.closePath();ctx.fill();ctx.strokeStyle='#b0fff4';ctx.lineWidth=1;ctx.stroke();ctx.restore()}}}
+function drawBackground(){const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#07142f');sky.addColorStop(.52,'#123f70');sky.addColorStop(1,'#48c9e8');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);const sx=770-camera*.035,sy=115;const glow=ctx.createRadialGradient(sx,sy,8,sx,sy,100);glow.addColorStop(0,'#d7ffffcc');glow.addColorStop(.25,'#57e8ff88');glow.addColorStop(1,'#57e8ff00');ctx.fillStyle=glow;ctx.fillRect(sx-105,sy-105,210,210);circle(sx,sy,28,'#bafaff');for(let i=0;i<7;i++){const x=((i*177-camera*.09)%(W+150)+W+150)%(W+150)-70,y=58+(i%3)*43;ctx.fillStyle='#9feeff';ctx.globalAlpha=.55;ctx.fillRect(x,y,44,5);ctx.fillRect(x+9,y-7,26,7);ctx.globalAlpha=1}for(let layer=0;layer<3;layer++){ctx.beginPath();ctx.moveTo(0,GROUND);for(let x=-30;x<=W+40;x+=12){const wx=x+camera*(.12+layer*.09),y=265+layer*28+Math.sin(wx*.009+layer)*34+Math.sin(wx*.022)*12;ctx.lineTo(x,y)}ctx.lineTo(W,GROUND);ctx.closePath();ctx.fillStyle=['#0b5c72','#104b70','#12365c'][layer];ctx.fill();ctx.strokeStyle=['#26f0d0','#1cbedb','#1679bb'][layer];ctx.lineWidth=2;ctx.stroke()}for(let i=0;i<28;i++){const wx=i*490+145,x=wx-camera*.62;if(x< -100||x>W+100)continue;ctx.strokeStyle='#4deaff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,GROUND);ctx.lineTo(x,GROUND-105);ctx.stroke();for(let j=0;j<5;j++){ctx.save();ctx.translate(x,GROUND-105);ctx.rotate((j-2)*.55);ctx.fillStyle=j%2?'#12cfae':'#45ffce';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-10,-28);ctx.lineTo(0,-52);ctx.lineTo(10,-27);ctx.closePath();ctx.fill();ctx.strokeStyle='#b0fff4';ctx.lineWidth=1;ctx.stroke();ctx.restore()}}}
 function drawGround(){
  // El terreno se dibuja por segmentos con desniveles y cuadros luminosos.
  const first=-(camera%8)-8;
