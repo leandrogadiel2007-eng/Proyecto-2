@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1288d4">
+  <title>Blue Rush — Aventura de plataformas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">⚡</div>
+      <div>
+        <p class="eyebrow">AVENTURA DE PLATAFORMAS</p>
+        <h1>BLUE RUSH</h1>
+      </div>
+      <div class="top-note">¡Corre, salta y recoge anillos!</div>
+    </header>
+
+    <section class="game-shell" aria-label="Juego Blue Rush">
+      <div class="hud">
+        <div><span class="hud-label">PUNTOS</span><strong id="score">000000</strong></div>
+        <div><span class="hud-label">ANILLOS</span><strong id="rings">00</strong></div>
+        <div><span class="hud-label">VIDAS</span><strong id="lives">3</strong></div>
+        <div><span class="hud-label">TIEMPO</span><strong id="timer">00:00</strong></div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="540" aria-label="Juego de plataformas. Usa las flechas o A y D para moverte, y espacio para saltar."></canvas>
+        <div class="overlay" id="overlay">
+          <div class="overlay-card">
+            <div class="hero-badge" aria-hidden="true">⚡</div>
+            <p class="eyebrow">UNA AVENTURA A TODA VELOCIDAD</p>
+            <h2 id="overlay-title">¡A correr!</h2>
+            <p id="overlay-copy">Recoge anillos, esquiva robots y llega al final del recorrido.</p>
+            <button id="start-btn" type="button">JUGAR</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-footer">
+        <p><kbd>←</kbd> <kbd>→</kbd> o <kbd>A</kbd> <kbd>D</kbd> mover <span class="dot">•</span> <kbd>ESPACIO</kbd> / <kbd>↑</kbd> saltar</p>
+        <button id="pause-btn" class="small-btn" type="button">Pausar</button>
+      </div>
+    </section>
+
+    <section class="tips">
+      <article><span class="tip-icon">🟡</span><div><h3>¡Colecciona!</h3><p>Los anillos suman puntos. Si te golpean, perderás algunos.</p></div></article>
+      <article><span class="tip-icon">⚙️</span><div><h3>Ten cuidado</h3><p>Salta sobre los robots para derrotarlos y evita caer en los huecos.</p></div></article>
+      <article><span class="tip-icon">🏁</span><div><h3>Llega a la meta</h3><p>Usa la velocidad y los resortes para atravesar el escenario.</p></div></article>
+    </section>
+    <footer class="site-footer">BLUE RUSH · Juego original inspirado en los plataformas clásicos de 16 bits.</footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
