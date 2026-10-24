@@ -108,7 +108,7 @@
     // A fall costs a life and returns to the last checkpoint.
     if(player.y>H+100){lives--;rings=0;if(lives<=0){mode="lost";showOverlay("¡Ups!","Te quedaste sin vidas. Prueba otra vez.");}else{player.x=checkpoint;player.y=floorY-player.h;player.vx=0;player.vy=0;invulnerable=1.2;}}
     checkpoints.forEach(x=>{if(player.x>x&&checkpoint<x){checkpoint=x;burst(x,330,"#83f7b5",10);}});
-    springs.forEach(s=>{if(Math.abs((player.x+player.w/2)-s.x)<28&&player.y+player.h>s.y&&player.y+player.h<s.y+30&&player.vy>=0){player.vy=-15;player.vx=Math.max(player.vx,4.5);s.used=true;burst(s.x,s.y,"#ffe36b",8);}});
+    springs.forEach(s=>{if(!s.used&&Math.abs((player.x+player.w/2)-s.x)<28&&player.y+player.h>s.y&&player.y+player.h<s.y+30&&player.vy>=0){player.vy=-15;player.vx=Math.max(player.vx,4.5);s.used=true;burst(s.x,s.y,"#ffe36b",8);}});
     for(const r of ringItems){if(!r.got&&Math.hypot(player.x+player.w/2-r.x,player.y+player.h/2-r.y)<27){r.got=true;rings++;score+=100;if(rings%10===0)score+=500;}}
     for(const e of enemies){if(!e.alive)continue;e.x+=e.vx*60*dt;if(Math.abs(e.x-e.home)>e.range)e.vx*=-1;
       if(rects(player,{x:e.x,y:e.y,w:e.w,h:e.h})){
