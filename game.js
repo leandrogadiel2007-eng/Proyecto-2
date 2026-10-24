@@ -100,32 +100,33 @@ g.imageSmoothingEnabled=false;
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
 function drawBackground(){
- const grad=g.createLinearGradient(0,0,0,scene.height);grad.addColorStop(0,'#5c94fc');grad.addColorStop(1,'#9bd8ff');g.fillStyle=grad;g.fillRect(0,0,scene.width,scene.height);
- // Nubes en bloques cuadrados
- for(let i=0;i<7;i++){const x=((i*77-camera*.12/PIXEL)%(scene.width+45)+scene.width+45)%(scene.width+45)-22,y=13+(i%3)*17;pxRect(x,y+4,24,5,'#fff');pxRect(x+5,y,13,5,'#fff');pxRect(x+10,y-2,8,4,'#fff')}
- // Montañas del fondo, con siluetas geométricas tipo 16-bit
+ // Fondo más marcado: cielo de 16 bits y colinas geométricas. El personaje no se modifica.
+ const sky=g.createLinearGradient(0,0,0,scene.height);sky.addColorStop(0,'#1689f5');sky.addColorStop(.62,'#53c9ff');sky.addColorStop(1,'#b3f3ff');g.fillStyle=sky;g.fillRect(0,0,scene.width,scene.height);
+ // Sol retro
+ pxRect(260,16,17,17,'#fff07a');pxRect(264,12,9,4,'#fff07a');pxRect(264,33,9,4,'#fff07a');pxRect(256,20,4,9,'#fff07a');pxRect(277,20,4,9,'#fff07a');
+ // Nubes grandes con escalones cuadrados
+ for(let i=0;i<6;i++){const x=((i*71-camera*.10/PIXEL)%(scene.width+48)+scene.width+48)%(scene.width+48)-28,y=15+(i%3)*13;pxRect(x,y+5,26,7,'#fff');pxRect(x+5,y,16,7,'#fff');pxRect(x+10,y-3,8,4,'#fff');pxRect(x+3,y+12,19,2,'#d7f5ff')}
+ // Tres capas de colinas escalonadas verdes, con manchas de píxeles
  for(let layer=0;layer<3;layer++){
-  const shift=camera*(.12+layer*.1)/PIXEL;
-  const colors=['#70c94a','#38a84c','#167d54'];
-  g.fillStyle=colors[layer];g.beginPath();g.moveTo(0,scene.height);
-  for(let x=-12;x<=scene.width+12;x+=3){const wx=x+shift;const y=(82+layer*12+Math.sin(wx*.045+layer)*9+Math.sin(wx*.019)*6);g.lineTo(x,y)}
+  const shift=camera*(.12+layer*.09)/PIXEL,base=90+layer*12;
+  const color=['#8be344','#38bd45','#168653'][layer];
+  g.fillStyle=color;g.beginPath();g.moveTo(0,scene.height);
+  for(let x=-8;x<=scene.width+8;x+=4){const wx=x+shift;const wave=Math.sin(wx*.035+layer*.9)*10+Math.sin(wx*.017)*7;g.lineTo(x,base+wave)}
   g.lineTo(scene.width,scene.height);g.closePath();g.fill();
-  // píxeles brillantes en las lomas
-  for(let i=0;i<20;i++){const x=((i*53-shift*1.3)%(scene.width+20)+scene.width+20)%(scene.width+20)-10;const y=90+layer*12+Math.sin((x+shift)*.045+layer)*9;pxRect(x,y,3,2,layer===0?'#a2e65b':layer===1?'#5cc85a':'#2c9b5d')}
+  for(let i=0;i<34;i++){const x=((i*29-shift*1.3)%(scene.width+20)+scene.width+20)%(scene.width+20)-10;const y=base+Math.sin((x+shift)*.035+layer*.9)*10+Math.sin((x+shift)*.017)*7;pxRect(x,y+4,4,2,layer===0?'#b4f35c':layer===1?'#65d64b':'#31a75a');if(i%2===0)pxRect(x+4,y+6,3,2,layer===0?'#b4f35c':'#087b4b')}
  }
- // Palmeras cuadradas como decoración de Green Hill
- for(let i=0;i<22;i++){const wx=i*520+180,x=wx/PIXEL-camera*.55/PIXEL;if(x< -18||x>scene.width+18)continue;const base=111+Math.sin(wx*.006)*8;pxRect(x-1,base-25,3,25,'#a85b2a');pxRect(x-2,base-28,5,4,'#78401f');pxRect(x-11,base-33,12,3,'#138346');pxRect(x-13,base-36,7,3,'#269e45');pxRect(x+1,base-35,12,3,'#138346');pxRect(x+6,base-39,8,3,'#269e45');pxRect(x-7,base-40,6,3,'#269e45');pxRect(x-3,base-43,7,4,'#3fc64f')}
+ // Palmeras más grandes y contrastadas, con hojas escalonadas
+ for(let i=0;i<18;i++){const wx=i*590+210,x=wx/PIXEL-camera*.48/PIXEL;if(x< -22||x>scene.width+22)continue;const base=116+Math.sin(wx*.006)*7;pxRect(x-2,base-32,4,34,'#a95728');pxRect(x-1,base-31,2,30,'#d98237');pxRect(x-15,base-37,14,4,'#087c3b');pxRect(x-18,base-41,10,4,'#139b40');pxRect(x+2,base-38,14,4,'#087c3b');pxRect(x+8,base-42,11,4,'#139b40');pxRect(x-10,base-45,9,4,'#139b40');pxRect(x-5,base-49,10,5,'#37ce49');pxRect(x-2,base-43,5,5,'#24b943')}
 }
 function drawGround(){
+ // Hierba brillante y patrón de cuadros grandes tipo Green Hill Zone.
  for(let sx=0;sx<scene.width;sx+=2){
-  const wx=(sx*PIXEL)+camera,gy=Math.max(0,Math.min(scene.height-1,terrainHeight(wx)/PIXEL));
-  const h=scene.height-gy;
-  pxRect(sx,gy,3,2,'#36c840');pxRect(sx,gy+2,3,1,'#8de04b');
-  pxRect(sx,gy+3,3,h,'#a95728');
-  for(let ty=gy+4;ty<scene.height;ty+=6){const tile=(Math.floor(wx/24)+Math.floor(ty/6))%2===0;pxRect(sx,ty,3,3,tile?'#c97832':'#8f4926')}
+  const wx=sx*PIXEL+camera,gy=Math.max(0,Math.min(scene.height-1,Math.floor(terrainHeight(wx)/PIXEL))),h=scene.height-gy;
+  pxRect(sx,gy,3,2,'#00a92f');pxRect(sx,gy+2,3,2,'#8cf044');pxRect(sx,gy+4,3,1,'#fff17a');pxRect(sx,gy+5,3,h,'#b85c2b');
+  for(let ty=gy+6;ty<scene.height;ty+=8){const checker=(Math.floor(wx/24)+Math.floor(ty/8))%2===0;pxRect(sx,ty,3,4,checker?'#e18a38':'#944322');pxRect(sx,ty+4,3,4,checker?'#a84d27':'#d27332')}
  }
- // Flores pixeladas
- for(let i=0;i<30;i++){const wx=i*137+65,x=(wx-camera)/PIXEL;if(x< -4||x>scene.width+4)continue;const y=terrainHeight(wx)/PIXEL-3;pxRect(x,y,2,2,'#fff4a8');pxRect(x-1,y,1,1,'#ff79b9');pxRect(x+2,y,1,1,'#ff79b9')}
+ // Flores y pequeños arbustos de colores
+ for(let i=0;i<34;i++){const wx=i*137+65,x=(wx-camera)/PIXEL;if(x< -5||x>scene.width+5)continue;const y=terrainHeight(wx)/PIXEL-3;pxRect(x,y,2,2,'#fff4a8');pxRect(x-1,y,1,1,'#ff69b4');pxRect(x+2,y,1,1,'#ff69b4');if(i%4===0){pxRect(x+5,y-2,4,2,'#168653');pxRect(x+7,y-4,3,2,'#38bd45')}}
 }
 function drawPlatform(p){
  const x=(p.x-camera)/PIXEL,y=p.y/PIXEL,w=p.w/PIXEL;
