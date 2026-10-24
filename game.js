@@ -90,7 +90,18 @@
     if(k==="escape"&&mode==="playing"){mode="paused";showOverlay("Pausa","Tu partida está en pausa.","CONTINUAR");ui.pause.textContent="Seguir";}
   });
   window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+  // Touch controls for phones, tablets and clickable jump buttons.
   const down=(...names)=>names.some(n=>keys[n]);
+  document.querySelectorAll("[data-game-key]").forEach(button=>{
+    const key=button.dataset.gameKey;
+    const press=e=>{e.preventDefault();keys[key]=true;if(key===" "||key==="arrowup"||key==="w")jumpQueued=true;button.classList.add("pressed");};
+    const release=e=>{e.preventDefault();keys[key]=false;button.classList.remove("pressed");};
+    button.addEventListener("pointerdown",press);
+    button.addEventListener("pointerup",release);
+    button.addEventListener("pointercancel",release);
+    button.addEventListener("pointerleave",release);
+    button.addEventListener("contextmenu",e=>e.preventDefault());
+  });
   function rects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
   function burst(x,y,color,count=8){for(let i=0;i<count;i++)particles.push({x,y,vx:(Math.random()-.5)*4,vy:(Math.random()-.8)*-3,life:0.45+Math.random()*.4,color,size:2+Math.random()*4});}
   function hurt(){
@@ -164,9 +175,14 @@
     for(let x=70;x<worldWidth;x+=190){const sx=x-camera;if(sx< -20||sx>W+20)continue;ctx.fillStyle="#238d49";ctx.fillRect(sx,floorY-22,3,10);ctx.fillStyle=x%3?"#ff75b5":"#fff17b";ctx.beginPath();ctx.arc(sx+2,floorY-25,5,0,Math.PI*2);ctx.fill();}
   }
   function drawRing(x,y,scale=1){
-    ctx.lineWidth=4*scale;ctx.strokeStyle="#a86609";ctx.beginPath();ctx.ellipse(x,y,8*scale,11*scale,0,0,Math.PI*2);ctx.stroke();
-    ctx.lineWidth=3*scale;ctx.strokeStyle="#ffe35b";ctx.beginPath();ctx.ellipse(x,y,7*scale,10*scale,0,0,Math.PI*2);ctx.stroke();
-    ctx.strokeStyle="#fff4b0";ctx.lineWidth=1.5*scale;ctx.beginPath();ctx.arc(x-2*scale,y-3*scale,4*scale,3.7,5.2);ctx.stroke();
+    // Pixel-stepped golden ring with a dark outline and bright highlights.
+    const px=3*scale;
+    ctx.fillStyle="#8a4a12";ctx.fillRect(x-3*px,y-4*px,2*px,px);ctx.fillRect(x+px,y-4*px,2*px,px);
+    ctx.fillRect(x-4*px,y-3*px,px,6*px);ctx.fillRect(x+3*px,y-3*px,px,6*px);
+    ctx.fillRect(x-3*px,y+3*px,2*px,px);ctx.fillRect(x+px,y+3*px,2*px,px);
+    ctx.fillStyle="#ffbf27";ctx.fillRect(x-2*px,y-4*px,4*px,px);ctx.fillRect(x-3*px,y-3*px,px,6*px);ctx.fillRect(x+2*px,y-3*px,px,6*px);ctx.fillRect(x-2*px,y+3*px,4*px,px);
+    ctx.fillStyle="#fff28a";ctx.fillRect(x-2*px,y-3*px,px,5*px);ctx.fillRect(x-px,y-4*px,2*px,px);ctx.fillRect(x+px,y-2*px,px,3*px);
+    ctx.fillStyle="#ffe45a";ctx.fillRect(x,y-2*px,px,4*px);
   }
   function drawPlayer(){
     const x=player.x-camera,y=player.y;
@@ -229,22 +245,17 @@
     ctx.restore();
   }
   function drawBoss(){if(!boss.alive||boss.x-camera< -100||boss.x-camera>W+100)return;const x=boss.x-camera,y=boss.y;ctx.save();ctx.fillStyle=bossFlash>0?"#fff2a6":"#b83d57";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+31,29,33,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e9e7ef";ctx.beginPath();ctx.ellipse(x+boss.w/2,y+8,24,18,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e84d5b";ctx.fillRect(x+7,y+2,44,8);ctx.fillStyle="#fff";ctx.fillRect(x+14,y+7,10,11);ctx.fillRect(x+34,y+7,10,11);ctx.fillStyle="#172642";ctx.fillRect(x+18,y+10,4,6);ctx.fillRect(x+38,y+10,4,6);ctx.fillStyle="#31354b";ctx.fillRect(x+3,y+53,17,17);ctx.fillRect(x+38,y+53,17,17);ctx.fillStyle="#f7b744";ctx.fillRect(x+20,y+28,18,12);rounded(x-8,y-20,74,9,4,"#3a1735");rounded(x-6,y-18,70,5,2,"#ffffff");if(boss.hp>0)rounded(x-6,y-18,70*(boss.hp/6),5,2,"#ff526b");ctx.restore();}
-  function drawEnemy(e){const x=e.x-camera,y=e.y;rounded(x,y+7,e.w,e.h-7,8,"#d84b48");rounded(x+3,y,e.w-6,17,7,"#ff765e");ctx.fillStyle="#fff";ctx.fillRect(x+7,y+7,6,8);ctx.fillRect(x+19,y+7,6,8);ctx.fillStyle="#182a48";ctx.fillRect(x+9,y+10,3,4);ctx.fillRect(x+21,y+10,3,4);ctx.fillStyle="#d4e4f0";ctx.fillRect(x+3,y+e.h-4,9,5);ctx.fillRect(x+20,y+e.h-4,9,5);}
-  function drawSpring(s){const x=s.x-camera;if(x< -30||x>W+30)return;ctx.fillStyle="#d84442";ctx.fillRect(x-13,s.y+9,26,9);ctx.fillStyle="#f8e45c";ctx.fillRect(x-11,s.y+3,22,7);ctx.fillStyle="#e8f4ff";ctx.fillRect(x-13,s.y+17,26,3);}
-  function draw(){
-    ctx.clearRect(0,0,W,H);
-    drawBackground();drawGround();
-    ringItems.forEach(r=>{if(!r.got){const x=r.x-camera;if(x>-15&&x<W+15)drawRing(x,r.y);}});
-    springs.forEach(drawSpring);
-    enemies.forEach(e=>{if(e.alive&&e.x-camera>-40&&e.x-camera<W+40)drawEnemy(e);});drawBoss();
-    // Goal marker
-    const fx=finishX-camera;if(fx>-40&&fx<W+40){ctx.fillStyle="#f5f9ff";ctx.fillRect(fx,280,5,150);ctx.fillStyle="#ff5b64";ctx.beginPath();ctx.moveTo(fx+5,284);ctx.lineTo(fx+70,302);ctx.lineTo(fx+5,322);ctx.closePath();ctx.fill();ctx.fillStyle="#ffd84d";ctx.beginPath();ctx.arc(fx+2,277,7,0,Math.PI*2);ctx.fill();}
-    drawPlayer();const activeZone=zones.find(z=>player.x>=z.start&&player.x<z.end)||zones[zones.length-1];ctx.textAlign="left";ctx.fillStyle="#ffffff";ctx.font="900 14px Nunito, sans-serif";ctx.shadowColor="#102747";ctx.shadowBlur=5;ctx.fillText(activeZone.name,18,28);ctx.shadowBlur=0;if(zoneToast>0){ctx.globalAlpha=Math.min(1,zoneToast*2);rounded(W/2-190,70,380,58,14,"#082849dd");ctx.textAlign="center";ctx.fillStyle="#8ee4ff";ctx.font="900 10px Nunito, sans-serif";ctx.fillText("NUEVA ZONA",W/2,89);ctx.fillStyle="#fff";ctx.font="900 21px Nunito, sans-serif";ctx.fillText(activeZone.name,W/2,114);ctx.globalAlpha=1;}if(player.x>5100&&boss.alive){rounded(W-182,20,160,34,9,"#3b1c3bde");ctx.fillStyle="#fff";ctx.font="900 10px Nunito, sans-serif";ctx.textAlign="center";ctx.fillText("GUARDIÁN FINAL",W-102,33);ctx.fillStyle="#ffb4c4";ctx.font="900 12px Nunito, sans-serif";ctx.fillText("VIDA: "+boss.hp+"/6",W-102,47);}
-    particles.forEach(p=>{ctx.globalAlpha=Math.max(0,1-p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x-camera,p.y,p.size,p.size);});ctx.globalAlpha=1;
-    if(mode==="title"){ctx.fillStyle="#06315b";ctx.font="900 20px Nunito, sans-serif";ctx.fillText("¡LISTO PARA LA AVENTURA!",W/2-155,H-25);}
-    screenCtx.imageSmoothingEnabled=false;
-    screenCtx.clearRect(0,0,canvas.width,canvas.height);
-    screenCtx.drawImage(pixelCanvas,0,0,canvas.width,canvas.height);
+  function drawEnemy(e){
+    const x=Math.round(e.x-camera),y=Math.round(e.y);
+    // Compact pixel robot with antenna, armor panels and chunky feet.
+    ctx.fillStyle="#74313f";ctx.fillRect(x+5,y+7,22,19);
+    ctx.fillStyle="#ff725e";ctx.fillRect(x+4,y+4,24,15);ctx.fillRect(x+8,y,16,6);
+    ctx.fillStyle="#ffd66b";ctx.fillRect(x+14,y-5,4,5);ctx.fillRect(x+12,y-7,8,3);
+    ctx.fillStyle="#fff3d8";ctx.fillRect(x+7,y+7,7,8);ctx.fillRect(x+19,y+7,7,8);
+    ctx.fillStyle="#20324f";ctx.fillRect(x+10,y+9,3,5);ctx.fillRect(x+21,y+9,3,5);
+    ctx.fillStyle="#a5f1f4";ctx.fillRect(x+7,y+18,18,3);
+    ctx.fillStyle="#4b2d43";ctx.fillRect(x+3,y+25,10,5);ctx.fillRect(x+20,y+25,10,5);
+    ctx.fillStyle="#e7edf4";ctx.fillRect(x+4,y+28,8,2);ctx.fillRect(x+21,y+28,8,2);
   }
   function loop(now){const dt=Math.min((now-last)/1000||0,0.033);last=now;update(dt);draw();requestAnimationFrame(loop);}
   updateHud();requestAnimationFrame(loop);
