@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1288d4">
   <meta name="description" content="Blue Rush: aventura de plataformas con gráficos pixel art, seis zonas y jefe final.">
   <title>Blue Rush — Aventura de plataformas</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <main class="page">
@@ -38,6 +38,11 @@
           </div>
         </div>
       </div>
+      <div class="touch-controls" aria-label="Controles táctiles del juego">
+        <button type="button" data-game-key="arrowleft" aria-label="Mover a la izquierda">◀</button>
+        <button type="button" data-game-key=" " aria-label="Saltar" class="jump-control">SALTAR ▲</button>
+        <button type="button" data-game-key="arrowright" aria-label="Mover a la derecha">▶</button>
+      </div>
       <div class="game-footer">
         <p><kbd>←</kbd> <kbd>→</kbd> o <kbd>A</kbd> <kbd>D</kbd> mover <span class="dot">•</span> <kbd>ESPACIO</kbd> / <kbd>↑</kbd> saltar</p>
         <button id="pause-btn" class="small-btn" type="button">Pausar</button>
@@ -51,6 +56,6 @@
     </section>
     <footer class="site-footer">BLUE RUSH · Juego original inspirado en los plataformas clásicos de 16 bits.</footer>
   </main>
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=4"></script>
 </body>
 </html>
