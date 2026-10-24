@@ -28,10 +28,10 @@ function update(dt){
  const dir=Number(keys.right)-Number(keys.left);
  if(dir){player.vx+=dir*1600*dt;player.facing=dir}else player.vx*=Math.pow(.0008,dt);
  player.vx=Math.max(-player.speed*.72,Math.min(player.speed,player.vx));
- const oldBottom=player.y+player.h,oldX=player.x;
+ const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
- const groundNow=terrainHeight(player.x+player.w/2),groundPrev=terrainHeight(oldX+player.w/2);if(player.vy>=0&&oldBottom<=groundPrev+8&&player.y+player.h>=groundNow){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0}
+ const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround;const descending=player.vy>=0;if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(12,Math.abs(player.vx)*dt*.65)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0}else if(player.onGround&&Math.abs(groundNow-groundPrev)<Math.max(18,Math.abs(player.vx)*dt+8)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0}
  for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0}}
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
@@ -46,7 +46,7 @@ function drawBackground(){const sky=ctx.createLinearGradient(0,0,0,H);sky.addCol
 function drawGround(){
  // El terreno se dibuja por segmentos con desniveles y cuadros luminosos.
  const first=Math.floor(camera/8)*8;
- for(let sx=first-8;sx<W+8;sx+=8){const wx=sx+camera,gy=terrainHeight(wx);rect(sx,gy,9,H-gy,'#07162f');rect(sx,gy,9,8,'#20eacb');rect(sx,gy+8,9,15,'#123c65');rect(sx+((Math.floor(wx/24)%2)*4),gy+23,5,14,'#16537a');rect(sx,gy+37,9,14,'#0a2544');ctx.strokeStyle='#247cff';ctx.globalAlpha=.23;ctx.strokeRect(sx,gy+8,8,44);ctx.globalAlpha=1}
+ for(let sx=first-8;sx<W+8;sx+=8){const wx=sx+camera,gy=Math.max(0,Math.min(H-8,terrainHeight(wx)));rect(sx,gy,9,H-gy,'#07162f');rect(sx,gy,9,8,'#20eacb');rect(sx,gy+8,9,15,'#123c65');rect(sx+((Math.floor(wx/24)%2)*4),gy+23,5,14,'#16537a');rect(sx,gy+37,9,14,'#0a2544');rect(sx,gy+51,9,Math.max(0,H-gy-51),'#07162f');ctx.strokeStyle='#247cff';ctx.globalAlpha=.23;ctx.strokeRect(sx,gy+8,8,44);ctx.globalAlpha=1}
  const wx=1750-camera;if(wx> -330&&wx<W){rect(wx,GROUND-2,285,8,'#8afaff');rect(wx,GROUND+9,285,52,'#087ac0');for(let i=0;i<8;i++)rect(wx+((i*43+elapsed*40)%270),GROUND+16+(i%3)*13,22,2,'#b2ffff')}
  // Anillo de energía decorativo en el fondo
  const loopX=1880-camera;if(loopX>-100&&loopX<W+100){ctx.strokeStyle='#22dfff';ctx.lineWidth=9;ctx.beginPath();ctx.ellipse(loopX,terrainHeight(1880)-62,38,58,0,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#b7ffff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(loopX,terrainHeight(1880)-62,38,58,0,0,Math.PI*2);ctx.stroke()}
