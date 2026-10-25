@@ -427,7 +427,11 @@ function drawFallbackPlayer(){
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
  const airbornePose=rolling||falling;
- const scale=Math.min((airbornePose?46:56)/Math.max(1,b.width),(airbornePose?46:54)/Math.max(1,b.height));
+ // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
+ const maxSpeedPose=moving&&speedRatio>=0.78;
+ const targetW=falling?66:(rolling?46:(maxSpeedPose?76:56));
+ const targetH=falling?66:(rolling?46:(maxSpeedPose?72:54));
+ const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(rolling)g.rotate(player.spinAngle||0);
