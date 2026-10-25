@@ -148,6 +148,23 @@ function drawBackground(){
   g.fillStyle="#f3fdff";g.fillRect(x+8,y+7,ww-6,12);g.fillRect(x+19,y,ww*.39,13);g.fillRect(x+ww*.58,y+5,ww*.29,12);
   g.fillStyle="#fff";g.fillRect(x+21,y+2,ww*.2,4);g.fillRect(x+ww*.62,y+7,ww*.14,3);
  }
+ // Islas cafés lejanas, detrás de las capas verdes y de los detalles cercanos.
+ island(115+((camera*.035)%(w+260)),336,.95);
+ island(420+((camera*.045)%(w+300)),340,.7);
+ island(690+((camera*.03)%(w+320)),326,1.12);
+ island(980+((camera*.04)%(w+340)),341,.82);
+ island(1250+((camera*.035)%(w+360)),333,1.02);
+ // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
+ for(let i=0;i<18;i++){
+  const ix=((i*83-camera*.055)%(w+100)+(w+100))%(w+100)-40;
+  const iy=294+(i%4)*11,iw=22+(i%4)*9;
+  g.fillStyle="#9e6254";g.fillRect(ix,iy,iw,15);g.fillRect(ix+5,iy-6,iw-12,8);
+  g.fillStyle="#176f43";g.fillRect(ix-3,iy-2,iw+6,5);
+  g.fillStyle="#40bb50";g.fillRect(ix+3,iy-5,iw-5,3);
+  g.fillStyle="#55cde8";g.fillRect(ix+iw*.55,iy+5,3,10);
+  g.fillStyle="#b6f4ff";g.fillRect(ix+iw*.55,iy+7,1,6);
+ }
+
  // Mar azul visible detrás de las islas, con bandas de luz pixeladas.
  g.fillStyle="#138fe0";g.fillRect(0,236,w,96);
  g.fillStyle="#36b5ef";g.fillRect(0,242,w,18);
@@ -220,22 +237,6 @@ function drawBackground(){
   const x=((i*59-camera*(.06+(i%3)*.025))%(w+44)+(w+44))%(w+44)-22;
   const y=306+(i*23%60),sz=4+(i%4)*3;
   g.fillStyle=["#a4ec62","#65d94b","#2eb84b","#d5f68c"][i%4];g.fillRect(x,y,sz*2,3);g.fillRect(x+sz,y-3,sz,3);
- }
- // Islas cafés en primer plano, delante de las capas verdes y azules.
- island(115+((camera*.035)%(w+260)),336,.95);
- island(420+((camera*.045)%(w+300)),340,.7);
- island(690+((camera*.03)%(w+320)),326,1.12);
- island(980+((camera*.04)%(w+340)),341,.82);
- island(1250+((camera*.035)%(w+360)),333,1.02);
- // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
- for(let i=0;i<18;i++){
-  const ix=((i*83-camera*.055)%(w+100)+(w+100))%(w+100)-40;
-  const iy=294+(i%4)*11,iw=22+(i%4)*9;
-  g.fillStyle="#9e6254";g.fillRect(ix,iy,iw,15);g.fillRect(ix+5,iy-6,iw-12,8);
-  g.fillStyle="#176f43";g.fillRect(ix-3,iy-2,iw+6,5);
-  g.fillStyle="#40bb50";g.fillRect(ix+3,iy-5,iw-5,3);
-  g.fillStyle="#55cde8";g.fillRect(ix+iw*.55,iy+5,3,10);
-  g.fillStyle="#b6f4ff";g.fillRect(ix+iw*.55,iy+7,1,6);
  }
 
 }
