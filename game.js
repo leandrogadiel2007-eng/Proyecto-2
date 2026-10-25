@@ -131,34 +131,56 @@ function drawHillLayer(base,amp,speed,color,phase,outline){
 }
 function drawBackground(){
  const w=scene.width,h=scene.height;
- const sky=g.createLinearGradient(0,0,0,h);
- sky.addColorStop(0,"#39aaff");sky.addColorStop(.48,"#74dcff");sky.addColorStop(1,"#dffaff");
- g.fillStyle=sky;g.fillRect(0,0,w,h);
- // Sun with a clean outline and warm glow; it matches the saturated blue of the Sonic SVGs.
- const sx=785-camera*.035,sy=82;
- const glow=g.createRadialGradient(sx,sy,10,sx,sy,110);
- glow.addColorStop(0,"rgba(255,239,117,.8)");glow.addColorStop(1,"rgba(255,239,117,0)");
- g.fillStyle=glow;g.fillRect(sx-112,sy-112,224,224);
- g.save();g.translate(sx,sy);
- g.strokeStyle="#fff3a3";g.lineWidth=4;
- for(let i=0;i<12;i++){const a=i*Math.PI/6;g.beginPath();g.moveTo(Math.cos(a)*43,Math.sin(a)*43);g.lineTo(Math.cos(a)*57,Math.sin(a)*57);g.stroke()}
- const sun=g.createLinearGradient(-28,-34,30,36);sun.addColorStop(0,"#fffbd2");sun.addColorStop(.48,"#ffe75b");sun.addColorStop(1,"#ffa928");
- g.fillStyle=sun;g.strokeStyle="#dd9226";g.lineWidth=2.5;g.beginPath();g.arc(0,0,34,0,Math.PI*2);g.fill();g.stroke();
- g.strokeStyle="#fffbd5";g.lineWidth=3;g.beginPath();g.arc(-4,-5,25,Math.PI*1.02,Math.PI*1.78);g.stroke();g.restore();
- const period=w+180;
- for(let i=0;i<7;i++){const x=((i*191-camera*.12)%period+period)%period-90;drawCloud(x,40+(i%4)*31,.56+(i%3)*.14)}
- // Rounded hills with outlines, layered like a colorful adventure-game illustration.
- drawHillLayer(271,30,.08,"#b2f2bd",.2,"#83d9a1");
- drawHillLayer(307,35,.15,"#5cda83",1.1,"#31bf6c");
- drawHillLayer(341,27,.22,"#25bd61",2.2,"#169749");
- // Pale curved streaks break up the green slopes and keep the scene lively.
- g.globalAlpha=.38;g.strokeStyle="#dcffd0";g.lineWidth=4;
- for(let row=0;row<3;row++){
-  g.beginPath();
-  for(let x=-10;x<=w+10;x+=8){const wx=x+camera*(.10+row*.05);const y=280+row*24+Math.sin(wx*.012+row)*15;if(x===-10)g.moveTo(x,y);else g.lineTo(x,y)}
-  g.stroke();
+ // Cielo azul intenso y mar: paisaje tropical pixel-art inspirado en Green Island.
+ g.imageSmoothingEnabled=false;
+ g.fillStyle="#0878dc";g.fillRect(0,0,w,h);
+ // Bandas de color del cielo para darle textura retro.
+ g.fillStyle="#168bea";g.fillRect(0,24,w,48);
+ g.fillStyle="#279ced";g.fillRect(0,76,w,44);
+ // Nubes escalonadas de píxeles.
+ for(let i=0;i<8;i++){
+  const x=((i*157-camera*.10)%(w+150)+(w+150))%(w+150)-75;
+  const y=30+(i%4)*28;
+  g.fillStyle="#65bdf5";g.fillRect(x,y+8,64,13);g.fillRect(x+12,y,34,12);g.fillRect(x+25,y-5,22,7);
+  g.fillStyle="#9bdcff";g.fillRect(x+7,y+8,44,5);g.fillRect(x+18,y+1,23,5);
  }
- g.globalAlpha=1;
+ // Horizonte marino.
+ g.fillStyle="#66d5f5";g.fillRect(0,205,w,27);
+ g.fillStyle="#20b9ed";g.fillRect(0,232,w,42);
+ g.fillStyle="#078fe0";g.fillRect(0,274,w,h-274);
+ // Pequeñas líneas de brillo que se desplazan lentamente.
+ for(let i=0;i<54;i++){
+  const x=((i*83-camera*.19)%(w+30)+(w+30))%(w+30)-15;
+  const y=236+(i*37%100);
+  g.fillStyle=i%3===0?"#80e7ff":"#24b9ef";
+  g.fillRect(x,y,9+(i%4)*4,2);
+ }
+ // Islas lejanas y acantilados de colores, en capas con paralaje.
+ const island=(x,y,scale)=>{
+  g.fillStyle="#315e9d";
+  g.fillRect(x+8*scale,y+13*scale,104*scale,22*scale);
+  g.fillStyle="#725f9e";
+  g.beginPath();g.moveTo(x,y+18*scale);g.lineTo(x+25*scale,y-9*scale);g.lineTo(x+38*scale,y+1*scale);g.lineTo(x+54*scale,y-28*scale);g.lineTo(x+75*scale,y+7*scale);g.lineTo(x+103*scale,y+15*scale);g.closePath();g.fill();
+  g.fillStyle="#249d91";
+  g.beginPath();g.moveTo(x,y+13*scale);g.lineTo(x+25*scale,y-9*scale);g.lineTo(x+38*scale,y+1*scale);g.lineTo(x+54*scale,y-28*scale);g.lineTo(x+65*scale,y+2*scale);g.lineTo(x+83*scale,y+13*scale);g.closePath();g.fill();
+  g.fillStyle="#63d36d";
+  g.fillRect(x+8*scale,y+12*scale,22*scale,5*scale);g.fillRect(x+35*scale,y+7*scale,19*scale,5*scale);g.fillRect(x+64*scale,y+13*scale,26*scale,5*scale);
+ };
+ for(let i=0;i<5;i++){
+  const x=((i*245-camera*.07)%(w+250)+(w+250))%(w+250)-120;
+  island(x,201+(i%2)*23,.7+(i%3)*.12);
+ }
+ // Isla principal con cascada.
+ const ix=((560-camera*.045)%(w+500)+(w+500))%(w+500)-180;
+ g.fillStyle="#3764a2";g.fillRect(ix+70,125,170,87);
+ g.fillStyle="#6c69a2";g.fillRect(ix+103,72,95,95);g.fillRect(ix+126,43,49,38);
+ g.fillStyle="#249b94";g.fillRect(ix+111,78,76,82);g.fillRect(ix+135,49,31,30);
+ g.fillStyle="#62d46c";g.fillRect(ix+117,79,57,7);g.fillRect(ix+137,51,24,5);
+ g.fillStyle="#d6f8ff";g.fillRect(ix+161,129,7,54);g.fillRect(ix+168,150,6,34);
+ g.fillStyle="#64e4ff";g.fillRect(ix+168,129,7,55);g.fillRect(ix+174,151,5,34);
+ g.fillStyle="#218f92";g.fillRect(ix+66,194,185,13);
+ // Restablecer el muestreo de píxeles y mantener la estética pixelada.
+ g.imageSmoothingEnabled=false;
 }
 function traceTerrain(){
  g.beginPath();
@@ -171,17 +193,17 @@ function drawGround(){
  g.save();g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
  g.lineTo(w,h);g.closePath();g.clip();
- const dirt=g.createLinearGradient(0,280,0,h);
- dirt.addColorStop(0,"#df9142");dirt.addColorStop(.45,"#b96231");dirt.addColorStop(1,"#76392d");
- g.fillStyle=dirt;g.fillRect(0,250,w,h-250);
- // Large, readable checker blocks with warm highlights and dark seams.
- const tileW=44,tileH=28,startX=-((camera%tileW)+tileW)%tileW;
+ if(!greenIslandReady){
+  const dirt=g.createLinearGradient(0,280,0,h);
+  dirt.addColorStop(0,"#df9142");dirt.addColorStop(.45,"#b96231");dirt.addColorStop(1,"#76392d");
+  g.fillStyle=dirt;g.fillRect(0,250,w,h-250);
+ }
+ const tileW=48,tileH=41,startX=-((camera%tileW)+tileW)%tileW;
  for(let x=startX;x<w+tileW;x+=tileW){
   for(let y=258;y<h+tileH;y+=tileH){
    if(greenIslandReady){
     g.imageSmoothingEnabled=false;
     g.drawImage(greenIsland,16,39,48,41,x,y,tileW,tileH);
-    g.imageSmoothingEnabled=true;
    }else{
     g.fillStyle="#b96231";g.fillRect(x+1,y+1,tileW-2,tileH-2);
    }
@@ -193,23 +215,17 @@ function drawGround(){
   if(y<h){g.fillStyle=i%3===0?"#ffd18c":"#87472f";g.beginPath();g.ellipse(x,y,2.8,1.8,0,0,Math.PI*2);g.fill()}
  }
  g.restore();
- // Césped basado en la franja superior del spritesheet Green Island.
- traceTerrain();g.strokeStyle="#245b35";g.lineWidth=20;g.lineJoin="miter";g.lineCap="butt";g.stroke();
+ // Franja de césped del spritesheet Green Island, repetida sin suavizado.
  if(greenIslandReady){
-  g.save();g.beginPath();g.moveTo(0,terrainHeight(camera)-17);
-  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-17);
-  g.lineTo(w,terrainHeight(camera)+2);g.lineTo(0,terrainHeight(camera)+2);g.closePath();g.clip();
-  g.imageSmoothingEnabled=false;
-  const grassW=48,grassY=terrainHeight(camera)-16;
+  g.save();g.imageSmoothingEnabled=false;
+  const grassW=48,grassH=16,grassY=terrainHeight(camera)-16;
   for(let x=-((camera%grassW)+grassW)%grassW;x<w+grassW;x+=grassW){
-   g.drawImage(greenIsland,16,16,48,16,x,grassY,grassW,16);
+   g.drawImage(greenIsland,16,16,48,16,x,grassY,grassW,grassH);
   }
-  g.imageSmoothingEnabled=true;g.restore();
+  g.restore();
  }else{
+  traceTerrain();g.strokeStyle="#245b35";g.lineWidth=20;g.stroke();
   traceTerrain();g.strokeStyle="#36b84b";g.lineWidth=14;g.stroke();
-  g.beginPath();g.moveTo(0,terrainHeight(camera)-6);
-  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-6);
-  g.strokeStyle="#a1dc6c";g.lineWidth=3;g.stroke();
  }
 }
 function drawPalm(wx,variant=0){
