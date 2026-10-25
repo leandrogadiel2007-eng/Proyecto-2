@@ -195,21 +195,6 @@ function drawBackground(){
   g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
   g.fillStyle="#8de05b";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
  }
- island(115+((camera*.035)%(w+260)),336,.95);
- island(420+((camera*.045)%(w+300)),340,.7);
- island(690+((camera*.03)%(w+320)),326,1.12);
- island(980+((camera*.04)%(w+340)),341,.82);
- island(1250+((camera*.035)%(w+360)),333,1.02);
- // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
- for(let i=0;i<18;i++){
-  const ix=((i*83-camera*.055)%(w+100)+(w+100))%(w+100)-40;
-  const iy=294+(i%4)*11,iw=22+(i%4)*9;
-  g.fillStyle="#9e6254";g.fillRect(ix,iy,iw,15);g.fillRect(ix+5,iy-6,iw-12,8);
-  g.fillStyle="#176f43";g.fillRect(ix-3,iy-2,iw+6,5);
-  g.fillStyle="#40bb50";g.fillRect(ix+3,iy-5,iw-5,3);
-  g.fillStyle="#55cde8";g.fillRect(ix+iw*.55,iy+5,3,10);
-  g.fillStyle="#b6f4ff";g.fillRect(ix+iw*.55,iy+7,1,6);
- }
  // Más nubes pequeñas en distintas distancias para que el cielo no se vea vacío.
  for(let i=0;i<24;i++){
   const cx=((i*61-camera*(.035+(i%3)*.012))%(w+80)+(w+80))%(w+80)-30;
@@ -236,6 +221,23 @@ function drawBackground(){
   const y=306+(i*23%60),sz=4+(i%4)*3;
   g.fillStyle=["#a4ec62","#65d94b","#2eb84b","#d5f68c"][i%4];g.fillRect(x,y,sz*2,3);g.fillRect(x+sz,y-3,sz,3);
  }
+ // Islas cafés en primer plano, delante de las capas verdes y azules.
+ island(115+((camera*.035)%(w+260)),336,.95);
+ island(420+((camera*.045)%(w+300)),340,.7);
+ island(690+((camera*.03)%(w+320)),326,1.12);
+ island(980+((camera*.04)%(w+340)),341,.82);
+ island(1250+((camera*.035)%(w+360)),333,1.02);
+ // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
+ for(let i=0;i<18;i++){
+  const ix=((i*83-camera*.055)%(w+100)+(w+100))%(w+100)-40;
+  const iy=294+(i%4)*11,iw=22+(i%4)*9;
+  g.fillStyle="#9e6254";g.fillRect(ix,iy,iw,15);g.fillRect(ix+5,iy-6,iw-12,8);
+  g.fillStyle="#176f43";g.fillRect(ix-3,iy-2,iw+6,5);
+  g.fillStyle="#40bb50";g.fillRect(ix+3,iy-5,iw-5,3);
+  g.fillStyle="#55cde8";g.fillRect(ix+iw*.55,iy+5,3,10);
+  g.fillStyle="#b6f4ff";g.fillRect(ix+iw*.55,iy+7,1,6);
+ }
+
 }
 function traceTerrain(){
  g.beginPath();
