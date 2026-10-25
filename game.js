@@ -101,17 +101,14 @@ function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
 function drawCloud(x,y,s=1){
  g.save();g.translate(x,y);g.scale(s,s);
- g.fillStyle="rgba(33,102,171,.12)";
- g.beginPath();g.ellipse(4,14,44,9,0,0,Math.PI*2);g.fill();
- g.fillStyle="#ffffff";g.beginPath();
- g.ellipse(-20,1,20,13,0,0,Math.PI*2);
- g.ellipse(0,-8,23,20,0,0,Math.PI*2);
- g.ellipse(23,1,21,13,0,0,Math.PI*2);
- g.ellipse(2,5,39,11,0,0,Math.PI*2);g.fill();
- g.fillStyle="#e4f8ff";g.beginPath();g.ellipse(-3,5,29,6,0,0,Math.PI*2);g.fill();
+ g.fillStyle="rgba(10,57,92,.17)";g.beginPath();
+ g.ellipse(2,15,50,11,0,0,Math.PI*2);g.fill();
+ g.fillStyle="#ffffff";g.strokeStyle="#beeaff";g.lineWidth=1.5;
+ g.beginPath();g.ellipse(-21,2,20,13,0,0,Math.PI*2);g.ellipse(-1,-7,24,21,0,0,Math.PI*2);g.ellipse(24,2,22,14,0,0,Math.PI*2);g.ellipse(2,5,40,13,0,0,Math.PI*2);g.fill();g.stroke();
+ g.fillStyle="#e6f9ff";g.beginPath();g.ellipse(-5,5,27,7,0,0,Math.PI*2);g.fill();
  g.restore();
 }
-function drawHillLayer(base,amp,speed,color,phase){
+function drawHillLayer(base,amp,speed,color,phase,outline){
  g.beginPath();g.moveTo(0,scene.height);
  for(let x=-8;x<=scene.width+8;x+=4){
   const wx=x+camera*speed;
@@ -119,84 +116,77 @@ function drawHillLayer(base,amp,speed,color,phase){
   g.lineTo(x,y);
  }
  g.lineTo(scene.width,scene.height);g.closePath();g.fillStyle=color;g.fill();
+ if(outline){g.beginPath();for(let x=-8;x<=scene.width+8;x+=4){const wx=x+camera*speed;const y=base+Math.sin(wx*.009+phase)*amp+Math.sin(wx*.021+phase*.7)*amp*.24;if(x===-8)g.moveTo(x,y);else g.lineTo(x,y)}g.strokeStyle=outline;g.lineWidth=2;g.stroke()}
 }
 function drawBackground(){
  const w=scene.width,h=scene.height;
  const sky=g.createLinearGradient(0,0,0,h);
- sky.addColorStop(0,"#39a9ff");sky.addColorStop(.46,"#67d7ff");sky.addColorStop(1,"#d5f8ff");
+ sky.addColorStop(0,"#39aaff");sky.addColorStop(.48,"#74dcff");sky.addColorStop(1,"#dffaff");
  g.fillStyle=sky;g.fillRect(0,0,w,h);
- // Sol cálido con halo y rayos, como un nivel clásico de Sonic.
- const sx=790-camera*.035,sy=83;
- const glow=g.createRadialGradient(sx,sy,14,sx,sy,92);
- glow.addColorStop(0,"rgba(255,246,158,.72)");glow.addColorStop(1,"rgba(255,246,158,0)");
- g.fillStyle=glow;g.fillRect(sx-100,sy-100,200,200);
- g.save();g.translate(sx,sy);g.strokeStyle="rgba(255,239,126,.9)";g.lineWidth=4;
- for(let i=0;i<12;i++){const a=i*Math.PI/6;g.beginPath();g.moveTo(Math.cos(a)*42,Math.sin(a)*42);g.lineTo(Math.cos(a)*54,Math.sin(a)*54);g.stroke()}
- const sun=g.createLinearGradient(-35,-35,35,35);sun.addColorStop(0,"#fffbd0");sun.addColorStop(.55,"#ffe45b");sun.addColorStop(1,"#ffb52e");
- g.fillStyle=sun;g.beginPath();g.arc(0,0,34,0,Math.PI*2);g.fill();
- g.strokeStyle="#fff9c1";g.lineWidth=3;g.beginPath();g.arc(-4,-5,26,Math.PI*1.02,Math.PI*1.78);g.stroke();g.restore();
- // Nubes en capas con desplazamiento parallax.
+ // Sun with a clean outline and warm glow; it matches the saturated blue of the Sonic SVGs.
+ const sx=785-camera*.035,sy=82;
+ const glow=g.createRadialGradient(sx,sy,10,sx,sy,110);
+ glow.addColorStop(0,"rgba(255,239,117,.8)");glow.addColorStop(1,"rgba(255,239,117,0)");
+ g.fillStyle=glow;g.fillRect(sx-112,sy-112,224,224);
+ g.save();g.translate(sx,sy);
+ g.strokeStyle="#fff3a3";g.lineWidth=4;
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;g.beginPath();g.moveTo(Math.cos(a)*43,Math.sin(a)*43);g.lineTo(Math.cos(a)*57,Math.sin(a)*57);g.stroke()}
+ const sun=g.createLinearGradient(-28,-34,30,36);sun.addColorStop(0,"#fffbd2");sun.addColorStop(.48,"#ffe75b");sun.addColorStop(1,"#ffa928");
+ g.fillStyle=sun;g.strokeStyle="#dd9226";g.lineWidth=2.5;g.beginPath();g.arc(0,0,34,0,Math.PI*2);g.fill();g.stroke();
+ g.strokeStyle="#fffbd5";g.lineWidth=3;g.beginPath();g.arc(-4,-5,25,Math.PI*1.02,Math.PI*1.78);g.stroke();g.restore();
  const period=w+180;
- for(let i=0;i<7;i++){
-  let x=((i*191-camera*.12)%period+period)%period-90;
-  drawCloud(x,42+(i%4)*30,.55+(i%3)*.15);
- }
- // Colinas lejanas: suaves, de tonos verde menta y turquesa.
- drawHillLayer(274,31,.09,"#a1edc0",.2);
- drawHillLayer(310,34,.16,"#57d991",1.1);
- drawHillLayer(342,26,.23,"#2abf71",2.2);
- // Cintas claras en las laderas para dar profundidad.
- g.globalAlpha=.27;g.strokeStyle="#e7ffd1";g.lineWidth=4;
+ for(let i=0;i<7;i++){const x=((i*191-camera*.12)%period+period)%period-90;drawCloud(x,40+(i%4)*31,.56+(i%3)*.14)}
+ // Rounded hills with outlines, layered like a colorful adventure-game illustration.
+ drawHillLayer(271,30,.08,"#b2f2bd",.2,"#83d9a1");
+ drawHillLayer(307,35,.15,"#5cda83",1.1,"#31bf6c");
+ drawHillLayer(341,27,.22,"#25bd61",2.2,"#169749");
+ // Pale curved streaks break up the green slopes and keep the scene lively.
+ g.globalAlpha=.38;g.strokeStyle="#dcffd0";g.lineWidth=4;
  for(let row=0;row<3;row++){
   g.beginPath();
-  for(let x=-10;x<=w+10;x+=8){
-   const wx=x+camera*(.10+row*.05);
-   const y=282+row*25+Math.sin(wx*.012+row)*16;
-   if(x===-10)g.moveTo(x,y);else g.lineTo(x,y);
-  }g.stroke();
+  for(let x=-10;x<=w+10;x+=8){const wx=x+camera*(.10+row*.05);const y=280+row*24+Math.sin(wx*.012+row)*15;if(x===-10)g.moveTo(x,y);else g.lineTo(x,y)}
+  g.stroke();
  }
  g.globalAlpha=1;
-}function traceTerrain(){
- g.beginPath();g.moveTo(0,terrainHeight(camera));
- for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
 }
 function drawGround(){
  const w=scene.width,h=scene.height;
- // Traza la superficie real y úsala como máscara para el suelo cuadriculado.
- g.save();
- g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
+ // Use the actual terrain silhouette as a mask so the grass follows every hill.
+ g.save();g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
  g.lineTo(w,h);g.closePath();g.clip();
- const dirt=g.createLinearGradient(0,275,0,h);
- dirt.addColorStop(0,"#df9141");dirt.addColorStop(.45,"#b96531");dirt.addColorStop(1,"#7d3c2c");
+ const dirt=g.createLinearGradient(0,280,0,h);
+ dirt.addColorStop(0,"#df9142");dirt.addColorStop(.45,"#b96231");dirt.addColorStop(1,"#76392d");
  g.fillStyle=dirt;g.fillRect(0,250,w,h-250);
- // Cuadros de tierra, con bordes cálidos y pequeñas luces.
- const tileW=38,tileH=28;
- const startX=-((camera%tileW)+tileW)%tileW;
+ // Large, readable checker blocks with warm highlights and dark seams.
+ const tileW=44,tileH=28,startX=-((camera%tileW)+tileW)%tileW;
  for(let x=startX;x<w+tileW;x+=tileW){
   const worldCol=Math.floor((x+camera)/tileW);
-  for(let y=260,row=0;y<h+tileH;y+=tileH,row++){
+  for(let y=258,row=0;y<h+tileH;y+=tileH,row++){
    const alternate=(worldCol+row)%2===0;
-   g.fillStyle=alternate?"rgba(249,171,73,.56)":"rgba(107,48,33,.24)";
-   g.fillRect(x+1,y+1,tileW-2,tileH-2);
-   g.strokeStyle="rgba(88,47,37,.32)";g.lineWidth=1;g.strokeRect(x+.5,y+.5,tileW-1,tileH-1);
-   if(alternate){g.fillStyle="rgba(255,215,130,.36)";g.fillRect(x+3,y+3,9,2)}
+   g.fillStyle=alternate?"#e99a48":"#a95330";g.fillRect(x+1,y+1,tileW-2,tileH-2);
+   g.strokeStyle="rgba(91,43,29,.38)";g.lineWidth=1.3;g.strokeRect(x+.5,y+.5,tileW-1,tileH-1);
+   if(alternate){g.fillStyle="rgba(255,220,139,.45)";g.fillRect(x+4,y+4,13,2)}
+   else {g.fillStyle="rgba(86,40,30,.23)";g.fillRect(x+5,y+6,16,2)}
   }
  }
- // Destellos minerales sobre la tierra.
- for(let i=0;i<36;i++){
-  const wx=i*103+52,x=wx-camera;
-  if(x<0||x>w)continue;
+ for(let i=0;i<34;i++){
+  const wx=i*103+52,x=wx-camera;if(x<0||x>w)continue;
   const y=terrainHeight(wx)+27+(i%4)*31;
-  if(y<h){g.fillStyle=i%3===0?"rgba(255,218,141,.72)":"rgba(91,46,39,.45)";g.beginPath();g.ellipse(x,y,2.3,1.3,0,0,Math.PI*2);g.fill()}
+  if(y<h){g.fillStyle=i%3===0?"#ffd18c":"#87472f";g.beginPath();g.ellipse(x,y,2.8,1.8,0,0,Math.PI*2);g.fill()}
  }
  g.restore();
- // Tres bandas de césped: sombra, verde vivo y brillo superior.
- traceTerrain();g.strokeStyle="#08753b";g.lineWidth=21;g.lineJoin="round";g.lineCap="round";g.stroke();
- traceTerrain();g.strokeStyle="#22bd49";g.lineWidth=15;g.stroke();
+ // Bright grass cap, dark green under-outline and lime top highlight.
+ traceTerrain();g.strokeStyle="#0b743b";g.lineWidth=22;g.lineJoin="round";g.lineCap="round";g.stroke();
+ traceTerrain();g.strokeStyle="#19b946";g.lineWidth=16;g.stroke();
  g.beginPath();g.moveTo(0,terrainHeight(camera)-6);
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-6);
- g.strokeStyle="#a5f35a";g.lineWidth=3;g.stroke();
+ g.strokeStyle="#b8f66a";g.lineWidth=3.5;g.stroke();
+ // Tiny blades of grass along the top edge.
+ for(let i=0;i<Math.ceil(w/28)+2;i++){
+  const wx=camera+i*28+((i%2)*10),x=wx-camera,y=terrainHeight(wx)-8;
+  g.strokeStyle=i%2?"#d7ff86":"#0c9745";g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+5);g.lineTo(x-2,y);g.moveTo(x+2,y+5);g.lineTo(x+4,y+1);g.stroke();
+ }
 }
 function drawPalm(wx,variant=0){
  const x=wx-camera;
@@ -255,59 +245,64 @@ function drawDecorations(){
   g.fillStyle="#ffcf36";g.beginPath();g.arc(x,y,2.4,0,Math.PI*2);g.fill();
  }
 }function drawPlatform(p){
- const x=p.x-camera,y=p.y,w=p.w,h=31;
- // Plataformas de césped sobre bloques clásicos de tierra.
+ const x=p.x-camera,y=p.y,w=p.w,h=34;
  g.save();
- g.fillStyle="rgba(8,61,42,.2)";g.beginPath();g.ellipse(x+w/2,y+h+4,w*.53,6,0,0,Math.PI*2);g.fill();
- const soil=g.createLinearGradient(0,y+7,0,y+h);
- soil.addColorStop(0,"#c77835");soil.addColorStop(1,"#873e2a");
- g.fillStyle=soil;g.fillRect(x,y+7,w,h-7);
- for(let xx=x;xx<x+w;xx+=23){
-  const col=Math.floor((xx+p.x)/23);
-  for(let yy=y+8;yy<y+h;yy+=12){
-   g.fillStyle=(col+Math.floor(yy/12))%2===0?"rgba(255,185,89,.52)":"rgba(85,40,29,.25)";
-   g.fillRect(xx+1,yy+1,21,10);
+ // Bold shadow and rounded soil block, consistent with the character's outlined SVG art.
+ g.fillStyle="rgba(7,51,43,.24)";g.beginPath();g.ellipse(x+w/2,y+h+5,w*.54,7,0,0,Math.PI*2);g.fill();
+ const soil=g.createLinearGradient(0,y+8,0,y+h);
+ soil.addColorStop(0,"#d98b43");soil.addColorStop(.5,"#b25d32");soil.addColorStop(1,"#773b2c");
+ g.fillStyle=soil;g.strokeStyle="#6c3929";g.lineWidth=2;
+ g.beginPath();g.roundRect(x,y+7,w,h-7,4);g.fill();g.stroke();
+ for(let xx=x+2;xx<x+w-1;xx+=22){
+  for(let yy=y+10;yy<y+h-2;yy+=12){
+   g.fillStyle=(Math.floor((xx+p.x)/22)+Math.floor(yy/12))%2===0?"rgba(255,191,99,.65)":"rgba(87,43,30,.28)";
+   g.fillRect(xx,yy,20,10);
   }
  }
- g.strokeStyle="#703722";g.lineWidth=2;g.strokeRect(x+1,y+8,w-2,h-9);
- const grass=g.createLinearGradient(0,y,0,y+10);grass.addColorStop(0,"#baf45d");grass.addColorStop(.42,"#46d64b");grass.addColorStop(1,"#149440");
- g.fillStyle=grass;g.beginPath();g.moveTo(x+3,y);g.lineTo(x+w-3,y);g.quadraticCurveTo(x+w,y,x+w,y+5);g.lineTo(x+w,y+10);g.lineTo(x,y+10);g.lineTo(x,y+4);g.quadraticCurveTo(x,y,x+3,y);g.closePath();g.fill();
- g.strokeStyle="#e6ff8b";g.lineWidth=2;g.beginPath();g.moveTo(x+4,y+2);g.lineTo(x+w-8,y+2);g.stroke();
- for(let xx=x+12;xx<x+w;xx+=28){g.strokeStyle="rgba(10,112,49,.7)";g.lineWidth=1.4;g.beginPath();g.moveTo(xx,y+10);g.lineTo(xx-2,y+15);g.stroke()}
+ const grass=g.createLinearGradient(0,y,0,y+12);
+ grass.addColorStop(0,"#c1fa6e");grass.addColorStop(.36,"#42d85b");grass.addColorStop(1,"#09873d");
+ g.fillStyle=grass;g.strokeStyle="#086c38";g.lineWidth=2.3;
+ g.beginPath();g.roundRect(x,y,w,11,4);g.fill();g.stroke();
+ g.strokeStyle="#efffa4";g.lineWidth=2;g.beginPath();g.moveTo(x+6,y+2);g.lineTo(x+w-7,y+2);g.stroke();
+ for(let xx=x+14;xx<x+w-4;xx+=29){g.strokeStyle="#08763b";g.lineWidth=1.4;g.beginPath();g.moveTo(xx,y+10);g.lineTo(xx-2,y+15);g.stroke()}
  g.restore();
-}function drawRing(r){
+}
+function drawRing(r){
  if(r.got)return;
- const x=r.x-camera,y=r.y+Math.sin(elapsed*5+r.x)*2.2;
- const wobble=.28+.72*Math.abs(Math.sin(elapsed*3.4+r.x*.017));
- g.save();g.translate(x,y);g.scale(wobble,1);
- const gold=g.createLinearGradient(-10,-13,10,13);
- gold.addColorStop(0,"#fff7a0");gold.addColorStop(.28,"#ffe95a");gold.addColorStop(.6,"#ffb81d");gold.addColorStop(1,"#dc7910");
- g.strokeStyle="#a85b0c";g.lineWidth=7;g.beginPath();g.ellipse(0,0,9,12,0,0,Math.PI*2);g.stroke();
- g.strokeStyle=gold;g.lineWidth=5;g.beginPath();g.ellipse(0,0,9,12,0,0,Math.PI*2);g.stroke();
- g.strokeStyle="rgba(255,255,221,.96)";g.lineWidth=2.3;g.beginPath();g.ellipse(-1.2,-1.5,5.6,8,0,Math.PI*1.1,Math.PI*1.83);g.stroke();
+ const x=r.x-camera,y=r.y+Math.sin(elapsed*5+r.x)*2.3;
+ const squash=.34+.66*Math.abs(Math.sin(elapsed*3.1+r.x*.018));
+ g.save();g.translate(x,y);g.scale(squash,1);
+ // Gold ring: thick shadow, warm gradient, bright edge and a white glint.
+ g.strokeStyle="#7c430f";g.lineWidth=9;g.beginPath();g.ellipse(1.5,2,10,13,0,0,Math.PI*2);g.stroke();
+ const gold=g.createLinearGradient(-10,-13,10,14);gold.addColorStop(0,"#fff9aa");gold.addColorStop(.26,"#ffed57");gold.addColorStop(.63,"#ffb617");gold.addColorStop(1,"#d97810");
+ g.strokeStyle=gold;g.lineWidth=6;g.beginPath();g.ellipse(0,0,9.5,12,0,0,Math.PI*2);g.stroke();
+ g.strokeStyle="#fffbd4";g.lineWidth=2.2;g.beginPath();g.ellipse(-1.8,-2,5.4,7.5,0,Math.PI*1.12,Math.PI*1.82);g.stroke();
  g.restore();
-}function drawEnemy(e){
+}
+function drawEnemy(e){
  if(!e.alive)return;
- const x=e.x-camera,y=e.y+Math.sin(elapsed*4+e.base)*1.3;
+ const x=e.x-camera,y=e.y+Math.sin(elapsed*4+e.base)*1.7;
  g.save();g.translate(x,y);
- // Sombra y patas metálicas.
- g.fillStyle="rgba(16,49,72,.22)";g.beginPath();g.ellipse(0,22,24,5,0,0,Math.PI*2);g.fill();
- g.strokeStyle="#263d59";g.lineWidth=5;g.lineCap="round";
- g.beginPath();g.moveTo(-11,9);g.lineTo(-17,18);g.moveTo(11,9);g.lineTo(17,18);g.stroke();
- g.fillStyle="#f3bd35";g.beginPath();g.ellipse(-17,18,6,3,0,0,Math.PI*2);g.ellipse(17,18,6,3,0,0,Math.PI*2);g.fill();
- // Cuerpo tipo badnik con caparazón rojo, visor azul y remaches.
- const shell=g.createLinearGradient(0,-17,0,12);shell.addColorStop(0,"#ff7962");shell.addColorStop(.52,"#ed3a37");shell.addColorStop(1,"#a91e35");
- g.fillStyle="#28415d";g.beginPath();g.ellipse(0,5,21,13,0,0,Math.PI*2);g.fill();
- g.fillStyle=shell;g.beginPath();g.moveTo(-19,3);g.quadraticCurveTo(-18,-16,0,-17);g.quadraticCurveTo(18,-16,19,3);g.quadraticCurveTo(0,13,-19,3);g.closePath();g.fill();
- g.strokeStyle="#8d2334";g.lineWidth=2;g.stroke();
- g.fillStyle="#ffc2a8";g.beginPath();g.ellipse(-7,-5,5.8,7,0,0,Math.PI*2);g.ellipse(7,-5,5.8,7,0,0,Math.PI*2);g.fill();
- g.fillStyle="#ffffff";g.beginPath();g.ellipse(-7,-5,3.7,5.2,0,0,Math.PI*2);g.ellipse(7,-5,3.7,5.2,0,0,Math.PI*2);g.fill();
- g.fillStyle="#162b47";g.beginPath();g.ellipse(-6,-4,1.8,3.3,0,0,Math.PI*2);g.ellipse(8,-4,1.8,3.3,0,0,Math.PI*2);g.fill();
- g.strokeStyle="#ffd65c";g.lineWidth=2;g.beginPath();g.moveTo(0,-16);g.quadraticCurveTo(7,-23,12,-19);g.stroke();
- g.fillStyle="#ffe66d";g.beginPath();g.arc(13,-19,3,0,Math.PI*2);g.fill();
- g.fillStyle="#7adfff";g.beginPath();g.arc(-14,4,2.1,0,Math.PI*2);g.arc(14,4,2.1,0,Math.PI*2);g.fill();
+ // Distinct shadow and little metal feet anchor the badnik to the grass.
+ g.fillStyle="rgba(13,49,76,.23)";g.beginPath();g.ellipse(0,23,25,6,0,0,Math.PI*2);g.fill();
+ g.strokeStyle="#213d58";g.lineWidth=5;g.lineCap="round";
+ g.beginPath();g.moveTo(-11,8);g.lineTo(-17,18);g.moveTo(11,8);g.lineTo(17,18);g.stroke();
+ g.fillStyle="#ffcf42";g.strokeStyle="#8b541b";g.lineWidth=1.5;
+ g.beginPath();g.ellipse(-18,19,6,3.4,0,0,Math.PI*2);g.ellipse(18,19,6,3.4,0,0,Math.PI*2);g.fill();g.stroke();
+ const shell=g.createLinearGradient(0,-19,0,14);shell.addColorStop(0,"#ff8064");shell.addColorStop(.45,"#f3403e");shell.addColorStop(1,"#bb1e38");
+ g.fillStyle="#203b58";g.strokeStyle="#122a47";g.lineWidth=2.5;g.beginPath();g.ellipse(0,4,22,15,0,0,Math.PI*2);g.fill();g.stroke();
+ g.fillStyle=shell;g.strokeStyle="#87213a";g.lineWidth=2.2;g.beginPath();g.moveTo(-20,2);g.quadraticCurveTo(-19,-16,0,-18);g.quadraticCurveTo(19,-16,20,2);g.quadraticCurveTo(0,15,-20,2);g.closePath();g.fill();g.stroke();
+ // Cream eye patches and dark pupils give the custom enemy the same outlined style.
+ g.fillStyle="#ffc2a7";g.strokeStyle="#9b3540";g.lineWidth=1;g.beginPath();g.ellipse(-7,-5,6,7,0,0,Math.PI*2);g.ellipse(7,-5,6,7,0,0,Math.PI*2);g.fill();g.stroke();
+ g.fillStyle="#fff";g.beginPath();g.ellipse(-7,-5,4,5.2,0,0,Math.PI*2);g.ellipse(7,-5,4,5.2,0,0,Math.PI*2);g.fill();
+ g.fillStyle="#152943";g.beginPath();g.ellipse(-6,-4,1.8,3.3,0,0,Math.PI*2);g.ellipse(8,-4,1.8,3.3,0,0,Math.PI*2);g.fill();
+ g.strokeStyle="#ffe070";g.lineWidth=2;g.beginPath();g.moveTo(0,-17);g.quadraticCurveTo(6,-25,12,-20);g.stroke();
+ g.fillStyle="#fff3a0";g.strokeStyle="#a55c18";g.lineWidth=1;g.beginPath();g.arc(13,-20,3.6,0,Math.PI*2);g.fill();g.stroke();
+ g.fillStyle="#85e5ff";g.beginPath();g.arc(-14,4,2.2,0,Math.PI*2);g.arc(14,4,2.2,0,Math.PI*2);g.fill();
  g.restore();
-}/* Carga directamente los SVG que sí están en assets/sonic.
+}
+
+/* Carga directamente los SVG que sí están en assets/sonic.
    No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
 let sonicAnimations={idle:[],run:[],jump:[],ready:false};
 const sonicSpriteFiles={
