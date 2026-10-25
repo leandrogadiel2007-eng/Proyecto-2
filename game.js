@@ -136,10 +136,95 @@ function drawPlatform(p){
 }
 function drawRing(r){if(r.got)return;const x=(r.x-camera)/PIXEL,y=r.y/PIXEL+Math.sin(elapsed*5+r.x)*.7;g.strokeStyle='#fff16b';g.lineWidth=2;g.beginPath();g.ellipse(Math.round(x),Math.round(y),3,4,0,0,Math.PI*2);g.stroke();g.strokeStyle='#ff9f16';g.lineWidth=1;g.strokeRect(Math.round(x)-1,Math.round(y)-3,2,6)}
 function drawEnemy(e){if(!e.alive)return;const x=(e.x-camera)/PIXEL,y=e.y/PIXEL;pxRect(x-5,y-3,10,7,'#d52c38');pxRect(x-4,y-5,8,3,'#f34c45');pxRect(x-6,y-2,3,3,'#ff7862');pxRect(x+3,y-2,3,3,'#ff7862');pxRect(x-3,y-2,2,2,'#fff');pxRect(x+2,y-2,2,2,'#fff');pxRect(x-2,y-1,1,1,'#16254b');pxRect(x+3,y-1,1,1,'#16254b');pxRect(x-6,y+4,3,2,'#25314d');pxRect(x+3,y+4,3,2,'#25314d')}
-function drawPlayer(){const x=(player.x-camera+player.w/2)/PIXEL,y=(player.y+player.h/2)/PIXEL;if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;g.save();g.translate(Math.round(x),Math.round(y));if(player.spin&&Math.abs(player.vx)>90)g.rotate(elapsed*10);g.scale(player.facing,1);
+
+/* Carga automáticamente los disfraces del proyecto Scratch. */
+let sonicAnimations={idle:[],run:[],jump:[],ready:false};
+function loadImageForCostume(entry){
+ return new Promise(resolve=>{
+  const img=new Image();
+  img.onload=()=>resolve({...entry,img});
+  img.onerror=()=>resolve(null);
+  img.src=entry.url;
+ });
+}
+function isCostumeImage(c){
+ const fmt=String(c.dataFormat||c.md5ext||"").toLowerCase();
+ return fmt.includes("svg")||fmt.includes("png")||fmt.includes("jpg")||fmt.includes("jpeg");
+}
+async function loadSonicCostumes(){
+ try{
+  const response=await fetch("./project.json",{cache:"force-cache"});
+  if(!response.ok)throw new Error("No se pudo leer project.json");
+  const project=await response.json();
+  const targets=(project.targets||[]).filter(t=>!t.isStage&&Array.isArray(t.costumes)&&t.costumes.length);
+  if(!targets.length)throw new Error("No hay disfraces en project.json");
+  const sonicTargets=targets.filter(t=>/sonic/i.test(String(t.name||"")));
+  const sortByCostumes=(a,b)=>b.costumes.length-a.costumes.length;
+  const mainSonic=sonicTargets.slice().sort(sortByCostumes)[0];
+  let selectedTargets;
+  if(mainSonic&&mainSonic.costumes.length>1)selectedTargets=[mainSonic];
+  else if(sonicTargets.length)selectedTargets=sonicTargets;
+  else selectedTargets=[targets.slice().sort(sortByCostumes)[0]];
+  let entries=selectedTargets.flatMap(t=>(t.costumes||[])
+   .filter(isCostumeImage)
+   .map((c,i)=>{
+    const file=c.md5ext||(c.assetId?c.assetId+"."+c.dataFormat:"");
+    return {name:String(t.name||"")+" "+String(c.name||""),costumeName:String(c.name||""),url:"./assets/sonic/"+encodeURIComponent(file),order:i};
+   }).filter(e=>!e.url.endsWith("/")));
+  if(!entries.length)throw new Error("No encontré imágenes compatibles en los disfraces");
+  const runPattern=/(run|running|walk|walking|dash|sprint|jog|roll|rolling|spindash|move)/i;
+  const jumpPattern=/(jump|jumping|airborne|fall|falling|spring|curl|flying|flight)/i;
+  const idlePattern=/(idle|stand|standing|wait|waiting|rest|neutral|breath|look)/i;
+  let idle=entries.filter(e=>idlePattern.test(e.name));
+  let run=entries.filter(e=>runPattern.test(e.name));
+  let jump=entries.filter(e=>jumpPattern.test(e.name));
+  if(!idle.length)idle=entries.slice(0,1);
+  if(!run.length)run=entries.slice(0,Math.min(entries.length,8));
+  if(!jump.length)jump=run.length>1?[run[Math.min(1,run.length-1)]]:idle.slice();
+  const chosen=[...new Set([...idle,...run,...jump])];
+  const loaded=(await Promise.all(chosen.map(loadImageForCostume))).filter(Boolean);
+  const byName=new Map(loaded.map(e=>[e.url,e]));
+  const resolveFrames=list=>list.map(e=>byName.get(e.url)).filter(Boolean);
+  sonicAnimations={idle:resolveFrames(idle),run:resolveFrames(run),jump:resolveFrames(jump),ready:true};
+  console.info("Blue Rush: sprites cargados",{
+   target:selectedTargets.map(t=>t.name),idle:sonicAnimations.idle.length,
+   run:sonicAnimations.run.length,jump:sonicAnimations.jump.length
+  });
+ }catch(error){
+  console.warn("Blue Rush: se usará el personaje alternativo.",error);
+ }
+}
+loadSonicCostumes();
+
+function drawFallbackPlayer(){const x=(player.x-camera+player.w/2)/PIXEL,y=(player.y+player.h/2)/PIXEL;if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;g.save();g.translate(Math.round(x),Math.round(y));if(player.spin&&Math.abs(player.vx)>90)g.rotate(elapsed*10);g.scale(player.facing,1);
  // Mascota azul original dibujada en bloques, con silueta de erizo retro.
  pxRect(-5,-5,10,10,'#0750bd');pxRect(-4,-6,8,11,'#0879e8');pxRect(-7,-5,4,4,'#0879e8');pxRect(-9,-7,4,3,'#0750bd');pxRect(-7,-1,4,4,'#0750bd');pxRect(-8,3,5,3,'#0750bd');pxRect(-5,6,5,2,'#0750bd');
  pxRect(1,-4,4,5,'#fff');pxRect(3,-3,2,3,'#102348');pxRect(1,1,5,3,'#ffd0a1');pxRect(-5,5,5,2,'#e83248');pxRect(1,5,6,2,'#e83248');pxRect(-5,7,5,1,'#fff');pxRect(2,7,5,1,'#fff');g.restore()}
+
+function drawPlayer(){
+ const x=(player.x-camera+player.w/2)/PIXEL;
+ const y=(player.y+player.h/2)/PIXEL;
+ if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
+ if(!sonicAnimations.ready){drawFallbackPlayer();return}
+ const moving=player.onGround&&Math.abs(player.vx)>70;
+ const frames=!player.onGround?sonicAnimations.jump:(moving?sonicAnimations.run:sonicAnimations.idle);
+ const usable=frames&&frames.length?frames:(sonicAnimations.idle.length?sonicAnimations.idle:[]);
+ if(!usable.length){drawFallbackPlayer();return}
+ const fps=!player.onGround?7:(moving?12:3);
+ const entry=usable[Math.floor(elapsed*fps)%usable.length];
+ const img=entry&&entry.img;
+ if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
+ // Mantiene la proporción SVG y ajusta el personaje al tamaño del juego.
+ const scale=Math.min(22/img.naturalWidth,20/img.naturalHeight);
+ const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
+ g.save();
+ g.translate(Math.round(x),Math.round(y));
+ if(player.facing<0)g.scale(-1,1);
+ if(player.spin&&Math.abs(player.vx)>90)g.rotate(elapsed*10);
+ g.imageSmoothingEnabled=false;
+ g.drawImage(img,-dw/2,9-dh,dw,dh);
+ g.restore();
+}
 function drawHud(){ctx.fillStyle='#001a42';ctx.font='bold 17px monospace';ctx.fillText('SCORE '+String(score).padStart(5,'0'),18,27);ctx.fillText('TIME '+Math.floor(elapsed/60)+':'+String(Math.floor(elapsed%60)).padStart(2,'0'),18,49);ctx.fillText('RINGS '+rings.filter(r=>r.got).length,18,71);ctx.fillText('♥ '.repeat(Math.max(0,lives)),W-100,28)}
 function draw(){drawBackground();drawGround();platforms.forEach(drawPlatform);rings.forEach(drawRing);enemies.forEach(drawEnemy);drawPlayer();ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,W,H);ctx.drawImage(scene,0,0,W,H);drawHud()}
 function loop(now){const dt=Math.min((now-(lastTime||now))/1000,.032);lastTime=now;update(dt);draw();requestAnimationFrame(loop)}
