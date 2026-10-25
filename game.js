@@ -63,7 +63,7 @@ function buildLevel(){
  // Enemigos espaciados, no puestos en cada salto ni junto a cada plataforma.
  [840,1780,2630,3500,4630,5480,6620,7490,8610,9470,10570,11420].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
 }
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:335,jump:625,onGround:true,facing:1,invincible:0,spin:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1}}
@@ -75,8 +75,22 @@ document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.contro
 function update(dt){
  if(!running)return;elapsed+=dt;
  const dir=Number(keys.right)-Number(keys.left);
- if(dir){player.vx+=dir*1600*dt;player.facing=dir}else player.vx*=Math.pow(.0008,dt);
- player.vx=Math.max(-player.speed*.72,Math.min(player.speed,player.vx));
+ if(dir){
+  if(player.vx!==0&&Math.sign(player.vx)!==dir){
+   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
+  }else{
+   player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
+  }
+  player.facing=dir;
+  const targetSpeed=dir*(145+415*player.speedCharge);
+  player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
+ }else{
+  // Al soltar el movimiento, se pierde la inercia y también la carga de velocidad.
+  player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
+  player.vx*=Math.pow(0.0008,dt);
+  if(Math.abs(player.vx)<8)player.vx=0;
+ }
+ player.vx=Math.max(-player.speed,Math.min(player.speed,player.vx));
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
@@ -84,8 +98,8 @@ function update(dt){
  for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0}}
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
- enemies.forEach(e=>{if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;if(hit){if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}else if(player.invincible<=0){if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()} }player.invincible=1.5;player.vy=-300;player.vx=-player.facing*180}}});
- if(player.y>H+100){player.x=Math.max(30,player.x-100);player.y=terrainHeight(player.x)-player.h;player.vy=0;lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');resetPlayer()}}
+ enemies.forEach(e=>{if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;if(hit){if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}else if(player.invincible<=0){if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()} }player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180}}});
+ if(player.y>H+100){player.x=Math.max(30,player.x-100);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');resetPlayer()}}
  camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.34));
  status.textContent='ANILLOS '+rings.filter(r=>r.got).length+' · PUNTOS '+score+' · VIDAS '+lives;
 }
@@ -325,11 +339,14 @@ const sonicSpriteFiles={
   "172146abbfa4348e9f0a63ada310f3fc.svg"
  ],
  run:[
-  "2e35050243bb1a9740af66232b4157ab.svg",
-  "51c9d39f0188245f4f41970dda3315ea.svg",
-  "709f200d37b7a243470df5094b771a3c.svg",
-  "72eb3473aee982a542f91c77b660622a.svg",
-  "75baeb8e4efd54402e93d790f23c3ca7.svg"
+  "07c7cc8d51f6e0a3feef7e40bc98d62e.svg",
+  "593317731819fb43d31d97d7fcff9c14.svg",
+  "c71e608d77556b1e6a484888bb70ec4a.svg",
+  "f5d47bb333339f157b9fd8567188ad19.svg",
+  "f2542218ee731bfcc4911b9e90120b24.svg",
+  "e977afdd8469ddd252b2654da0f30ad3.svg",
+  "7b538cdee48eb69c53c9169f3cc07941.svg",
+  "4e53232099ed2bda8c569d1d7ebfae64.svg"
  ],
  jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"]
 };
@@ -382,7 +399,7 @@ loadSonicCostumes();
 function drawFallbackPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  g.save();g.translate(x,y);g.scale(player.facing,1);
- if(player.spin&&Math.abs(player.vx)>90)g.rotate(elapsed*10);
+ // El sustituto vectorial mantiene la postura erguida mientras se carga el sprite.
  // Sustituto vectorial solo mientras se cargan los disfraces.
  g.fillStyle="rgba(20,61,110,.18)";g.beginPath();g.ellipse(0,23,17,4,0,0,Math.PI*2);g.fill();
  g.fillStyle="#074fa8";g.beginPath();g.moveTo(-14,-9);g.lineTo(-20,-20);g.lineTo(-8,-16);g.lineTo(-4,-26);g.lineTo(3,-17);g.lineTo(14,-18);g.lineTo(12,-7);g.lineTo(15,5);g.lineTo(8,14);g.lineTo(-7,13);g.closePath();g.fill();
@@ -402,7 +419,7 @@ function drawFallbackPlayer(){
  const frames=!player.onGround?sonicAnimations.jump:(moving?sonicAnimations.run:sonicAnimations.idle);
  const usable=frames&&frames.length?frames:(sonicAnimations.idle.length?sonicAnimations.idle:[]);
  if(!usable.length){drawFallbackPlayer();return}
- const fps=!player.onGround?8:(moving?13:2.5);
+ const fps=!player.onGround?8:(moving?8+player.speedCharge*14:2.5);
  const entry=usable[Math.floor(elapsed*fps)%usable.length];
  const img=entry&&entry.img;
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
@@ -412,7 +429,6 @@ function drawFallbackPlayer(){
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(player.facing<0)g.scale(-1,1);
- if(player.spin&&Math.abs(player.vx)>90)g.rotate(elapsed*10);
  g.imageSmoothingEnabled=true;
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,player.h/2-dh-1,dw,dh);
  g.restore();
