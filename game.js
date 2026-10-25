@@ -191,9 +191,9 @@ function drawBackground(){
  for(let i=0;i<8;i++){
   const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
   const mb=322+(i%3)*5,peak=28+(i%4)*8,mw=48+(i%3)*20;
-  g.fillStyle=i%2===0?"#3d91ad":"#347f9f";
+  g.fillStyle=i%2===0?"#238b50":"#176b43";
   g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
-  g.fillStyle="#b7e8dc";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
+  g.fillStyle="#8de05b";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
  }
  island(115+((camera*.035)%(w+260)),336,.95);
  island(420+((camera*.045)%(w+300)),340,.7);
