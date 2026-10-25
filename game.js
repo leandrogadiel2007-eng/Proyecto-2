@@ -3,6 +3,8 @@
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status');
 const W=canvas.width,H=canvas.height,GROUND=390,keys={left:false,right:false};
+// Spritesheet Green Island (edición gratuita).
+const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 const worldWidth=12000;
 const terrainSections=[];
 for(let x=420,i=0;x<worldWidth-180;x+=470,i++){
@@ -202,10 +204,8 @@ function drawGround(){
   const worldCol=Math.floor((x+camera)/tileW);
   for(let y=258,row=0;y<h+tileH;y+=tileH,row++){
    const alternate=(worldCol+row)%2===0;
-   g.fillStyle=alternate?"#e99a48":"#a95330";g.fillRect(x+1,y+1,tileW-2,tileH-2);
-   g.strokeStyle="rgba(91,43,29,.38)";g.lineWidth=1.3;g.strokeRect(x+.5,y+.5,tileW-1,tileH-1);
-   if(alternate){g.fillStyle="rgba(255,220,139,.45)";g.fillRect(x+4,y+4,13,2)}
-   else {g.fillStyle="rgba(86,40,30,.23)";g.fillRect(x+5,y+6,16,2)}
+   if(greenIslandReady){g.imageSmoothingEnabled=false;g.drawImage(greenIsland,16,39,48,41,x,y,tileW,tileH);g.imageSmoothingEnabled=true;}
+   else {g.fillStyle=alternate?"#e99a48":"#a95330";g.fillRect(x+1,y+1,tileW-2,tileH-2);g.strokeStyle="rgba(91,43,29,.38)";g.lineWidth=1.3;g.strokeRect(x+.5,y+.5,tileW-1,tileH-1);if(alternate){g.fillStyle="rgba(255,220,139,.45)";g.fillRect(x+4,y+4,13,2)}else{g.fillStyle="rgba(86,40,30,.23)";g.fillRect(x+5,y+6,16,2)}}
   }
  }
  for(let i=0;i<34;i++){
@@ -231,6 +231,7 @@ function drawPalm(wx,variant=0){
  if(x< -100||x>scene.width+100)return;
  const base=terrainHeight(wx)-5,lean=variant%2?10:-7,height=103+(variant%3)*12;
  const tx=x+lean,ty=base-height;
+ if(greenIslandReady){g.save();g.imageSmoothingEnabled=false;g.drawImage(greenIsland,126,15,37,35,tx-39,ty-3,78,73);g.imageSmoothingEnabled=true;g.restore();return;}
  // Sombra de la palmera.
  g.fillStyle="rgba(15,95,49,.20)";g.beginPath();g.ellipse(x,base-2,35,5,0,0,Math.PI*2);g.fill();
  // Tronco con curvas y luz lateral.
@@ -284,6 +285,7 @@ function drawDecorations(){
  }
 }function drawPlatform(p){
  const x=p.x-camera,y=p.y,w=p.w,h=34;
+ if(greenIslandReady){g.save();g.imageSmoothingEnabled=false;g.drawImage(greenIsland,144,80,80,32,x,y,w,h);g.imageSmoothingEnabled=true;g.restore();return;}
  g.save();
  // Bold shadow and rounded soil block, consistent with the character's outlined SVG art.
  g.fillStyle="rgba(7,51,43,.24)";g.beginPath();g.ellipse(x+w/2,y+h+5,w*.54,7,0,0,Math.PI*2);g.fill();
