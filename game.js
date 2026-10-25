@@ -207,13 +207,6 @@ function drawPalm(wx,variant=0){
  if(x< -100||x>scene.width+100)return;
  const base=terrainHeight(wx)-5,lean=variant%2?10:-7,height=103+(variant%3)*12;
  const tx=x+lean,ty=base-height;
- if(greenIslandReady){
-   // Tronco completo debajo de la copa pixel art, para que la palmera no parezca cortada.
-   g.save();g.fillStyle="rgba(16,72,42,.22)";g.beginPath();g.ellipse(x,base-2,27,5,0,0,Math.PI*2);g.fill();
-   g.strokeStyle="#75452b";g.lineWidth=11;g.lineCap="round";g.beginPath();g.moveTo(x,base);g.bezierCurveTo(x+lean*.3,base-25,tx-lean*.4,ty+38,tx,ty+20);g.stroke();
-   g.strokeStyle="#bd8050";g.lineWidth=3;g.beginPath();g.moveTo(x-2,base-8);g.bezierCurveTo(x+lean*.2,base-30,tx-lean*.3,ty+43,tx-1,ty+21);g.stroke();
-   g.imageSmoothingEnabled=false;g.drawImage(greenIsland,126,15,38,35,tx-40,ty-5,80,74);g.imageSmoothingEnabled=true;g.restore();return;
-  }
  // Sombra de la palmera.
  g.fillStyle="rgba(15,95,49,.20)";g.beginPath();g.ellipse(x,base-2,35,5,0,0,Math.PI*2);g.fill();
  // Tronco con curvas y luz lateral.
