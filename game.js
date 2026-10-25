@@ -149,6 +149,11 @@ function drawBackground(){
  }
  g.globalAlpha=1;
 }
+function traceTerrain(){
+ g.beginPath();
+ g.moveTo(0,terrainHeight(camera));
+ for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
+}
 function drawGround(){
  const w=scene.width,h=scene.height;
  // Use the actual terrain silhouette as a mask so the grass follows every hill.
