@@ -7,36 +7,12 @@ const W=canvas.width,H=canvas.height,GROUND=390,keys={left:false,right:false};
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 const worldWidth=12000;
 const terrainSections=[];
-for(let x=420,i=0;x<worldWidth-180;x+=470,i++){
- const top=([320,285,340,305,360,295,330,275][i%8]);
- terrainSections.push({a:x,b:x+360,top});
-}
-function terrainHeight(x){
- let y=390;
- for(const s of terrainSections){
-  if(x>=s.a&&x<=s.b){
-   const t=(x-s.a)/(s.b-s.a);
-   y=390+(s.top-390)*(t<.5?2*t:2*(1-t));
-   break;
-  }
- }
- return y+Math.sin(x*.008)*3;
-}
+// Nivel completamente recto: la superficie siempre está a la misma altura.
+function terrainHeight(x){return 390;}
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
 // Piezas colocadas a mano: cada sección tiene una función en el recorrido.
-const platformSpecs=[
- [610,126],[1040,132],[1510,118],[1940,142],[2440,126],
- [2940,138],[3420,120],[3890,145],[4400,126],[4870,138],
- [5350,120],[5820,146],[6310,126],[6800,138],[7280,120],
- [7760,145],[8240,126],[8720,138],[9210,120],[9690,145],
- [10180,126],[10660,138],[11140,120]
-];
-const platforms=platformSpecs.map(([x,w],i)=>{
- let highest=Infinity;
- for(let sx=x;sx<=x+w;sx+=6) highest=Math.min(highest,terrainHeight(sx));
- const clearance=[92,108,96,116][i%4];
- return {x,w,y:Math.max(125,highest-clearance),section:i};
-});
+const platformSpecs=[];
+const platforms=[];
 let rings=[],enemies=[],collected=new Set();
 function buildLevel(){
  rings=[];collected=new Set();
