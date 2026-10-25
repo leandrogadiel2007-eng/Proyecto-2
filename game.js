@@ -190,7 +190,7 @@ function drawBackground(){
  };
  for(let i=0;i<6;i++){
   const mx=((i*247-camera*.025)%(w+260)+(w+260))%(w+260)-100;
-  mountain(mx,286,62+(i%3)*23,54+(i%2)*23);
+  mountain(mx,318,40+(i%3)*12,54+(i%2)*23);
  }
  // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
  for(let i=0;i<18;i++){
@@ -213,7 +213,7 @@ function drawBackground(){
  // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
  for(let i=0;i<8;i++){
   const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
-  const mb=300+(i%3)*7,peak=45+(i%4)*14,mw=48+(i%3)*20;
+  const mb=322+(i%3)*5,peak=28+(i%4)*8,mw=48+(i%3)*20;
   g.fillStyle=i%2===0?"#3d91ad":"#347f9f";
   g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
   g.fillStyle="#b7e8dc";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
@@ -228,9 +228,9 @@ function drawBackground(){
  }
  // Colinas verdes cercanas con bordes escalonados.
  const hill=(base,amp,step,offset,color)=>{g.beginPath();g.moveTo(0,h);for(let x=-step;x<=w+step;x+=step){const wx=x+camera*offset;const y=Math.round((base+Math.sin(wx*.008)*amp+Math.sin(wx*.019+1.3)*amp*.24)/step)*step;g.lineTo(x,y)}g.lineTo(w,h);g.closePath();g.fillStyle=color;g.fill()};
- hill(320,27,8,.07,"#70d75d");
- hill(343,22,8,.12,"#36b950");
- hill(365,14,8,.18,"#147d45");
+ hill(304,17,8,.07,"#70d75d");
+ hill(325,14,8,.12,"#36b950");
+ hill(345,10,8,.18,"#147d45");
  for(let i=0;i<58;i++){
   const x=((i*59-camera*(.06+(i%3)*.025))%(w+44)+(w+44))%(w+44)-22;
   const y=306+(i*23%60),sz=4+(i%4)*3;
