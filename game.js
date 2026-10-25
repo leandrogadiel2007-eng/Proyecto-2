@@ -63,7 +63,7 @@ function buildLevel(){
  // Enemigos espaciados, no puestos en cada salto ni junto a cada plataforma.
  [840,1780,2630,3500,4630,5480,6620,7490,8610,9470,10570,11420].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
 }
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
@@ -97,6 +97,16 @@ function update(dt){
   if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
  const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround;const descending=player.vy>=0;if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(12,Math.abs(player.vx)*dt*.65)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}else if(player.onGround&&Math.abs(groundNow-groundPrev)<Math.max(18,Math.abs(player.vx)*dt+8)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
  for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}}
+ // La fase continua acompaña la aceleración y evita saltos de fotograma.
+ const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
+ if(player.onGround){
+  player.fallPhase=0;
+  if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25);
+ }else if(player.spin){
+  player.spinPhase+=dt*(0.8+speedRatio*1.7);
+ }else{
+  player.fallPhase+=dt*(0.9+speedRatio*1.1);
+ }
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
  enemies.forEach(e=>{if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;if(hit){if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}else if(player.invincible<=0){if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()} }player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180}}});
@@ -332,7 +342,7 @@ function drawEnemy(e){
 
 /* Carga directamente los SVG que sí están en assets/sonic.
    No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
-let sonicAnimations={idle:[],run:[],jump:[],spin:[],ready:false};
+let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],fall:[],ready:false};
 const sonicSpriteFiles={
  idle:[
   "01740b16763e9570f66ce0faf001c035.svg",
@@ -350,6 +360,22 @@ const sonicSpriteFiles={
   "4e53232099ed2bda8c569d1d7ebfae64.svg"
  ],
  jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"],
+ dash:[
+  "27a64ba40464d134f7650ecc79759a2b.svg",
+  "aeefb13ebb8deaa7be9231a353f9b7cb.svg",
+  "19738b23f8e867b11a7b2a9a3a911f4e.svg",
+  "8044cc670da7557d30c4c3330efa75f6.svg"
+ ],
+ speeddash:[
+  "a19f441b6c45d019a4b2fc9600dc5b6e.svg",
+  "874f590f9bb1c565f85f9163d4fa0100.svg",
+  "c48f11f9eb3267704d212a0b496ccf1b.svg",
+  "e7249d0f8afa580f8c4bb2a1f5e6de60.svg"
+ ],
+ fall:[
+  "463471181dc7d56b61067295cc25ceec.svg",
+  "3bf7c06e2758651c68a0825b2fecd156.svg"
+ ],
  spin:[
   "e4267914ba5b6441124e0e990a123fec.svg",
   "c1208453f3701096d5877803e6657c9e.svg",
@@ -390,12 +416,16 @@ async function loadSonicCostumes(){
  sonicAnimations={
   idle:result.idle||[],
   run:result.run||[],
+  dash:result.dash||[],
+  speeddash:result.speeddash||[],
   jump:result.jump||[],
   spin:result.spin||[],
-  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.spin||[]).length)
+  fall:result.fall||[],
+  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.dash||[]).length&&(result.speeddash||[]).length&&(result.spin||[]).length&&(result.fall||[]).length)
  };
- console.info("Blue Rush: sprites reales de Sonic",{
-  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,spin:sonicAnimations.spin.length
+ console.info("Blue Rush: animaciones de Sonic",{
+  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,dash:sonicAnimations.dash.length,
+  speeddash:sonicAnimations.speeddash.length,spin:sonicAnimations.spin.length,fall:sonicAnimations.fall.length
  });
  if(!running){
   status.textContent=sonicAnimations.ready
@@ -433,24 +463,43 @@ function drawFallbackPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
- const moving=player.onGround&&Math.abs(player.vx)>70;
+ const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
+ const moving=player.onGround&&Math.abs(player.vx)>25;
  const rolling=Boolean(player.spin)&&!player.onGround;
- const frames=rolling?sonicAnimations.spin:(moving?sonicAnimations.run:sonicAnimations.idle);
+ // El salto manual usa bolita; la caída se reserva para el aire sin salto.
+ const falling=!player.onGround&&!rolling;
+ let frames,index;
+ if(rolling){
+  frames=sonicAnimations.spin;
+  index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
+ }else if(falling){
+  frames=sonicAnimations.fall;
+  index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
+ }else if(moving){
+  frames=speedRatio>=0.78?sonicAnimations.speeddash:(speedRatio>=0.47?sonicAnimations.dash:sonicAnimations.run);
+  index=Math.floor(player.runPhase*frames.length)%Math.max(1,frames.length);
+ }else{
+  frames=sonicAnimations.idle;
+  index=Math.floor(elapsed*2.5)%Math.max(1,frames.length);
+ }
  const usable=frames&&frames.length?frames:(sonicAnimations.idle.length?sonicAnimations.idle:[]);
  if(!usable.length){drawFallbackPlayer();return}
- const fps=rolling?7+Math.min(14,Math.abs(player.vx)/38):(moving?8+player.speedCharge*14:2.5);
- const entry=usable[Math.floor(elapsed*fps)%usable.length];
+ const entry=usable[index%usable.length];
  const img=entry&&entry.img;
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
- const scale=Math.min((rolling?46:56)/Math.max(1,b.width),(rolling?46:54)/Math.max(1,b.height));
+ const airbornePose=rolling||falling;
+ const scale=Math.min((airbornePose?46:56)/Math.max(1,b.width),(airbornePose?46:54)/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(rolling)g.rotate(player.spinAngle||0);
- else if(player.facing<0)g.scale(-1,1);
+ else{
+  if(moving)g.rotate(player.facing*speedRatio*0.055);
+  if(player.facing<0)g.scale(-1,1);
+ }
  g.imageSmoothingEnabled=true;
- g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,rolling?-dh/2:player.h/2-dh-1,dw,dh);
+ g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
 }function drawHud(){
  ctx.save();
