@@ -307,8 +307,24 @@ function drawDecorations(){
  g.fillStyle="#ffe66d";g.beginPath();g.arc(13,-19,3,0,Math.PI*2);g.fill();
  g.fillStyle="#7adfff";g.beginPath();g.arc(-14,4,2.1,0,Math.PI*2);g.arc(14,4,2.1,0,Math.PI*2);g.fill();
  g.restore();
-}/* Carga automáticamente los disfraces del proyecto Scratch. */
+}/* Carga directamente los SVG que sí están en assets/sonic.
+   No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
 let sonicAnimations={idle:[],run:[],jump:[],ready:false};
+const sonicSpriteFiles={
+ idle:[
+  "01740b16763e9570f66ce0faf001c035.svg",
+  "0f0fe78857ea041f15fde4fec23023ae.svg",
+  "172146abbfa4348e9f0a63ada310f3fc.svg"
+ ],
+ run:[
+  "2e35050243bb1a9740af66232b4157ab.svg",
+  "51c9d39f0188245f4f41970dda3315ea.svg",
+  "709f200d37b7a243470df5094b771a3c.svg",
+  "72eb3473aee982a542f91c77b660622a.svg",
+  "75baeb8e4efd54402e93d790f23c3ca7.svg"
+ ],
+ jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"]
+};
 function visibleImageBounds(img){
  const width=Math.max(1,Math.ceil(img.naturalWidth)),height=Math.max(1,Math.ceil(img.naturalHeight));
  if(width*height>1500000)return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
@@ -324,59 +340,29 @@ function visibleImageBounds(img){
   return {x:left,y:top,width:right-left+1,height:bottom-top+1};
  }catch(_){return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight}}
 }
-function loadImageForCostume(entry){
+function loadSonicFrame(file){
  return new Promise(resolve=>{
   const img=new Image();
-  img.onload=()=>resolve({...entry,img,bounds:visibleImageBounds(img)});
-  img.onerror=()=>resolve(null);
-  img.src=entry.url;
+  img.onload=()=>resolve({file,img,bounds:visibleImageBounds(img)});
+  img.onerror=()=>{console.warn("No se pudo cargar el sprite:",file);resolve(null)};
+  img.src="./assets/sonic/"+file;
  });
-}function isCostumeImage(c){
- const fmt=String(c.dataFormat||c.md5ext||"").toLowerCase();
- return fmt.includes("svg")||fmt.includes("png")||fmt.includes("jpg")||fmt.includes("jpeg");
 }
 async function loadSonicCostumes(){
- try{
-  const response=await fetch("./project.json",{cache:"force-cache"});
-  if(!response.ok)throw new Error("No se pudo leer project.json");
-  const project=await response.json();
-  const targets=(project.targets||[]).filter(t=>!t.isStage&&Array.isArray(t.costumes)&&t.costumes.length);
-  if(!targets.length)throw new Error("No hay disfraces en project.json");
-  const sonicTargets=targets.filter(t=>/sonic/i.test(String(t.name||"")));
-  const sortByCostumes=(a,b)=>b.costumes.length-a.costumes.length;
-  const mainSonic=sonicTargets.slice().sort(sortByCostumes)[0];
-  let selectedTargets;
-  if(mainSonic&&mainSonic.costumes.length>1)selectedTargets=[mainSonic];
-  else if(sonicTargets.length)selectedTargets=sonicTargets;
-  else selectedTargets=[targets.slice().sort(sortByCostumes)[0]];
-  let entries=selectedTargets.flatMap(t=>(t.costumes||[])
-   .filter(isCostumeImage)
-   .map((c,i)=>{
-    const file=c.md5ext||(c.assetId?c.assetId+"."+c.dataFormat:"");
-    return {name:String(t.name||"")+" "+String(c.name||""),costumeName:String(c.name||""),url:"./assets/sonic/"+encodeURIComponent(file),order:i};
-   }).filter(e=>!e.url.endsWith("/")));
-  if(!entries.length)throw new Error("No encontré imágenes compatibles en los disfraces");
-  const runPattern=/(run|running|walk|walking|dash|sprint|jog|roll|rolling|spindash|move)/i;
-  const jumpPattern=/(jump|jumping|airborne|fall|falling|spring|curl|flying|flight)/i;
-  const idlePattern=/(idle|stand|standing|wait|waiting|rest|neutral|breath|look)/i;
-  let idle=entries.filter(e=>idlePattern.test(e.name));
-  let run=entries.filter(e=>runPattern.test(e.name));
-  let jump=entries.filter(e=>jumpPattern.test(e.name));
-  if(!idle.length)idle=entries.slice(0,1);
-  if(!run.length)run=entries.slice(0,Math.min(entries.length,8));
-  if(!jump.length)jump=run.length>1?[run[Math.min(1,run.length-1)]]:idle.slice();
-  const chosen=[...new Set([...idle,...run,...jump])];
-  const loaded=(await Promise.all(chosen.map(loadImageForCostume))).filter(Boolean);
-  const byName=new Map(loaded.map(e=>[e.url,e]));
-  const resolveFrames=list=>list.map(e=>byName.get(e.url)).filter(Boolean);
-  sonicAnimations={idle:resolveFrames(idle),run:resolveFrames(run),jump:resolveFrames(jump),ready:true};
-  console.info("Blue Rush: sprites cargados",{
-   target:selectedTargets.map(t=>t.name),idle:sonicAnimations.idle.length,
-   run:sonicAnimations.run.length,jump:sonicAnimations.jump.length
-  });
- }catch(error){
-  console.warn("Blue Rush: se usará el personaje alternativo.",error);
- }
+ const loaded=await Promise.all(Object.entries(sonicSpriteFiles).map(async([state,files])=>{
+  const frames=(await Promise.all(files.map(loadSonicFrame))).filter(Boolean);
+  return [state,frames];
+ }));
+ const result=Object.fromEntries(loaded);
+ sonicAnimations={
+  idle:result.idle||[],
+  run:result.run||[],
+  jump:result.jump||[],
+  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.jump||[]).length)
+ };
+ console.info("Blue Rush: sprites reales de Sonic",{
+  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,jump:sonicAnimations.jump.length
+ });
 }
 loadSonicCostumes();
 
@@ -409,7 +395,7 @@ function drawFallbackPlayer(){
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
- const scale=Math.min(64/Math.max(1,b.width),54/Math.max(1,b.height));
+ const scale=Math.min(56/Math.max(1,b.width),54/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(player.facing<0)g.scale(-1,1);
