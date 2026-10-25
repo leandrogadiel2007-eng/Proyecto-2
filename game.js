@@ -195,11 +195,11 @@ function drawGround(){
  traceTerrain();g.strokeStyle="#19b946";g.lineWidth=16;g.stroke();
  g.beginPath();g.moveTo(0,terrainHeight(camera)-6);
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-6);
- g.strokeStyle="#b8f66a";g.lineWidth=3.5;g.stroke();
+ g.strokeStyle="#76bd55";g.lineWidth=3;g.stroke();
  // Tiny blades of grass along the top edge.
  for(let i=0;i<Math.ceil(w/28)+2;i++){
   const wx=camera+i*28+((i%2)*10),x=wx-camera,y=terrainHeight(wx)-8;
-  g.strokeStyle=i%2?"#d7ff86":"#0c9745";g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+5);g.lineTo(x-2,y);g.moveTo(x+2,y+5);g.lineTo(x+4,y+1);g.stroke();
+  g.strokeStyle=i%2?"#9ed879":"#287647";g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+5);g.lineTo(x-2,y);g.moveTo(x+2,y+5);g.lineTo(x+4,y+1);g.stroke();
  }
 }
 function drawPalm(wx,variant=0){
@@ -207,7 +207,13 @@ function drawPalm(wx,variant=0){
  if(x< -100||x>scene.width+100)return;
  const base=terrainHeight(wx)-5,lean=variant%2?10:-7,height=103+(variant%3)*12;
  const tx=x+lean,ty=base-height;
- if(greenIslandReady){g.save();g.imageSmoothingEnabled=false;g.drawImage(greenIsland,126,15,37,35,tx-39,ty-3,78,73);g.imageSmoothingEnabled=true;g.restore();return;}
+ if(greenIslandReady){
+   // Tronco completo debajo de la copa pixel art, para que la palmera no parezca cortada.
+   g.save();g.fillStyle="rgba(16,72,42,.22)";g.beginPath();g.ellipse(x,base-2,27,5,0,0,Math.PI*2);g.fill();
+   g.strokeStyle="#75452b";g.lineWidth=11;g.lineCap="round";g.beginPath();g.moveTo(x,base);g.bezierCurveTo(x+lean*.3,base-25,tx-lean*.4,ty+38,tx,ty+20);g.stroke();
+   g.strokeStyle="#bd8050";g.lineWidth=3;g.beginPath();g.moveTo(x-2,base-8);g.bezierCurveTo(x+lean*.2,base-30,tx-lean*.3,ty+43,tx-1,ty+21);g.stroke();
+   g.imageSmoothingEnabled=false;g.drawImage(greenIsland,126,15,38,35,tx-40,ty-5,80,74);g.imageSmoothingEnabled=true;g.restore();return;
+  }
  // Sombra de la palmera.
  g.fillStyle="rgba(15,95,49,.20)";g.beginPath();g.ellipse(x,base-2,35,5,0,0,Math.PI*2);g.fill();
  // Tronco con curvas y luz lateral.
@@ -276,7 +282,7 @@ function drawDecorations(){
   }
  }
  const grass=g.createLinearGradient(0,y,0,y+12);
- grass.addColorStop(0,"#c1fa6e");grass.addColorStop(.36,"#42d85b");grass.addColorStop(1,"#09873d");
+ grass.addColorStop(0,"#9ed879");grass.addColorStop(.36,"#398c4d");grass.addColorStop(1,"#1b5f39");
  g.fillStyle=grass;g.strokeStyle="#086c38";g.lineWidth=2.3;
  roundedRectPath(g,x,y,w,11,4);g.fill();g.stroke();
  g.strokeStyle="#efffa4";g.lineWidth=2;g.beginPath();g.moveTo(x+6,y+2);g.lineTo(x+w-7,y+2);g.stroke();
