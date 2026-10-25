@@ -210,6 +210,22 @@ function drawBackground(){
   g.fillStyle=i%3===0?"#f5fdff":"#b8ecff";g.fillRect(cx,cy+2,cw,4);g.fillRect(cx+4,cy,cw*.55,4);
   g.fillStyle="#fff";g.fillRect(cx+5,cy+1,cw*.25,2);
  }
+ // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
+ for(let i=0;i<8;i++){
+  const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
+  const mb=300+(i%3)*7,peak=45+(i%4)*14,mw=48+(i%3)*20;
+  g.fillStyle=i%2===0?"#3d91ad":"#347f9f";
+  g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
+  g.fillStyle="#b7e8dc";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
+ }
+ // Parchecitos de hojas y flores pixeladas en las islas cercanas.
+ for(let i=0;i<64;i++){
+  const px=((i*41-camera*.07)%(w+48)+(w+48))%(w+48)-24;
+  const py=285+(i*17%72),sz=3+(i%4)*2;
+  g.fillStyle=["#0b633c","#158748","#48c84d","#8ee45c"][i%4];
+  g.fillRect(px,py,sz*2,4);g.fillRect(px+sz,py-4,sz,4);
+  if(i%7===0){g.fillStyle="#f4d86a";g.fillRect(px+sz,py-7,3,3)}
+ }
  // Colinas verdes cercanas con bordes escalonados.
  const hill=(base,amp,step,offset,color)=>{g.beginPath();g.moveTo(0,h);for(let x=-step;x<=w+step;x+=step){const wx=x+camera*offset;const y=Math.round((base+Math.sin(wx*.008)*amp+Math.sin(wx*.019+1.3)*amp*.24)/step)*step;g.lineTo(x,y)}g.lineTo(w,h);g.closePath();g.fillStyle=color;g.fill()};
  hill(320,27,8,.07,"#70d75d");
@@ -258,34 +274,41 @@ function drawGround(){
  g.restore();
 }
 function drawPalm(wx,variant=0){
- const x=wx-camera;if(x< -300||x>scene.width+300)return;
+ const x=wx-camera;if(x< -340||x>scene.width+340)return;
  const base=terrainHeight(wx);
- const trunkH=variant%3===0?270:variant%3===1?238:292;
+ // Altura mucho mayor: la copa queda cerca del borde superior y el tronco llega hasta el piso.
+ const trunkH=variant%3===0?342:variant%3===1?318:354;
  const crownY=base-trunkH;
  g.save();g.imageSmoothingEnabled=false;
- // Tronco alto, segmentado en píxeles para que se note claramente la altura.
- g.fillStyle="#583526";g.fillRect(x-8,crownY+43,16,trunkH-43);
- g.fillStyle="#87502f";g.fillRect(x-5,crownY+47,7,trunkH-52);
- g.fillStyle="#bd7a3e";g.fillRect(x+2,crownY+52,3,trunkH-58);
- for(let yy=crownY+62;yy<base-8;yy+=22){
-  g.fillStyle="#4c3025";g.fillRect(x-8,yy,16,4);
-  g.fillStyle="#a76838";g.fillRect(x-5,yy+5,11,4);
+ // Tronco ancho, alto y con bandas pixeladas.
+ g.fillStyle="#4d3025";g.fillRect(x-9,crownY+45,18,trunkH-45);
+ g.fillStyle="#80502e";g.fillRect(x-6,crownY+48,8,trunkH-53);
+ g.fillStyle="#c18343";g.fillRect(x+2,crownY+53,3,trunkH-60);
+ for(let yy=crownY+62;yy<base-8;yy+=21){
+  g.fillStyle="#4b2d23";g.fillRect(x-9,yy,18,4);
+  g.fillStyle="#9b6034";g.fillRect(x-6,yy+5,12,4);
   g.fillStyle="#d08a45";g.fillRect(x-3,yy+6,5,2);
  }
- // Hojas grandes y pixeladas, dibujadas por capas sobre el tronco.
- g.fillStyle="#064c32";g.fillRect(x-91,crownY+26,56,12);g.fillRect(x-78,crownY+5,50,12);g.fillRect(x-52,crownY-8,45,12);
- g.fillRect(x+7,crownY-9,45,12);g.fillRect(x+29,crownY+5,50,12);g.fillRect(x+36,crownY+26,56,12);
- g.fillStyle="#08743b";g.fillRect(x-82,crownY+17,52,12);g.fillRect(x-65,crownY-1,45,12);g.fillRect(x-37,crownY-17,39,12);
- g.fillRect(x+1,crownY-17,39,12);g.fillRect(x+20,crownY-1,45,12);g.fillRect(x+30,crownY+17,52,12);
- g.fillStyle="#20a447";g.fillRect(x-69,crownY+12,39,8);g.fillRect(x-51,crownY-6,33,8);g.fillRect(x-27,crownY-22,26,8);
- g.fillRect(x+2,crownY-22,26,8);g.fillRect(x+18,crownY-6,33,8);g.fillRect(x+30,crownY+12,39,8);
- g.fillStyle="#5bd34c";g.fillRect(x-61,crownY+13,23,4);g.fillRect(x-43,crownY-5,20,4);g.fillRect(x-20,crownY-21,16,4);
- g.fillRect(x+4,crownY-21,16,4);g.fillRect(x+23,crownY-5,20,4);g.fillRect(x+38,crownY+13,23,4);
- g.fillStyle="#a5ec63";g.fillRect(x-52,crownY+14,10,3);g.fillRect(x-34,crownY-4,9,3);g.fillRect(x-13,crownY-20,7,3);
- g.fillRect(x+6,crownY-20,7,3);g.fillRect(x+27,crownY-4,9,3);g.fillRect(x+43,crownY+14,10,3);
- // Cocos pequeños debajo de la corona.
- g.fillStyle="#754321";g.fillRect(x-7,crownY+27,6,8);g.fillRect(x+1,crownY+29,6,8);
- g.fillStyle="#c4873e";g.fillRect(x-6,crownY+28,2,4);g.fillRect(x+2,crownY+30,2,4);
+ // Copa amplia, por capas, con hojas que se extienden mucho a ambos lados.
+ g.fillStyle="#06452e";
+ g.fillRect(x-110,crownY+27,64,13);g.fillRect(x-96,crownY+7,65,13);g.fillRect(x-69,crownY-8,57,13);
+ g.fillRect(x-44,crownY-22,43,13);g.fillRect(x+4,crownY-22,43,13);g.fillRect(x+14,crownY-8,57,13);
+ g.fillRect(x+31,crownY+7,65,13);g.fillRect(x+46,crownY+27,64,13);
+ g.fillStyle="#08743b";
+ g.fillRect(x-101,crownY+18,65,13);g.fillRect(x-83,crownY-1,58,13);g.fillRect(x-54,crownY-16,48,13);
+ g.fillRect(x+6,crownY-16,48,13);g.fillRect(x+25,crownY-1,58,13);g.fillRect(x+36,crownY+18,65,13);
+ g.fillStyle="#20a447";
+ g.fillRect(x-88,crownY+13,52,9);g.fillRect(x-68,crownY-6,46,9);g.fillRect(x-43,crownY-22,37,9);
+ g.fillRect(x+7,crownY-22,37,9);g.fillRect(x+22,crownY-6,46,9);g.fillRect(x+36,crownY+13,52,9);
+ g.fillStyle="#5bd34c";
+ g.fillRect(x-77,crownY+14,31,5);g.fillRect(x-58,crownY-5,27,5);g.fillRect(x-34,crownY-21,21,5);
+ g.fillRect(x+13,crownY-21,21,5);g.fillRect(x+31,crownY-5,27,5);g.fillRect(x+46,crownY+14,31,5);
+ g.fillStyle="#a5ec63";
+ g.fillRect(x-66,crownY+15,12,3);g.fillRect(x-48,crownY-4,10,3);g.fillRect(x-26,crownY-20,8,3);
+ g.fillRect(x+16,crownY-20,8,3);g.fillRect(x+36,crownY-4,10,3);g.fillRect(x+53,crownY+15,12,3);
+ // Cocos y pequeñas sombras bajo la copa.
+ g.fillStyle="#754321";g.fillRect(x-8,crownY+28,6,9);g.fillRect(x+1,crownY+30,6,9);g.fillRect(x+8,crownY+26,5,8);
+ g.fillStyle="#c4873e";g.fillRect(x-7,crownY+29,2,4);g.fillRect(x+2,crownY+31,2,4);
  g.restore();
 }
 function drawDecorations(){
