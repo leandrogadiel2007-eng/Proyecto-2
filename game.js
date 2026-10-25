@@ -344,7 +344,7 @@ const sonicSpriteFiles={
   "c71e608d77556b1e6a484888bb70ec4a.svg",
   "f5d47bb333339f157b9fd8567188ad19.svg",
   "f2542218ee731bfcc4911b9e90120b24.svg",
-  "e977afdd8469ddd252b2654da0f30ad3.svg",
+  "e977afdd8469ddd252b2654da0f30ad2.svg",
   "7b538cdee48eb69c53c9169f3cc07941.svg",
   "4e53232099ed2bda8c569d1d7ebfae64.svg"
  ],
