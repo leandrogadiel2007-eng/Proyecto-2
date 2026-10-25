@@ -177,11 +177,14 @@ function drawGround(){
  // Large, readable checker blocks with warm highlights and dark seams.
  const tileW=44,tileH=28,startX=-((camera%tileW)+tileW)%tileW;
  for(let x=startX;x<w+tileW;x+=tileW){
-  const worldCol=Math.floor((x+camera)/tileW);
-  for(let y=258,row=0;y<h+tileH;y+=tileH,row++){
-   const alternate=(worldCol+row)%2===0;
-   if(greenIslandReady){g.imageSmoothingEnabled=false;g.drawImage(greenIsland,16,39,48,41,x,y,tileW,tileH);g.imageSmoothingEnabled=true;}
-   else {g.fillStyle=alternate?"#e99a48":"#a95330";g.fillRect(x+1,y+1,tileW-2,tileH-2);g.strokeStyle="rgba(91,43,29,.38)";g.lineWidth=1.3;g.strokeRect(x+.5,y+.5,tileW-1,tileH-1);if(alternate){g.fillStyle="rgba(255,220,139,.45)";g.fillRect(x+4,y+4,13,2)}else{g.fillStyle="rgba(86,40,30,.23)";g.fillRect(x+5,y+6,16,2)}}
+  for(let y=258;y<h+tileH;y+=tileH){
+   if(greenIslandReady){
+    g.imageSmoothingEnabled=false;
+    g.drawImage(greenIsland,16,39,48,41,x,y,tileW,tileH);
+    g.imageSmoothingEnabled=true;
+   }else{
+    g.fillStyle="#b96231";g.fillRect(x+1,y+1,tileW-2,tileH-2);
+   }
   }
  }
  for(let i=0;i<34;i++){
@@ -190,16 +193,23 @@ function drawGround(){
   if(y<h){g.fillStyle=i%3===0?"#ffd18c":"#87472f";g.beginPath();g.ellipse(x,y,2.8,1.8,0,0,Math.PI*2);g.fill()}
  }
  g.restore();
- // Bright grass cap, dark green under-outline and lime top highlight.
- traceTerrain();g.strokeStyle="#0b743b";g.lineWidth=22;g.lineJoin="round";g.lineCap="round";g.stroke();
- traceTerrain();g.strokeStyle="#19b946";g.lineWidth=16;g.stroke();
- g.beginPath();g.moveTo(0,terrainHeight(camera)-6);
- for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-6);
- g.strokeStyle="#76bd55";g.lineWidth=3;g.stroke();
- // Tiny blades of grass along the top edge.
- for(let i=0;i<Math.ceil(w/28)+2;i++){
-  const wx=camera+i*28+((i%2)*10),x=wx-camera,y=terrainHeight(wx)-8;
-  g.strokeStyle=i%2?"#9ed879":"#287647";g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+5);g.lineTo(x-2,y);g.moveTo(x+2,y+5);g.lineTo(x+4,y+1);g.stroke();
+ // Césped basado en la franja superior del spritesheet Green Island.
+ traceTerrain();g.strokeStyle="#245b35";g.lineWidth=20;g.lineJoin="miter";g.lineCap="butt";g.stroke();
+ if(greenIslandReady){
+  g.save();g.beginPath();g.moveTo(0,terrainHeight(camera)-17);
+  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-17);
+  g.lineTo(w,terrainHeight(camera)+2);g.lineTo(0,terrainHeight(camera)+2);g.closePath();g.clip();
+  g.imageSmoothingEnabled=false;
+  const grassW=48,grassY=terrainHeight(camera)-16;
+  for(let x=-((camera%grassW)+grassW)%grassW;x<w+grassW;x+=grassW){
+   g.drawImage(greenIsland,16,16,48,16,x,grassY,grassW,16);
+  }
+  g.imageSmoothingEnabled=true;g.restore();
+ }else{
+  traceTerrain();g.strokeStyle="#36b84b";g.lineWidth=14;g.stroke();
+  g.beginPath();g.moveTo(0,terrainHeight(camera)-6);
+  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)-6);
+  g.strokeStyle="#a1dc6c";g.lineWidth=3;g.stroke();
  }
 }
 function drawPalm(wx,variant=0){
@@ -207,6 +217,15 @@ function drawPalm(wx,variant=0){
  if(x< -100||x>scene.width+100)return;
  const base=terrainHeight(wx)-5,lean=variant%2?10:-7,height=103+(variant%3)*12;
  const tx=x+lean,ty=base-height;
+ // Copa inspirada en el sprite de palmera de Green Island.
+ if(greenIslandReady){
+  g.save();g.imageSmoothingEnabled=false;
+  g.fillStyle="rgba(22,74,42,.22)";g.beginPath();g.ellipse(x,base-2,27,4,0,0,Math.PI*2);g.fill();
+  g.fillStyle="#9b5a31";g.fillRect(tx-3,ty+19,7,base-ty-19);
+  g.fillStyle="#d79a51";g.fillRect(tx-2,ty+22,2,base-ty-23);
+  g.drawImage(greenIsland,112,30,36,29,tx-39,ty-5,78,62);
+  g.imageSmoothingEnabled=true;g.restore();return;
+ }
  // Sombra de la palmera.
  g.fillStyle="rgba(15,95,49,.20)";g.beginPath();g.ellipse(x,base-2,35,5,0,0,Math.PI*2);g.fill();
  // Tronco con curvas y luz lateral.
