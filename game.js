@@ -177,11 +177,6 @@ function drawBackground(){
   for(let i=0;i<7;i++){const tx=-72+i*22,ty=-8-(i%3)*10;g.fillStyle="#075c3a";g.fillRect(tx,ty-8,8,11);g.fillStyle="#24a94a";g.fillRect(tx-4,ty-11,11,7);g.fillStyle="#70d94e";g.fillRect(tx-1,ty-13,5,3)}
   g.restore();
  };
- island(115+((camera*.035)%(w+260)),336,.95);
- island(420+((camera*.045)%(w+300)),340,.7);
- island(690+((camera*.03)%(w+320)),326,1.12);
- island(980+((camera*.04)%(w+340)),341,.82);
- island(1250+((camera*.035)%(w+360)),333,1.02);
  // Montañas lejanas con picos escalonados y sombras pixeladas.
  const mountain=(x,base,peak,wide)=>{
   g.fillStyle="#287eae";g.beginPath();g.moveTo(x-wide,base);g.lineTo(x-wide*.58,base-peak*.42);g.lineTo(x-wide*.28,base-peak*.72);g.lineTo(x,base-peak);g.lineTo(x+wide*.22,base-peak*.62);g.lineTo(x+wide*.48,base-peak*.77);g.lineTo(x+wide,base);g.closePath();g.fill();
@@ -192,6 +187,19 @@ function drawBackground(){
   const mx=((i*247-camera*.025)%(w+260)+(w+260))%(w+260)-100;
   mountain(mx,318,40+(i%3)*12,54+(i%2)*23);
  }
+ // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
+ for(let i=0;i<8;i++){
+  const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
+  const mb=322+(i%3)*5,peak=28+(i%4)*8,mw=48+(i%3)*20;
+  g.fillStyle=i%2===0?"#3d91ad":"#347f9f";
+  g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
+  g.fillStyle="#b7e8dc";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
+ }
+ island(115+((camera*.035)%(w+260)),336,.95);
+ island(420+((camera*.045)%(w+300)),340,.7);
+ island(690+((camera*.03)%(w+320)),326,1.12);
+ island(980+((camera*.04)%(w+340)),341,.82);
+ island(1250+((camera*.035)%(w+360)),333,1.02);
  // Islas pequeñas, vegetación en terrazas y cascadas en primer plano del horizonte.
  for(let i=0;i<18;i++){
   const ix=((i*83-camera*.055)%(w+100)+(w+100))%(w+100)-40;
@@ -209,14 +217,6 @@ function drawBackground(){
   g.fillStyle="#2b9edc";g.fillRect(cx+3,cy+5,cw,4);
   g.fillStyle=i%3===0?"#f5fdff":"#b8ecff";g.fillRect(cx,cy+2,cw,4);g.fillRect(cx+4,cy,cw*.55,4);
   g.fillStyle="#fff";g.fillRect(cx+5,cy+1,cw*.25,2);
- }
- // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
- for(let i=0;i<8;i++){
-  const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
-  const mb=322+(i%3)*5,peak=28+(i%4)*8,mw=48+(i%3)*20;
-  g.fillStyle=i%2===0?"#3d91ad":"#347f9f";
-  g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
-  g.fillStyle="#b7e8dc";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
  }
  // Parchecitos de hojas y flores pixeladas en las islas cercanas.
  for(let i=0;i<64;i++){
