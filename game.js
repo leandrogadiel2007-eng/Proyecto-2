@@ -63,10 +63,10 @@ function buildLevel(){
  // Enemigos espaciados, no puestos en cada salto ni junto a cada plataforma.
  [840,1780,2630,3500,4630,5480,6620,7490,8610,9470,10570,11420].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
 }
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
-function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1}}
+function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
 function setKey(key,down){const k=key.toLowerCase();if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(down&&(key===' '||key==='ArrowUp'||k==='w'))jump();if(down&&key==='Enter'&&!running)startGame()}
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
 window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=false});
@@ -94,8 +94,9 @@ function update(dt){
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
- const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround;const descending=player.vy>=0;if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(12,Math.abs(player.vx)*dt*.65)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0}else if(player.onGround&&Math.abs(groundNow-groundPrev)<Math.max(18,Math.abs(player.vx)*dt+8)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0}
- for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0}}
+  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
+ const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround;const descending=player.vy>=0;if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(12,Math.abs(player.vx)*dt*.65)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}else if(player.onGround&&Math.abs(groundNow-groundPrev)<Math.max(18,Math.abs(player.vx)*dt+8)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
+ for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}}
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
  enemies.forEach(e=>{if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;if(hit){if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}else if(player.invincible<=0){if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()} }player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180}}});
@@ -331,7 +332,7 @@ function drawEnemy(e){
 
 /* Carga directamente los SVG que sí están en assets/sonic.
    No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
-let sonicAnimations={idle:[],run:[],jump:[],ready:false};
+let sonicAnimations={idle:[],run:[],jump:[],spin:[],ready:false};
 const sonicSpriteFiles={
  idle:[
   "01740b16763e9570f66ce0faf001c035.svg",
@@ -348,7 +349,14 @@ const sonicSpriteFiles={
   "7b538cdee48eb69c53c9169f3cc07941.svg",
   "4e53232099ed2bda8c569d1d7ebfae64.svg"
  ],
- jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"]
+ jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"],
+ spin:[
+  "e4267914ba5b6441124e0e990a123fec.svg",
+  "c1208453f3701096d5877803e6657c9e.svg",
+  "3b6181d7c0f1ca61f51c81a31b90ff35.svg",
+  "f36bc5dd5dd01907d45daacf611eccd8.svg",
+  "272d17a2be621eb6c5a6448ef3f38ee3.svg"
+ ]
 };
 function visibleImageBounds(img){
  const width=Math.max(1,Math.ceil(img.naturalWidth)),height=Math.max(1,Math.ceil(img.naturalHeight));
@@ -383,10 +391,11 @@ async function loadSonicCostumes(){
   idle:result.idle||[],
   run:result.run||[],
   jump:result.jump||[],
-  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.jump||[]).length)
+  spin:result.spin||[],
+  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.spin||[]).length)
  };
  console.info("Blue Rush: sprites reales de Sonic",{
-  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,jump:sonicAnimations.jump.length
+  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,spin:sonicAnimations.spin.length
  });
  if(!running){
   status.textContent=sonicAnimations.ready
@@ -398,7 +407,16 @@ loadSonicCostumes();
 
 function drawFallbackPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
- g.save();g.translate(x,y);g.scale(player.facing,1);
+ g.save();g.translate(x,y);
+ if(player.spin){
+  g.rotate(player.spinAngle||0);
+  g.fillStyle="#087cec";g.strokeStyle="#064b9d";g.lineWidth=3;
+  g.beginPath();g.arc(0,0,17,0,Math.PI*2);g.fill();g.stroke();
+  g.beginPath();g.moveTo(-12,-10);g.lineTo(-23,-18);g.lineTo(-18,-5);g.lineTo(-22,2);g.lineTo(-13,5);g.lineTo(-19,15);g.lineTo(-5,12);g.lineTo(3,21);g.lineTo(8,11);g.lineTo(19,13);g.lineTo(13,2);g.lineTo(21,-7);g.lineTo(9,-8);g.lineTo(4,-19);g.lineTo(-3,-10);g.closePath();g.fill();g.stroke();
+  g.fillStyle="#e9f6ff";g.beginPath();g.ellipse(1,-2,7,9,-.25,0,Math.PI*2);g.fill();
+  g.restore();return;
+ }
+ g.scale(player.facing,1);
  // El sustituto vectorial mantiene la postura erguida mientras se carga el sprite.
  // Sustituto vectorial solo mientras se cargan los disfraces.
  g.fillStyle="rgba(20,61,110,.18)";g.beginPath();g.ellipse(0,23,17,4,0,0,Math.PI*2);g.fill();
@@ -416,21 +434,23 @@ function drawFallbackPlayer(){
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
  const moving=player.onGround&&Math.abs(player.vx)>70;
- const frames=!player.onGround?sonicAnimations.jump:(moving?sonicAnimations.run:sonicAnimations.idle);
+ const rolling=Boolean(player.spin)&&!player.onGround;
+ const frames=rolling?sonicAnimations.spin:(moving?sonicAnimations.run:sonicAnimations.idle);
  const usable=frames&&frames.length?frames:(sonicAnimations.idle.length?sonicAnimations.idle:[]);
  if(!usable.length){drawFallbackPlayer();return}
- const fps=!player.onGround?8:(moving?8+player.speedCharge*14:2.5);
+ const fps=rolling?7+Math.min(14,Math.abs(player.vx)/38):(moving?8+player.speedCharge*14:2.5);
  const entry=usable[Math.floor(elapsed*fps)%usable.length];
  const img=entry&&entry.img;
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
- const scale=Math.min(56/Math.max(1,b.width),54/Math.max(1,b.height));
+ const scale=Math.min((rolling?46:56)/Math.max(1,b.width),(rolling?46:54)/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
- if(player.facing<0)g.scale(-1,1);
+ if(rolling)g.rotate(player.spinAngle||0);
+ else if(player.facing<0)g.scale(-1,1);
  g.imageSmoothingEnabled=true;
- g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,player.h/2-dh-1,dw,dh);
+ g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,rolling?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
 }function drawHud(){
  ctx.save();
