@@ -99,6 +99,14 @@ const g=scene.getContext('2d');
 g.imageSmoothingEnabled=true;
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
+
+function roundedRectPath(c,x,y,w,h,r){
+ r=Math.max(0,Math.min(r,w/2,h/2));
+ c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+ c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+ c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);
+ c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();
+}
 function drawCloud(x,y,s=1){
  g.save();g.translate(x,y);g.scale(s,s);
  g.fillStyle="rgba(10,57,92,.17)";g.beginPath();
@@ -257,7 +265,7 @@ function drawDecorations(){
  const soil=g.createLinearGradient(0,y+8,0,y+h);
  soil.addColorStop(0,"#d98b43");soil.addColorStop(.5,"#b25d32");soil.addColorStop(1,"#773b2c");
  g.fillStyle=soil;g.strokeStyle="#6c3929";g.lineWidth=2;
- g.beginPath();g.roundRect(x,y+7,w,h-7,4);g.fill();g.stroke();
+ roundedRectPath(g,x,y+7,w,h-7,4);g.fill();g.stroke();
  for(let xx=x+2;xx<x+w-1;xx+=22){
   for(let yy=y+10;yy<y+h-2;yy+=12){
    g.fillStyle=(Math.floor((xx+p.x)/22)+Math.floor(yy/12))%2===0?"rgba(255,191,99,.65)":"rgba(87,43,30,.28)";
@@ -267,7 +275,7 @@ function drawDecorations(){
  const grass=g.createLinearGradient(0,y,0,y+12);
  grass.addColorStop(0,"#c1fa6e");grass.addColorStop(.36,"#42d85b");grass.addColorStop(1,"#09873d");
  g.fillStyle=grass;g.strokeStyle="#086c38";g.lineWidth=2.3;
- g.beginPath();g.roundRect(x,y,w,11,4);g.fill();g.stroke();
+ roundedRectPath(g,x,y,w,11,4);g.fill();g.stroke();
  g.strokeStyle="#efffa4";g.lineWidth=2;g.beginPath();g.moveTo(x+6,y+2);g.lineTo(x+w-7,y+2);g.stroke();
  for(let xx=x+14;xx<x+w-4;xx+=29){g.strokeStyle="#08763b";g.lineWidth=1.4;g.beginPath();g.moveTo(xx,y+10);g.lineTo(xx-2,y+15);g.stroke()}
  g.restore();
@@ -435,11 +443,65 @@ function drawFallbackPlayer(){
  }
  ctx.restore();
 }
-function draw(){
- drawBackground();drawGround();drawDecorations();
- platforms.forEach(drawPlatform);rings.forEach(drawRing);enemies.forEach(drawEnemy);drawPlayer();
- ctx.imageSmoothingEnabled=true;ctx.clearRect(0,0,W,H);ctx.drawImage(scene,0,0,W,H);drawHud();
+let lastRenderError="";
+function copyScene(){
+ ctx.imageSmoothingEnabled=true;
+ ctx.clearRect(0,0,W,H);
+ ctx.drawImage(scene,0,0,W,H);
 }
-function loop(now){const dt=Math.min((now-(lastTime||now))/1000,.032);lastTime=now;update(dt);draw();requestAnimationFrame(loop)}
+function draw(){
+ lastRenderError="";
+ const stages=[
+  ["FONDO",drawBackground],
+  ["SUELO",drawGround],
+  ["DECORACIÓN",drawDecorations],
+  ["PLATAFORMAS",()=>platforms.forEach(drawPlatform)],
+  ["ANILLOS",()=>rings.forEach(drawRing)],
+  ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
+  ["SONIC",drawPlayer]
+ ];
+ let copied=false;
+ for(const [name,render] of stages){
+  try{
+   render();
+   copyScene();
+   copied=true;
+  }catch(error){
+   lastRenderError=name+": "+String(error&&error.message||error);
+   console.error("[Blue Rush] Error al dibujar "+name,error);
+   // Keep the page visibly diagnosable instead of leaving only the CSS sky-blue canvas.
+   if(!copied){
+    try{
+     ctx.clearRect(0,0,W,H);
+     ctx.fillStyle="#73dfff";ctx.fillRect(0,0,W,H);
+     ctx.fillStyle="#14345a";ctx.font="bold 20px sans-serif";
+     ctx.fillText("Error al dibujar: "+name,24,38);
+     ctx.font="14px sans-serif";ctx.fillText(String(error&&error.message||error).slice(0,90),24,64);
+    }catch(_){}
+   }
+   // If an error left a canvas save/clip state unbalanced, reset the offscreen context.
+   try{
+    scene.width=W;scene.height=H;g.imageSmoothingEnabled=true;
+    drawBackground();copyScene();copied=true;
+   }catch(recoveryError){
+    console.error("[Blue Rush] No se pudo recuperar el canvas",recoveryError);
+   }
+  }
+ }
+ try{drawHud()}catch(error){
+  lastRenderError="HUD: "+String(error&&error.message||error);
+  console.error("[Blue Rush] Error al dibujar HUD",error);
+ }
+ if(lastRenderError&&status)status.textContent="ERROR GRÁFICO · "+lastRenderError.slice(0,64);
+}
+function loop(now){
+ const dt=Math.min((now-(lastTime||now))/1000,.032);lastTime=now;
+ try{update(dt)}catch(error){console.error("[Blue Rush] Error de actualización",error)}
+ try{draw()}catch(error){
+  console.error("[Blue Rush] Error fatal de renderizado",error);
+  if(status)status.textContent="ERROR DEL JUEGO · RECARGA LA PÁGINA";
+ }
+ requestAnimationFrame(loop);
+}
 resetPlayer();draw();requestAnimationFrame(loop);
 })();
