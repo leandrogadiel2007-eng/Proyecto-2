@@ -363,6 +363,11 @@ async function loadSonicCostumes(){
  console.info("Blue Rush: sprites reales de Sonic",{
   idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,jump:sonicAnimations.jump.length
  });
+ if(!running){
+  status.textContent=sonicAnimations.ready
+   ?"SPRITES REALES LISTOS · PULSA JUGAR"
+   :"NO SE CARGARON LOS SVG · RECARGA LA PÁGINA";
+ }
 }
 loadSonicCostumes();
 
