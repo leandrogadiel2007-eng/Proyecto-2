@@ -1,7 +1,8 @@
 (() => {
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
-const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status');
+const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
+let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=390,keys={left:false,right:false};
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
@@ -42,7 +43,7 @@ function buildLevel(){
  [840,1780,2630,3500,4630,5480,6620,7490,8610,9470,10570,11420].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
 }
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
-function startGame(){if(!running){running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
+function startGame(){if(!running){playerName=(playerNameInput.value||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
 function setKey(key,down){const k=key.toLowerCase();if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(down&&(key===' '||key==='ArrowUp'||k==='w'))jump();if(down&&key==='Enter'&&!running)startGame()}
@@ -541,7 +542,14 @@ function drawFallbackPlayer(){
  g.imageSmoothingEnabled=true;
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
-}function drawHud(){
+}function drawPlayerName(){
+ if(!running||!playerName||!player)return;
+ const x=(player.x-camera)+player.w/2;
+ const y=player.y-15;
+ ctx.save();ctx.font='900 15px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.lineJoin='round';
+ ctx.lineWidth=4;ctx.strokeStyle='#082b53';ctx.strokeText(playerName,x,y);ctx.fillStyle='#ffffff';ctx.fillText(playerName,x,y);ctx.restore();
+}
+function drawHud(){
  ctx.save();
  ctx.font="900 16px Arial, sans-serif";ctx.textBaseline="middle";ctx.lineJoin="round";
  const left=18,top=25;
@@ -583,7 +591,8 @@ function draw(){
   ["PLATAFORMAS",()=>platforms.forEach(drawPlatform)],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
-  ["SONIC",drawPlayer]
+  ["SONIC",drawPlayer],
+  ["NOMBRE",drawPlayerName]
  ];
  let copied=false;
  for(const [name,render] of stages){
