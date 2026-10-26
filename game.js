@@ -667,9 +667,11 @@ function drawDecorations(){
  for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
  for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
  bridgeSpecs.forEach(drawWoodBridge);
- for(let wx=17300;wx<21900;wx+=470)drawRuin(wx,Math.floor(wx/470)%3);
- for(let wx=22200;wx<26800;wx+=1320)drawPalm(wx,Math.floor(wx/1320)%3);
- for(let wx=27100;wx<32900;wx+=680){if(Math.floor(wx/680)%3!==1)drawPalm(wx,Math.floor(wx/680)%3);else drawRuin(wx,1)}
+ // No dibujar ruinas encima de la entrada de la gruta (x=21000–21800).
+ for(let wx=17300;wx<20500;wx+=470)drawRuin(wx,Math.floor(wx/470)%3);
+ for(let wx=22000;wx<26800;wx+=1320){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1320)%3);else drawRuin(wx,1)}
+ // En la gran cordillera dejamos libres las cimas; los detalles rocosos muestran las alturas.
+ for(let wx=27100;wx<32900;wx+=1050){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1050)%3);else drawRuin(wx,1)}
  for(let wx=33100;wx<35800;wx+=740)drawPalm(wx,Math.floor(wx/740)%3);
  for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
  springs.forEach(drawSpring);boosters.forEach(drawBooster);checkpoints.forEach(drawCheckpoint);drawFinish();
