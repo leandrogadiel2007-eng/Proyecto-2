@@ -229,6 +229,43 @@ function drawBackground(){
   g.fillRect(px,py,sz*2,4);g.fillRect(px+sz,py-4,sz,4);
   if(i%7===0){g.fillStyle="#f4d86a";g.fillRect(px+sz,py-7,3,3)}
  }
+ // Detalles extra para dar profundidad al paisaje: vetas de roca, vegetación y reflejos del mar.
+ // Líneas de roca en las montañas, siempre dentro de la zona del horizonte.
+ for(let i=0;i<16;i++){
+  const mx=((i*97-camera*.025)%(w+180)+(w+180))%(w+180)-70;
+  const my=267+(i*19%54),len=9+(i%5)*5;
+  g.fillStyle=i%2===0?"rgba(13,79,119,.62)":"rgba(116,205,190,.65)";
+  g.fillRect(mx,my,len,2);
+  g.fillRect(mx+4,my+4,Math.max(4,len-9),2);
+ }
+ // Palmeras lejanas en silueta para reforzar el ambiente tropical.
+ for(let i=0;i<9;i++){
+  const tx=((i*151-camera*.045)%(w+130)+(w+130))%(w+130)-45;
+  const ty=292+(i%3)*9,th=17+(i%4)*5;
+  g.fillStyle="#8b654c";
+  g.fillRect(tx,ty-th,3,th);
+  g.fillStyle="#176b43";
+  g.fillRect(tx-10,ty-th-3,10,3);g.fillRect(tx-8,ty-th-7,8,4);
+  g.fillRect(tx+2,ty-th-5,11,3);g.fillRect(tx+4,ty-th-9,9,4);
+  g.fillRect(tx-5,ty-th-12,7,4);g.fillRect(tx-2,ty-th-15,5,4);
+  g.fillStyle="#55c84c";
+  g.fillRect(tx-8,ty-th-6,7,2);g.fillRect(tx+5,ty-th-8,6,2);
+ }
+ // Destellos y pequeñas olas horizontales en varias profundidades del océano.
+ for(let i=0;i<76;i++){
+  const ox=((i*37-camera*(.09+(i%4)*.035))%(w+40)+(w+40))%(w+40)-20;
+  const oy=244+(i*23%83),ow=4+(i%6)*3;
+  g.fillStyle=i%5===0?"#c1f6ff":i%3===0?"#82e6fb":"rgba(8,102,190,.7)";
+  g.fillRect(ox,oy,ow,1+(i%3===0?1:0));
+  if(i%8===0){g.fillStyle="#e1fcff";g.fillRect(ox+2,oy-2,Math.max(3,ow*.45),1)}
+ }
+ // Motitas de luz y pequeñas aves en el cielo.
+ for(let i=0;i<13;i++){
+  const bx=((i*89-camera*.04)%(w+60)+(w+60))%(w+60)-25;
+  const by=35+(i*31%125);
+  g.fillStyle="#e9fbff";
+  g.fillRect(bx,by,4,2);g.fillRect(bx+4,by-2,4,2);g.fillRect(bx+8,by,4,2);
+ }
  // Colinas verdes cercanas con bordes escalonados.
  const hill=(base,amp,step,offset,color)=>{g.beginPath();g.moveTo(0,h);for(let x=-step;x<=w+step;x+=step){const wx=x+camera*offset;const y=Math.round((base+Math.sin(wx*.008)*amp+Math.sin(wx*.019+1.3)*amp*.24)/step)*step;g.lineTo(x,y)}g.lineTo(w,h);g.closePath();g.fillStyle=color;g.fill()};
  hill(304,17,8,.07,"#70d75d");
