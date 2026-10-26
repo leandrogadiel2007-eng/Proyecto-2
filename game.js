@@ -100,13 +100,20 @@ for(let x=47500,index=0;x<59600;x+=300,index++){
  parkourSpecs.push({x,y:Math.max(145,terrainHeight(x)-lift),w:132,parkour:true});
 }
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
-const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=21800,TUNNEL_EXIT_X=57000,TUNNEL_FLOOR=490;
+const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=22000,TUNNEL_EXIT_X=57000,TUNNEL_EXIT_MOUTH_START=55900,TUNNEL_RENDER_END=57400,TUNNEL_FLOOR=490;
+// El techo interior queda siempre debajo de la superficie. En las bocas se abre suavemente
+// por encima del terreno, sin saltos verticales que rompan la textura del suelo.
+function tunnelInteriorRoof(wx){return Math.max(terrainHeight(wx)+8,350)}
+function tunnelOpeningRoof(wx,start,end){
+ const t=Math.max(0,Math.min(1,(wx-start)/(end-start)));
+ const interior=tunnelInteriorRoof(wx);
+ const depth=Math.max(95,interior-(terrainHeight(wx)-62));
+ return interior-depth*Math.sin(Math.PI*t);
+}
 function tunnelCeiling(wx){
- // En la entrada y salida, el hueco corta completamente la superficie para mostrar la boca de la cueva.
- if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return terrainHeight(wx)-14;
- if(wx>=TUNNEL_EXIT_X-700&&wx<=TUNNEL_EXIT_X)return terrainHeight(wx)-14;
- // En el tramo interior queda una capa de roca por encima del pasadizo.
- return Math.max(terrainHeight(wx)+8,350);
+ if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return tunnelOpeningRoof(wx,TUNNEL_MOUTH_START,TUNNEL_MOUTH_END);
+ if(wx>=TUNNEL_EXIT_MOUTH_START&&wx<=TUNNEL_RENDER_END)return tunnelOpeningRoof(wx,TUNNEL_EXIT_MOUTH_START,TUNNEL_RENDER_END);
+ return tunnelInteriorRoof(wx);
 }
 const platforms=[];
 let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
@@ -139,7 +146,7 @@ function buildLevel(){
   rings.push({id:"upper-"+index,x:p.x+p.w/2,y:p.y-25,got:false});
  });
  for(let x=TUNNEL_MOUTH_END+450,index=0;x<TUNNEL_EXIT_X-350;x+=1900,index++){
-  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?78:60),got:false});
+  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?60:40),got:false});
  }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
  enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
@@ -505,7 +512,7 @@ function drawGround(){
 }
 function drawTunnel(){
  const w=scene.width,h=scene.height;
- const left=Math.max(0,TUNNEL_ROUTE_START-camera),right=Math.min(w,TUNNEL_EXIT_X-camera);
+ const left=Math.max(0,TUNNEL_ROUTE_START-camera),right=Math.min(w,TUNNEL_RENDER_END-camera);
  if(right<=left)return;
  g.save();
  g.beginPath();g.moveTo(left,tunnelCeiling(camera+left));
@@ -543,14 +550,17 @@ function drawTunnel(){
  if(entranceX>-240&&entranceX<w+240){
   const wx=TUNNEL_MOUTH_START+400,roof=tunnelCeiling(wx),base=TUNNEL_FLOOR;
   const left=TUNNEL_MOUTH_START-camera,right=TUNNEL_MOUTH_END-camera;
-  // Marco pétreo colocado en los extremos de la abertura, dejando libre el hueco para caer.
+  // Portal ancho con columnas de roca y arco brillante; el centro queda libre para entrar.
   g.save();
   for(const px of [left+8,right-22]){
-   g.fillStyle="#263c4e";g.fillRect(px,roof+3,18,base-roof-3);
-   g.fillStyle="#607889";g.fillRect(px+3,roof+8,6,Math.max(8,base-roof-16));
-   g.fillStyle="#a5d9e8";g.fillRect(px-3,roof+1,24,8);
+   g.fillStyle="#172635";g.fillRect(px,roof+3,18,base-roof-3);
+   g.fillStyle="#344b5c";g.fillRect(px+3,roof+8,6,Math.max(8,base-roof-16));
+   g.fillStyle="#8da9b8";g.fillRect(px-3,roof+1,24,8);
    g.fillStyle="#40586b";g.fillRect(px-6,roof+9,30,7);
+   g.fillStyle="#b7f3ff";g.fillRect(px+5,roof+11,3,Math.max(6,Math.min(24,base-roof-18)));
   }
+  g.strokeStyle="#12364b";g.lineWidth=10;g.beginPath();
+  g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
   g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
   g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
   g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
