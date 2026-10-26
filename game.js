@@ -84,7 +84,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,boost:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
 function startGame(){if(!running){if(levelCompleted){resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';}playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
@@ -95,17 +95,19 @@ startButton.addEventListener('click',startGame);resetButton.addEventListener('cl
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump')jump();else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c!=='jump')keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 function update(dt){
  if(!running)return;elapsed+=dt;
+ if(player.boost>0)player.boost=Math.max(0,player.boost-dt);
  const dir=Number(keys.right)-Number(keys.left);
  if(dir){
   if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
   else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
-  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
+  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge+(player.boost>0?160:0));
   player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
  }else{
   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.0008,dt);
   if(Math.abs(player.vx)<8)player.vx=0;
  }
- player.vx=Math.max(-player.speed,Math.min(player.speed,player.vx));
+ const speedLimit=player.speed+(player.boost>0?160:0);
+ player.vx=Math.max(-speedLimit,Math.min(speedLimit,player.vx));
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
@@ -129,7 +131,7 @@ function update(dt){
  // Aceleradores: impulsan hacia donde mira el jugador, una vez por contacto.
  for(const pad of boosters){
   const touching=player.onGround&&player.x+player.w>pad.x&&player.x<pad.x+pad.w;
-  if(touching&&!pad.active){const boostDir=player.facing||1;player.vx=boostDir*Math.max(650,Math.abs(player.vx));player.facing=boostDir;player.speedCharge=1;pad.active=true}
+  if(touching&&!pad.active){const boostDir=player.facing||1;player.boost=1.8;player.vx=boostDir*Math.max(650,Math.abs(player.vx));player.facing=boostDir;player.speedCharge=1;pad.active=true}
   else if(!touching)pad.active=false;
  }
  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
