@@ -203,7 +203,7 @@ function drawBackground(){
  };
  for(let i=0;i<6;i++){
   const mx=((i*247-camera*.025)%(w+260)+(w+260))%(w+260)-100;
-  mountain(mx,266,54+(i%3)*12,64+(i%2)*23);
+  mountain(mx,270,34+(i%3)*8,54+(i%2)*18);
  }
  // Las colinas verdes se dibujan como una masa continua hasta el horizonte;
  // así no quedan picos sueltos flotando sobre el mar.
