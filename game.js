@@ -203,16 +203,10 @@ function drawBackground(){
  };
  for(let i=0;i<6;i++){
   const mx=((i*247-camera*.025)%(w+260)+(w+260))%(w+260)-100;
-  mountain(mx,338,54+(i%3)*12,64+(i%2)*23);
+  mountain(mx,266,54+(i%3)*12,64+(i%2)*23);
  }
- // Montañas verdes intermedias, con base más baja para que se unan al paisaje.
- for(let i=0;i<8;i++){
-  const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
-  const mb=346+(i%3)*3,peak=30+(i%4)*7,mw=55+(i%3)*22;
-  g.fillStyle=i%2===0?"#238b50":"#176b43";
-  g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.lineTo(mx+mw*.92,360);g.lineTo(mx-mw*.92,360);g.closePath();g.fill();
-  g.fillStyle="#8de05b";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
- }
+ // Las colinas verdes se dibujan como una masa continua hasta el horizonte;
+ // así no quedan picos sueltos flotando sobre el mar.
  // Más nubes pequeñas en distintas distancias para que el cielo no se vea vacío.
  for(let i=0;i<24;i++){
   const cx=((i*61-camera*(.035+(i%3)*.012))%(w+80)+(w+80))%(w+80)-30;
@@ -277,14 +271,8 @@ function drawBackground(){
   g.fillStyle=["#a4ec62","#65d94b","#2eb84b","#d5f68c"][i%4];g.fillRect(x,y,sz*2,3);g.fillRect(x+sz,y-3,sz,3);
  }
 
- // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
- for(let i=0;i<8;i++){
-  const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
-  const mb=322+(i%3)*5,peak=28+(i%4)*8,mw=48+(i%3)*20;
-  g.fillStyle=i%2===0?"#238b50":"#176b43";
-  g.beginPath();g.moveTo(mx-mw,mb);g.lineTo(mx-mw*.42,mb-peak*.65);g.lineTo(mx-5,mb-peak);g.lineTo(mx+mw*.34,mb-peak*.56);g.lineTo(mx+mw,mb);g.closePath();g.fill();
-  g.fillStyle="#8de05b";g.fillRect(mx-6,mb-peak+9,10,4);g.fillRect(mx+8,mb-peak+20,7,3);
- }
+ // Se elimina la capa duplicada de montañas verdes aisladas; las colinas inferiores
+ // conectan el paisaje con el terreno y las islas permanecen visibles al fondo.
 
 }
 function traceTerrain(){
