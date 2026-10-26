@@ -138,3 +138,9 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
  .tip{font-size:13px;margin:15px 0 20px}
  footer{font-size:6px}
 }
+
+/* Campo de nombre en la pantalla inicial */
+.player-name-label{color:#c5ff7c;font:8px/1.8 'Press Start 2P',monospace;letter-spacing:1px;margin:0 0 7px}
+.player-name-input{width:min(290px,90%);box-sizing:border-box;border:2px solid #8bdff5;border-radius:12px;background:#f4fcff;color:#082b53;padding:12px 15px;margin:0 0 17px;text-align:center;font:700 16px 'Space Grotesk',sans-serif;outline:none;box-shadow:0 4px 0 #064477}
+.player-name-input:focus{border-color:#ffe979;box-shadow:0 0 0 3px #ffe97944,0 4px 0 #064477}
+@media(max-width:700px){.player-name-label{font-size:6px}.player-name-input{font-size:14px;padding:10px 12px;margin-bottom:13px}}
