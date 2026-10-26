@@ -6,62 +6,65 @@ let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=390,keys={left:false,right:false};
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
-const worldWidth=12000;
-const terrainSections=[];
-// Nivel completamente recto: la superficie siempre está a la misma altura.
-function terrainHeight(x){return 390;}
+// Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
+const worldWidth=36000;
+const terrainSections=[
+ [0,390],[700,390],[1250,365],[1750,338],[2200,350],[2700,395],
+ [3150,414],[3650,390],[4150,355],[4650,330],[5150,348],[5650,390],
+ [6100,405],[6600,372],[7100,340],[7600,350],[8100,405],[8600,418],
+ [9100,386],[9600,350],[10100,332],[10600,360],[11100,400],[11600,410],
+ [12100,375],[12600,342],[13100,355],[13600,405],[14100,418],[14600,385],
+ [15100,350],[15600,334],[16100,360],[16600,400],[17100,412],[17600,378],
+ [18100,344],[18600,352],[19100,402],[19600,420],[20100,390],[20600,355],
+ [21100,330],[21600,348],[22100,397],[22600,412],[23100,380],[23600,345],
+ [24100,338],[24600,365],[25100,405],[25600,418],[26100,384],[26600,350],
+ [27100,332],[27600,355],[28100,400],[28600,415],[29100,382],[29600,348],
+ [30100,336],[30600,362],[31100,405],[31600,420],[32100,388],[32600,350],
+ [33100,334],[33600,358],[34100,400],[34600,412],[35100,380],[35600,370],[36000,390]
+];
+// Interpolación suave entre puntos: crea colinas y bajadas sin escalones bruscos.
+function terrainHeight(x){
+ x=Math.max(0,Math.min(worldWidth,x));
+ let i=0;while(i<terrainSections.length-2&&terrainSections[i+1][0]<x)i++;
+ const [x0,y0]=terrainSections[i],[x1,y1]=terrainSections[i+1];
+ const t=(x-x0)/(x1-x0),smooth=t*t*(3-2*t);
+ return y0+(y1-y0)*smooth;
+}
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
 // Piezas colocadas a mano: cada sección tiene una función en el recorrido.
 // Diseño original inspirado en los recorridos clásicos de plataformas 2D:
  // ruta principal, plataformas elevadas y desvíos con recompensas.
-const platformSpecs=[
- {x:430,y:292,w:118},{x:610,y:248,w:104},{x:790,y:282,w:126},
- {x:1180,y:274,w:112},{x:1370,y:230,w:112},{x:1570,y:270,w:128},
- {x:2020,y:286,w:112},{x:2200,y:244,w:120},{x:2400,y:276,w:120},
- {x:2840,y:266,w:118},{x:3030,y:224,w:112},{x:3230,y:268,w:128},
- {x:3680,y:286,w:120},{x:3880,y:246,w:112},{x:4080,y:278,w:130},
- {x:4520,y:270,w:118},{x:4720,y:226,w:112},{x:4920,y:270,w:130},
- {x:5360,y:286,w:112},{x:5550,y:242,w:120},{x:5760,y:274,w:126},
- {x:6200,y:270,w:120},{x:6400,y:224,w:112},{x:6600,y:266,w:130},
- {x:7040,y:286,w:120},{x:7240,y:244,w:112},{x:7440,y:276,w:130},
- {x:7880,y:270,w:120},{x:8080,y:226,w:112},{x:8280,y:268,w:130},
- {x:8720,y:286,w:120},{x:8920,y:244,w:112},{x:9120,y:276,w:130},
- {x:9560,y:270,w:120},{x:9760,y:226,w:112},{x:9960,y:268,w:130},
- {x:10400,y:286,w:120},{x:10600,y:242,w:112},{x:10800,y:274,w:130},
- {x:11240,y:270,w:120},{x:11440,y:226,w:112}
-];
+const platformSpecs=[];
+for(let x=520,n=0;x<worldWidth-500;x+=680,n++){
+ const base=terrainHeight(x);
+ const variant=n%4;
+ if(variant===0)platformSpecs.push({x,y:Math.max(220,base-92),w:116});
+ else if(variant===1)platformSpecs.push({x,y:Math.max(210,base-138),w:104});
+ else if(variant===2)platformSpecs.push({x,y:Math.max(230,base-105),w:126});
+ // Cada cuarto tramo queda libre para que el jugador pueda aprovechar la colina y correr.
+}
 const platforms=[];
 let rings=[],enemies=[],collected=new Set();
 function buildLevel(){
  rings=[];collected=new Set();
  platforms.length=0;
  platformSpecs.forEach(p=>platforms.push({...p,h:34}));
- // Anillos en grupos con intención: líneas bajas, saltos y recompensas elevadas.
- const ringGroups=[
-  [155,7,'low'],[410,5,'arc'],[690,6,'high'],[970,6,'low'],
-  [1260,7,'arc'],[1570,6,'high'],[1840,7,'low'],[2110,6,'arc'],
-  [2420,7,'high'],[2700,6,'low'],[2980,7,'arc'],[3290,6,'high'],
-  [3570,7,'low'],[3850,6,'arc'],[4160,7,'high'],[4440,6,'low'],
-  [4720,7,'arc'],[5030,6,'high'],[5310,7,'low'],[5590,6,'arc'],
-  [5900,7,'high'],[6180,6,'low'],[6460,7,'arc'],[6770,6,'high'],
-  [7050,7,'low'],[7330,6,'arc'],[7640,7,'high'],[7920,6,'low'],
-  [8200,7,'arc'],[8510,6,'high'],[8790,7,'low'],[9070,6,'arc'],
-  [9380,7,'high'],[9660,6,'low'],[9940,7,'arc'],[10250,6,'high'],
-  [10530,7,'low'],[10810,6,'arc'],[11120,7,'high'],[11400,6,'low']
- ];
- ringGroups.forEach(([x,count,type],row)=>{
+ // Grupos de anillos alternan entre senderos bajos, arcos y recompensas elevadas.
+ let row=0;
+ for(let x=150;x<worldWidth-180;x+=270,row++){
+  const type=['low','arc','high','low','arc'][row%5];
+  const count=5+(row%3);
   for(let i=0;i<count;i++){
-   const rx=x+i*27;
-   const base=terrainHeight(rx);
-   let y=base-(type==='high'?112:type==='arc'?66+Math.sin(i/(count-1)*Math.PI)*48:43);
-   // Evita que los anillos de las rutas altas queden dentro del suelo.
-   y=Math.min(y,base-38);
-   rings.push({id:row+'-'+i,x:rx,y,got:false});
+   const rx=x+i*27,base=terrainHeight(rx);
+   const y=base-(type==='high'?112:type==='arc'?58+Math.sin(i/(count-1)*Math.PI)*48:43);
+   rings.push({id:row+'-'+i,x:rx,y:Math.min(y,base-38),got:false});
   }
- });
+ }
  enemies=[];
- // Enemigos espaciados, no puestos en cada salto ni junto a cada plataforma.
- [850,1740,2640,3510,4590,5480,6560,7460,8580,9460,10540,11480].forEach(x=>enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x}));
+ for(let x=850,n=0;x<worldWidth-400;x+=920,n++){
+  // Deja tramos de aceleración entre enemigos y sitúa cada uno sobre la pendiente.
+  enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x});
+ }
 }
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
 function startGame(){if(!running){playerName=(playerNameInput.value||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
