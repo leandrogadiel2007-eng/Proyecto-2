@@ -9,20 +9,19 @@ const greenIsland=new Image();greenIsland.src='./assets/green-island/free_editio
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
 const worldWidth=36000;
 const terrainSections=[
- [0,390],[700,390],[1250,365],[1750,338],[2200,350],[2700,395],
- [3150,414],[3650,390],[4150,355],[4650,330],[5150,348],[5650,390],
- [6100,405],[6600,372],[7100,340],[7600,350],[8100,405],[8600,418],
- [9100,386],[9600,350],[10100,332],[10600,360],[11100,400],[11600,410],
- [12100,375],[12600,342],[13100,355],[13600,405],[14100,418],[14600,385],
- [15100,350],[15600,334],[16100,360],[16600,400],[17100,412],[17600,378],
- [18100,344],[18600,352],[19100,402],[19600,420],[20100,390],[20600,355],
- [21100,330],[21600,348],[22100,397],[22600,412],[23100,380],[23600,345],
- [24100,338],[24600,365],[25100,405],[25600,418],[26100,384],[26600,350],
- [27100,332],[27600,355],[28100,400],[28600,415],[29100,382],[29600,348],
- [30100,336],[30600,362],[31100,405],[31600,420],[32100,388],[32600,350],
- [33100,334],[33600,358],[34100,400],[34600,412],[35100,380],[35600,370],[36000,390]
+ [0,390],[350,390],[700,382],[1050,360],[1400,337],[1750,346],[2100,378],[2450,405],[2800,412],[3150,390],
+ [3500,360],[3850,326],[4200,318],[4550,344],[4900,382],[5250,421],[5600,428],[5950,394],[6300,358],[6650,340],
+ [7000,354],[7350,388],[7700,412],[8050,402],[8400,365],[8750,332],[9100,326],[9450,350],[9800,397],[10150,418],
+ [10500,390],[10850,350],[11200,328],[11550,342],[11900,378],[12250,402],[12600,410],[12950,400],[13300,382],[13650,356],
+ [14000,342],[14350,362],[14700,398],[15050,424],[15400,418],[15750,386],[16100,350],[16450,330],[16800,340],[17150,374],
+ [17500,407],[17850,414],[18200,387],[18550,350],[18900,326],[19250,342],[19600,385],[19950,421],[20300,429],[20650,398],
+ [21000,358],[21350,326],[21700,320],[22050,350],[22400,392],[22750,414],[23100,402],[23450,372],[23800,342],[24150,330],
+ [24500,354],[24850,392],[25200,424],[25550,428],[25900,394],[26250,356],[26600,329],[26950,340],[27300,378],[27650,414],
+ [28000,420],[28350,386],[28700,348],[29050,326],[29400,338],[29750,378],[30100,418],[30450,421],[30800,388],[31150,350],
+ [31500,326],[31850,334],[32200,368],[32550,405],[32900,413],[33250,382],[33600,344],[33950,330],[34300,350],[34650,390],
+ [35000,414],[35350,396],[35700,370],[36000,390]
 ];
-// Interpolación suave entre puntos: crea colinas y bajadas sin escalones bruscos.
+// Interpolación suave entre puntos: crea colinas y bajadas sin escalones bruscos.// Interpolación suave entre puntos: crea colinas y bajadas sin escalones bruscos.
 function terrainHeight(x){
  x=Math.max(0,Math.min(worldWidth,x));
  let i=0;while(i<terrainSections.length-2&&terrainSections[i+1][0]<x)i++;
@@ -30,44 +29,63 @@ function terrainHeight(x){
  const t=(x-x0)/(x1-x0),smooth=t*t*(3-2*t);
  return y0+(y1-y0)*smooth;
 }
+const levelSections=[
+ {start:0,end:3000,name:"COSTA VERDE",kind:"coast"},
+ {start:3000,end:7000,name:"COLINAS DE LA ISLA",kind:"hills"},
+ {start:7000,end:12000,name:"SENDEROS SECRETOS",kind:"routes"},
+ {start:12000,end:17000,name:"PUENTES DE LA LAGUNA",kind:"lagoon"},
+ {start:17000,end:22000,name:"RUINAS DE LA ISLA",kind:"ruins"},
+ {start:22000,end:27000,name:"BAJADA DEL VIENTO",kind:"wind"},
+ {start:27000,end:33000,name:"CAMINO DEL GUARDIÁN",kind:"guardian"},
+ {start:33000,end:36000,name:"RECTA FINAL",kind:"finish"}
+];
+function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<section.end)||levelSections[levelSections.length-1]}
+
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
-// Piezas colocadas a mano: cada sección tiene una función en el recorrido.
-// Diseño original inspirado en los recorridos clásicos de plataformas 2D:
- // ruta principal, plataformas elevadas y desvíos con recompensas.
-const platformSpecs=[];
-for(let x=520,n=0;x<worldWidth-500;x+=680,n++){
- const base=terrainHeight(x);
- const variant=n%4;
- if(variant===0)platformSpecs.push({x,y:Math.max(220,base-92),w:116});
- else if(variant===1)platformSpecs.push({x,y:Math.max(210,base-138),w:104});
- else if(variant===2)platformSpecs.push({x,y:Math.max(230,base-105),w:126});
- // Cada cuarto tramo queda libre para que el jugador pueda aprovechar la colina y correr.
-}
+// Plataformas en alturas alcanzables: forman caminos opcionales sobre el recorrido.
+const platformSpecs=[
+ [560,88,124],[1120,105,112],[1760,86,138],[2480,98,116],
+ [3380,96,130],[4050,114,118],[4740,92,150],[5480,104,124],[6250,88,138],
+ [7120,102,120],[7820,91,138],[8520,116,124],[9270,88,142],[10000,104,126],
+ [10900,90,132],[11650,112,142],[12480,86,126],[13450,100,146],[14380,92,132],[15300,112,138],[16250,88,126],
+ [17180,100,142],[18050,116,126],[18950,86,148],[19800,104,126],[20750,90,140],
+ [21600,112,132],[22500,88,126],[23400,105,148],[24350,91,126],[25200,112,142],[26100,86,132],
+ [27000,98,142],[27950,112,124],[28900,88,148],[29800,104,130],[30700,91,142],[31600,110,128],
+ [32500,90,142],[33400,104,126],[34300,92,148],[35200,86,126]
+].map(([x,clearance,w])=>({x,y:Math.max(190,terrainHeight(x)-clearance),w}));
+const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
 const platforms=[];
-let rings=[],enemies=[],collected=new Set();
+let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
+let checkpointX=90,levelCompleted=false;
 function buildLevel(){
- rings=[];collected=new Set();
- platforms.length=0;
+ rings=[];collected=new Set();platforms.length=0;
  platformSpecs.forEach(p=>platforms.push({...p,h:34}));
- // Grupos de anillos alternan entre senderos bajos, arcos y recompensas elevadas.
- let row=0;
- for(let x=150;x<worldWidth-180;x+=270,row++){
-  const type=['low','arc','high','low','arc'][row%5];
-  const count=5+(row%3);
+ // Las rutas de anillos cambian entre líneas fáciles, arcos de salto y premios elevados.
+ let group=0;
+ for(let x=155;x<worldWidth-220;x+=320,group++){
+  const zone=sectionAt(x),pattern=(group+(Math.floor(x/5000)*2))%5,count=5+(group%3);
   for(let i=0;i<count;i++){
-   const rx=x+i*27,base=terrainHeight(rx);
-   const y=base-(type==='high'?112:type==='arc'?58+Math.sin(i/(count-1)*Math.PI)*48:43);
-   rings.push({id:row+'-'+i,x:rx,y:Math.min(y,base-38),got:false});
+   const rx=x+i*29,base=terrainHeight(rx);
+   let offset;
+   if(pattern===0)offset=42;
+   else if(pattern===1)offset=54+Math.sin(i/(count-1)*Math.PI)*56;
+   else if(pattern===2)offset=zone.kind==="ruins"?126:104;
+   else if(pattern===3)offset=48+Math.sin(i/(count-1)*Math.PI)*34;
+   else offset=zone.kind==="finish"?76:40;
+   rings.push({id:group+"-"+i,x:rx,y:Math.max(120,base-offset),got:false});
   }
  }
- enemies=[];
- for(let x=850,n=0;x<worldWidth-400;x+=920,n++){
-  // Deja tramos de aceleración entre enemigos y sitúa cada uno sobre la pendiente.
-  enemies.push({x,y:terrainHeight(x)-28,alive:true,base:x});
- }
+ // Las plataformas elevadas tienen su propia recompensa.
+ platformSpecs.forEach((p,index)=>{for(let i=0;i<4;i++)rings.push({id:"upper-"+index+"-"+i,x:p.x+19+i*27,y:p.y-24-(i===1||i===2?17:0),got:false})});
+ const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600];
+ enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
+ springs=[2250,5850,9250,11620,14820,18720,21680,24900,28600,31950,34080].map((x,index)=>({x,y:terrainHeight(x),w:34,h:20,used:false,index}));
+ boosters=[3350,6900,10350,13200,16850,20250,23500,26600,30200,32500,35000].map((x,index)=>({x,y:terrainHeight(x),w:76,h:12,active:false,index}));
+ checkpoints=[9000,18000,27000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;buildLevel()}
-function startGame(){if(!running){playerName=(playerNameInput.value||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE Y RECOGE ANILLOS!';lastTime=performance.now()}}
+
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
+function startGame(){if(!running){if(levelCompleted){resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';}playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
 function setKey(key,down){const k=key.toLowerCase();if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(down&&(key===' '||key==='ArrowUp'||k==='w'))jump();if(down&&key==='Enter'&&!running)startGame()}
@@ -79,43 +97,72 @@ function update(dt){
  if(!running)return;elapsed+=dt;
  const dir=Number(keys.right)-Number(keys.left);
  if(dir){
-  if(player.vx!==0&&Math.sign(player.vx)!==dir){
-   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
-  }else{
-   player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
-  }
-  player.facing=dir;
-  const targetSpeed=dir*(145+415*player.speedCharge);
+  if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
+  else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
+  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
   player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
  }else{
-  // Al soltar el movimiento, se pierde la inercia y también la carga de velocidad.
-  player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
-  player.vx*=Math.pow(0.0008,dt);
+  player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.0008,dt);
   if(Math.abs(player.vx)<8)player.vx=0;
  }
  player.vx=Math.max(-player.speed,Math.min(player.speed,player.vx));
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
-  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
- const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround;const descending=player.vy>=0;if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(12,Math.abs(player.vx)*dt*.65)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}else if(player.onGround&&Math.abs(groundNow-groundPrev)<Math.max(18,Math.abs(player.vx)*dt+8)){player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
- for(const p of platforms){const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;if(player.vy>=0&&overlap&&oldBottom<=p.y&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}}
- // La fase continua acompaña la aceleración y evita saltos de fotograma.
- const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){
-  player.fallPhase=0;
-  if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25);
- }else if(player.spin){
-  player.spinPhase+=dt*(0.8+speedRatio*1.7);
- }else{
-  player.fallPhase+=dt*(0.9+speedRatio*1.1);
+ if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
+ const groundNow=terrainHeight(player.x+player.w/2),groundPrev=oldGround,descending=player.vy>=0;
+ if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(18,Math.abs(player.vx)*dt*.8)){
+  player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
  }
+ for(const p of platforms){
+  const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;
+  if(player.vy>=0&&overlap&&oldBottom<=p.y+8&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
+ }
+ // Saltos elásticos en resortes.
+ for(const spring of springs){
+  const touching=player.x+player.w>spring.x-4&&player.x<spring.x+spring.w+4;
+  if(touching&&player.onGround){
+   player.y=terrainHeight(player.x+player.w/2)-player.h-2;player.vy=-820;player.onGround=false;player.spin=1;player.spinAngle=0;player.spinPhase=0;
+   player.speedCharge=Math.min(1,player.speedCharge+.22);if(!spring.used){score+=50;spring.used=true}break;
+  }
+ }
+ // Aceleradores: impulsan hacia donde mira el jugador, una vez por contacto.
+ for(const pad of boosters){
+  const touching=player.onGround&&player.x+player.w>pad.x&&player.x<pad.x+pad.w;
+  if(touching&&!pad.active){const boostDir=player.facing||1;player.vx=boostDir*Math.max(650,Math.abs(player.vx));player.facing=boostDir;player.speedCharge=1;pad.active=true}
+  else if(!touching)pad.active=false;
+ }
+ for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
+ const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
+ if(player.onGround){player.fallPhase=0;if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
+ else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
+ else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
- enemies.forEach(e=>{if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;if(hit){if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}else if(player.invincible<=0){if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()} }player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180}}});
- if(player.y>H+100){player.x=Math.max(30,player.x-100);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');resetPlayer()}}
+ enemies.forEach(e=>{
+  if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;
+  const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;
+  if(hit){
+   if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}
+   else if(player.invincible<=0){
+    if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}
+    else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()}}
+    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180;
+   }
+  }
+ });
+ if(player.y>H+100){
+  player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
+  if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
+ }
+ if(player.x>=worldWidth-player.w-90&&!levelCompleted){
+  running=false;levelCompleted=true;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Nivel completado!';
+  startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
+  startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
+ }
  camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.34));
- status.textContent='ANILLOS '+rings.filter(r=>r.got).length+' · PUNTOS '+score+' · VIDAS '+lives;
+ const zone=sectionAt(player.x);
+ status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -417,8 +464,60 @@ function drawPalm(wx,variant=0){
  g.fillStyle="#c4873e";g.fillRect(x-7,crownY+29,2,4);g.fillRect(x+2,crownY+31,2,4);
  g.restore();
 }
+function drawWoodBridge(bridge){
+ const x=bridge.x-camera,w=bridge.w;if(x>scene.width+20||x+w< -20)return;
+ const base=terrainHeight(bridge.x+w/2),top=base-6;
+ g.save();g.fillStyle="#6f4029";g.fillRect(x,top+7,w,9);
+ for(let i=0;i<w;i+=24){g.fillStyle=i%48===0?"#bd8246":"#d49a55";g.fillRect(x+i,top,21,10);g.fillStyle="#70462d";g.fillRect(x+i,top+8,21,3);g.fillStyle="#ffe0a0";g.fillRect(x+i+2,top+1,14,2)}
+ g.fillStyle="#80502d";g.fillRect(x,top-4,w,4);
+ for(let i=0;i<=w;i+=52){g.fillStyle="#7f4b2e";g.fillRect(x+i,top-12,5,12);g.fillStyle="#e4bd7a";g.fillRect(x+i+1,top-11,2,7)}
+ g.restore();
+}
+function drawRuin(wx,variant=0){
+ const x=wx-camera;if(x< -100||x>scene.width+100)return;
+ const base=terrainHeight(wx),height=variant%3===0?76:variant%3===1?58:92;
+ g.save();g.fillStyle="rgba(24,49,42,.25)";g.fillRect(x-18,base-5,42,6);
+ g.fillStyle="#8a6750";g.fillRect(x-15,base-height,30,height);g.fillStyle="#b58c63";g.fillRect(x-10,base-height+4,9,height-8);
+ g.fillStyle="#684e45";g.fillRect(x+5,base-height+8,6,height-12);g.fillStyle="#d6b17b";g.fillRect(x-22,base-height-7,44,10);
+ g.fillStyle="#73523f";g.fillRect(x-22,base-height-2,44,5);
+ for(let y=base-height+20;y<base-12;y+=20){g.fillStyle="#694d40";g.fillRect(x-14,y,28,3);g.fillStyle="#d0a879";g.fillRect(x-11,y+4,7,2)}
+ g.fillStyle="#297e45";g.fillRect(x-14,base-height-10,12,3);g.fillRect(x+5,base-height-13,13,4);g.restore();
+}
+function drawSpring(spring){
+ const x=spring.x-camera,y=terrainHeight(spring.x);if(x< -50||x>scene.width+50)return;
+ g.save();g.fillStyle="rgba(10,52,44,.28)";g.beginPath();g.ellipse(x+spring.w/2,y+2,24,6,0,0,Math.PI*2);g.fill();
+ g.fillStyle="#b41f33";g.fillRect(x,y-20,spring.w,18);g.fillStyle="#f34b45";g.fillRect(x+3,y-18,spring.w-6,12);
+ g.fillStyle="#ffe45c";g.fillRect(x-3,y-23,spring.w+6,6);g.fillStyle="#fff6b4";g.fillRect(x+2,y-22,8,2);
+ g.fillStyle="#6c2737";g.fillRect(x+4,y-7,spring.w-8,3);g.restore();
+}
+function drawBooster(pad){
+ const x=pad.x-camera,y=terrainHeight(pad.x);if(x>scene.width+90||x+pad.w< -90)return;
+ g.save();g.fillStyle="rgba(8,58,58,.2)";g.fillRect(x,y-2,pad.w,7);g.fillStyle="#075b84";g.fillRect(x,y-10,pad.w,10);
+ g.fillStyle=pad.active?"#8bd7e7":"#26c9ef";g.fillRect(x+3,y-9,pad.w-6,5);
+ for(let i=0;i<3;i++){const ax=x+12+i*22;g.fillStyle="#fff";g.beginPath();g.moveTo(ax,y-8);g.lineTo(ax+11,y-6);g.lineTo(ax,y-3);g.closePath();g.fill()}
+ g.restore();
+}
+function drawCheckpoint(cp){
+ const x=cp.x-camera,base=terrainHeight(cp.x);if(x< -40||x>scene.width+40)return;
+ g.save();g.fillStyle="#6b4a32";g.fillRect(x,base-57,5,57);
+ g.fillStyle=cp.active?"#ffe45c":"#b9eaff";g.beginPath();g.moveTo(x+5,base-56);g.lineTo(x+35,base-46);g.lineTo(x+5,base-35);g.closePath();g.fill();
+ g.fillStyle=cp.active?"#ff9b26":"#1d7bca";g.fillRect(x+8,base-48,8,5);g.restore();
+}
+function drawFinish(){
+ const wx=worldWidth-145,x=wx-camera,base=terrainHeight(wx);if(x< -90||x>scene.width+90)return;
+ g.save();g.fillStyle="#74442d";g.fillRect(x,base-104,7,104);g.fillStyle="#fff";g.fillRect(x+7,base-102,50,30);
+ for(let row=0;row<3;row++)for(let col=0;col<5;col++){g.fillStyle=(row+col)%2===0?"#fff":"#18324d";g.fillRect(x+7+col*10,base-102+row*10,10,10)}
+ g.fillStyle="#ffe45c";g.fillRect(x-6,base-109,19,7);g.fillStyle="#47c85b";g.fillRect(x-12,base-4,30,4);g.restore();
+}
 function drawDecorations(){
- for(let i=0;i<12;i++)drawPalm(260+i*990,i);
+ for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
+ for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
+ bridgeSpecs.forEach(drawWoodBridge);
+ for(let wx=17300;wx<21900;wx+=470)drawRuin(wx,Math.floor(wx/470)%3);
+ for(let wx=22200;wx<26800;wx+=1320)drawPalm(wx,Math.floor(wx/1320)%3);
+ for(let wx=27100;wx<32900;wx+=680){if(Math.floor(wx/680)%3!==1)drawPalm(wx,Math.floor(wx/680)%3);else drawRuin(wx,1)}
+ for(let wx=33100;wx<35800;wx+=740)drawPalm(wx,Math.floor(wx/740)%3);
+ springs.forEach(drawSpring);boosters.forEach(drawBooster);checkpoints.forEach(drawCheckpoint);drawFinish();
 }
 function drawPlatform(p){
  const x=p.x-camera,y=p.y,w=p.w,h=34;
