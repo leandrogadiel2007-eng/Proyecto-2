@@ -201,10 +201,10 @@ function drawBackground(){
   g.fillStyle="#4ca8c5";g.beginPath();g.moveTo(x-wide*.28,base-peak*.72);g.lineTo(x,base-peak);g.lineTo(x+wide*.22,base-peak*.62);g.lineTo(x+wide*.08,base-peak*.66);g.lineTo(x,base-peak*.79);g.lineTo(x-wide*.12,base-peak*.56);g.closePath();g.fill();
   g.fillStyle="#d5f5f3";g.fillRect(x-4,base-peak+10,8,4);g.fillRect(x+10,base-peak+20,6,3);
  };
- for(let i=0;i<10;i++){
-  const mx=((i*173-camera*.025)%(w+220)+(w+220))%(w+220)-80;
-  const peak=30+(i%4)*7;
-  const wide=48+(i%3)*15;
+ for(let i=0;i<14;i++){
+  const mx=((i*127-camera*.025)%(w+180)+(w+180))%(w+180)-65;
+  const peak=27+(i%5)*6;
+  const wide=42+(i%3)*14;
   mountain(mx,270,peak,wide);
  }
  // Las colinas verdes se dibujan como una masa continua hasta el horizonte;
