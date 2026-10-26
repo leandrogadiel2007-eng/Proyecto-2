@@ -177,7 +177,7 @@ function drawBackground(){
   if(i%4===0){g.fillStyle="#a2e8fa";g.fillRect(x+4,y-3,ww*.55,2)}
  }
  // Islas escalonadas: roca cálida, vegetación exuberante y cascadas.
- const island=(cx,base,scale)=>{
+ function island(cx,base,scale){
   const pts=[[-100,0],[-76,-18],[-58,-34],[-43,-31],[-27,-57],[-9,-70],[5,-47],[22,-54],[42,-29],[63,-22],[85,0]];
   g.save();g.translate(cx,base);g.scale(scale,scale);
   g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.lineTo(100,35);g.lineTo(-105,35);g.closePath();g.fillStyle="#b66b54";g.fill();
@@ -194,7 +194,7 @@ function drawBackground(){
   // Arbustos y árboles en píxeles.
   for(let i=0;i<7;i++){const tx=-72+i*22,ty=-8-(i%3)*10;g.fillStyle="#075c3a";g.fillRect(tx,ty-8,8,11);g.fillStyle="#24a94a";g.fillRect(tx-4,ty-11,11,7);g.fillStyle="#70d94e";g.fillRect(tx-1,ty-13,5,3)}
   g.restore();
- };
+ }
  // Más capas de montañas, siluetas de palmeras lejanas y detalles en bloques.
  for(let i=0;i<8;i++){
   const mx=((i*191-camera*.018)%(w+240)+(w+240))%(w+240)-90;
