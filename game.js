@@ -52,7 +52,10 @@ const platformSpecs=[
  [21600,112,132],[21900,96,126],[22500,88,126],[22950,100,132],[23400,105,148],[23850,92,126],[24350,91,126],[24780,108,134],[25200,112,142],[25680,100,128],[26100,86,132],[26500,96,130],
  [27000,98,142],[27500,104,124],[27950,112,124],[28400,94,136],[28900,88,148],[29350,100,126],[29800,104,130],[30250,96,132],[30700,91,142],[31150,105,126],[31600,110,128],[32050,96,134],
  [32500,90,142],[32800,96,126],[33400,104,126],[33850,96,140],[34300,92,148],[34750,98,126],[35200,86,126],[35600,90,130]
-].map(([x,clearance,w])=>({x,y:Math.max(190,terrainHeight(x)-clearance),w}));
+].map(([x,clearance,w])=>({
+ // Elevar la ruta sin superar una diferencia de altura excesiva para el salto normal.
+ x,y:Math.max(175,terrainHeight(x)-Math.min(clearance+20,126)),w
+}));
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
 const platforms=[];
 let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
