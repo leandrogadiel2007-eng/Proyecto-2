@@ -309,59 +309,74 @@ function traceTerrain(){
  for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
 }
 function drawGround(){
- const w=scene.width,h=scene.height,top=terrainHeight(camera);
+ const w=scene.width,h=scene.height,tile=32;
  g.save();
- // Suelo inspirado en los juegos clásicos de plataformas: cuadrados grandes alternados,
- // en tonos naranja y café, con bordes de luz/sombra para dar profundidad.
- g.beginPath();g.moveTo(0,h);g.lineTo(0,top);for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));g.lineTo(w,h);g.closePath();g.clip();
- const tile=32;
- const offsetX=-((camera%tile)+tile)%tile;
- const offsetY=top;
- for(let row=0,y=offsetY;y<h;y+=tile,row++){
-  const shift=row%2===0?0:tile/2;
+ // Recorta el suelo siguiendo exactamente la curva del terreno.
+ g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
+ for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
+ g.lineTo(w,h);g.closePath();g.clip();
+
+ // La cuadrícula queda anclada al mundo, no a la altura del terreno ni a la pantalla.
+ // Así los bloques conservan su tamaño y alineación al subir y bajar las colinas.
+ const offsetX=-(((camera%tile)+tile)%tile);
+ let minTop=Infinity;
+ for(let x=0;x<=w;x+=16)minTop=Math.min(minTop,terrainHeight(camera+x));
+ const startY=Math.floor(minTop/tile)*tile;
+ for(let y=startY;y<h;y+=tile){
+  const row=Math.floor(y/tile);
+  const shift=(row%2===0)?0:tile/2;
   for(let x=offsetX-tile;x<w+tile;x+=tile){
    const xx=x+shift;
    const col=Math.floor((xx+camera)/tile);
-   const dark=(col+row)%2===0;
-   const base=dark?"#9b4b2d":"#c8753e";
-   g.fillStyle=base;g.fillRect(xx,y,tile,tile);
-   // Luz arriba/izquierda y sombra abajo/derecha: efecto de relieve pixelado.
+   const dark=((col+row)%2===0);
+   g.fillStyle=dark?"#9b4b2d":"#c8753e";
+   g.fillRect(xx,y,tile,tile);
    g.fillStyle=dark?"#b45d35":"#e18b4b";
    g.fillRect(xx,y,tile,3);g.fillRect(xx,y,3,tile);
    g.fillStyle=dark?"#713b2a":"#a75832";
    g.fillRect(xx,y+tile-3,tile,3);g.fillRect(xx+tile-3,y,3,tile);
-   // Algunas marcas de roca, variadas y discretas dentro de cada cuadrado.
-   if((Math.abs(col*7+row*11)%4)===0){
-    g.fillStyle="rgba(245,169,95,.34)";g.fillRect(xx+7,y+9,8,2);g.fillRect(xx+10,y+11,5,2);
-   }else if((Math.abs(col*5-row*3)%5)===0){
-    g.fillStyle="rgba(72,35,27,.22)";g.fillRect(xx+8,y+18,11,2);g.fillRect(xx+17,y+20,5,2);
+   if(Math.abs(col*7+row*11)%4===0){
+    g.fillStyle="rgba(245,169,95,.34)";
+    g.fillRect(xx+7,y+9,8,2);g.fillRect(xx+10,y+11,5,2);
+   }else if(Math.abs(col*5-row*3)%5===0){
+    g.fillStyle="rgba(72,35,27,.22)";
+    g.fillRect(xx+8,y+18,11,2);g.fillRect(xx+17,y+20,5,2);
    }
   }
  }
- // Textura de roca suave por encima del patrón, sin tapar el diseño ajedrezado.
- const soilShade=g.createLinearGradient(0,top,0,h);
+ // Sombra ligera también queda dentro de la silueta recortada del suelo.
+ const soilShade=g.createLinearGradient(0,startY,0,h);
  soilShade.addColorStop(0,"rgba(255,190,103,.04)");
  soilShade.addColorStop(1,"rgba(45,27,25,.18)");
- g.fillStyle=soilShade;g.fillRect(0,top,w,h-top);
+ g.fillStyle=soilShade;g.fillRect(0,startY,w,h-startY);
  g.restore();
- // Borde de césped brillante y pixelado, como una capa separada sobre la tierra.
+
+ // Césped dibujado como una franja que sigue la misma curva que la tierra.
  g.save();g.imageSmoothingEnabled=false;
- g.fillStyle="#165b32";g.fillRect(0,top,w,13);
- g.fillStyle="#249b43";g.fillRect(0,top,w,8);
- g.fillStyle="#59d34e";g.fillRect(0,top,w,4);
- g.fillStyle="#a5ef63";g.fillRect(0,top,w,2);
- for(let x=-((camera%24)+24)%24;x<w+24;x+=24){
-  const n=Math.abs(Math.floor((x+camera)/24))%4;
+ g.beginPath();g.moveTo(0,terrainHeight(camera));
+ for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
+ g.lineTo(w,terrainHeight(camera+w)+15);
+ for(let x=w;x>=0;x-=4)g.lineTo(x,terrainHeight(camera+x)+15);
+ g.closePath();g.fillStyle="#165b32";g.fill();
+
+ // Bordes de césped y pequeños píxeles colocados siguiendo la altura local del terreno.
+ for(let x=0;x<w+24;x+=4){
+  const wx=camera+x,gy=terrainHeight(wx);
+  const n=Math.abs(Math.floor(wx/24))%4;
+  g.fillStyle="#249b43";g.fillRect(x,gy+2,4,6);
   g.fillStyle=n===0?"#8be957":n===1?"#43c83f":n===2?"#d0f779":"#36ae3b";
-  g.fillRect(x,top+3,15,4);g.fillRect(x+3,top+7,5,4);
-  g.fillStyle="#176c36";g.fillRect(x+13,top+7,7,5);
-  g.fillStyle="#b8f878";g.fillRect(x+4,top+2,4,2);
+  g.fillRect(x,gy+2,4,3);
  }
- for(let x=-((camera%13)+13)%13;x<w+13;x+=13){
-  const n=Math.abs(Math.floor((x+camera)/13))%3;
+ for(let x=-(((camera%13)+13)%13);x<w+13;x+=13){
+  const gy=terrainHeight(camera+x),n=Math.abs(Math.floor((x+camera)/13))%3;
   g.fillStyle=n===0?"#238b3b":n===1?"#48c844":"#a4ed57";
-  g.fillRect(x,top+10,3,5);if(n===1)g.fillRect(x+3,top+8,3,4);
+  g.fillRect(x,gy+8,3,5);
+  if(n===1)g.fillRect(x+3,gy+6,3,4);
  }
+ // Contorno superior limpio, siguiendo colinas y bajadas sin una línea horizontal falsa.
+ g.beginPath();g.moveTo(0,terrainHeight(camera));
+ for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
+ g.strokeStyle="#a5ef63";g.lineWidth=2;g.stroke();
  g.restore();
 }
 function drawPalm(wx,variant=0){
