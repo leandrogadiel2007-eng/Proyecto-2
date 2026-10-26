@@ -15,11 +15,11 @@ const terrainSections=[
  [10500,390],[10850,350],[11200,328],[11550,342],[11900,378],[12250,402],[12600,410],[12950,400],[13300,382],[13650,356],
  [14000,342],[14350,362],[14700,398],[15050,424],[15400,418],[15750,386],[16100,350],[16450,330],[16800,340],[17150,374],
  [17500,407],[17850,414],[18200,387],[18550,350],[18900,326],[19250,342],[19600,385],[19950,421],[20300,429],[20650,398],
- [21000,358],[21350,326],[21700,320],[22050,350],[22400,392],[22750,414],[23100,402],[23450,372],[23800,342],[24150,330],
- [24500,354],[24850,392],[25200,424],[25550,428],[25900,394],[26250,356],[26600,329],[26950,340],[27300,378],[27650,414],
- [28000,420],[28350,386],[28700,348],[29050,326],[29400,338],[29750,378],[30100,418],[30450,421],[30800,388],[31150,350],
- [31500,326],[31850,334],[32200,368],[32550,405],[32900,413],[33250,382],[33600,344],[33950,330],[34300,350],[34650,390],
- [35000,414],[35350,396],[35700,370],[36000,390],
+ [21000,358],[21300,330],[21600,280],[21900,220],[22200,165],[22500,140],[22800,155],[23100,210],[23400,280],[23700,345],[24000,390],
+ [24300,360],[24600,310],[24900,245],[25200,185],[25500,140],[25800,150],[26100,190],[26400,255],[26700,330],[27000,395],
+ [27300,355],[27600,300],[27900,230],[28200,165],[28500,132],[28800,150],[29100,205],[29400,275],[29700,345],[30000,410],
+ [30300,380],[30600,330],[30900,260],[31200,190],[31500,140],[31800,150],[32100,215],[32400,285],[32700,350],[33000,410],
+ [33300,390],[33600,350],[33900,290],[34200,240],[34500,195],[34800,220],[35100,280],[35400,345],[35700,380],[36000,390],
  // Cuatro montañas grandes con laderas escalables y valles para recuperar velocidad.
  [36300,375],[36600,335],[36900,290],[37200,245],[37500,225],[37800,240],[38100,280],[38400,330],[38700,390],[39000,420],
  [39300,400],[39600,355],[39900,305],[40200,260],[40500,225],[40800,232],[41100,270],[41400,325],[41700,385],[42000,420],
@@ -43,18 +43,18 @@ const levelSections=[
  {start:3000,end:7000,name:"COLINAS DE LA ISLA",kind:"hills"},
  {start:7000,end:12000,name:"SENDEROS SECRETOS",kind:"routes"},
  {start:12000,end:17000,name:"PUENTES DE LA LAGUNA",kind:"lagoon"},
- {start:17000,end:22000,name:"RUINAS DE LA ISLA",kind:"ruins"},
- {start:22000,end:27000,name:"BAJADA DEL VIENTO",kind:"wind"},
- {start:27000,end:33000,name:"CAMINO DEL GUARDIÁN",kind:"guardian"},
- {start:33000,end:36500,name:"ENTRADA A LA CORDILLERA",kind:"mountain"},
- {start:36500,end:39000,name:"PARKOUR DE LA PRIMERA CUMBRE",kind:"parkour"},
+ {start:17000,end:21000,name:"RUINAS DE LA ISLA",kind:"ruins"},
+ {start:21000,end:27000,name:"GRAN CORDILLERA",kind:"mountain"},
+ {start:27000,end:33000,name:"PARKOUR DE LAS CUMBRES",kind:"parkour"},
+ {start:33000,end:35700,name:"CORDILLERA DEL VIENTO",kind:"mountain"},
+ {start:35700,end:36600,name:"BOCA DE LA GRUTA",kind:"cave"},
+ {start:36600,end:39000,name:"PARKOUR DE LA PRIMERA CUMBRE",kind:"parkour"},
  {start:39000,end:42000,name:"MONTAÑA DEL VIENTO",kind:"mountain"},
  {start:42000,end:44700,name:"PARKOUR DE LAS CRESTAS",kind:"parkour"},
- {start:44700,end:47000,name:"CORDILLERA FINAL",kind:"mountain"},
- {start:47000,end:48000,name:"CORDILLERA FINAL",kind:"mountain"},
+ {start:44700,end:48000,name:"CORDILLERA FINAL",kind:"mountain"},
  {start:48000,end:52000,name:"COLINAS LEJANAS",kind:"mountain"},
- {start:52000,end:56000,name:"GRUTAS CRISTALINAS",kind:"cave"},
- {start:56000,end:59000,name:"SALIDA DE LA CAVERNA",kind:"mountain"},
+ {start:52000,end:56000,name:"PASO DE PIEDRA",kind:"mountain"},
+ {start:56000,end:59000,name:"SALIDA DE LA GRUTA",kind:"mountain"},
  {start:59000,end:60000,name:"RECTA FINAL",kind:"finish"}
 ];
 function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<section.end)||levelSections[levelSections.length-1]}
@@ -90,16 +90,23 @@ const parkourSpecs=[
  {x:45630,y:242,w:126},{x:45810,y:216,w:126},{x:45990,y:190,w:126},{x:46170,y:165,w:132},
  {x:46360,y:143,w:142},{x:46560,y:145,w:132},{x:46760,y:166,w:132},{x:46950,y:190,w:132},{x:47140,y:217,w:132},{x:47330,y:240,w:130}
 ].map(p=>({...p,parkour:true}));
+// Nuevo parkour sobre las montañas que aparece a mitad del nivel, no solo al final.
+for(let x=21100,index=0;x<36000;x+=230,index++){
+ const clearance=[48,58,44,66,52,60][index%6];
+ parkourSpecs.push({x,y:Math.max(72,terrainHeight(x)-clearance),w:132,parkour:true});
+}
 for(let x=47500,index=0;x<59600;x+=300,index++){
  const lift=[108,126,92,140,112,130][index%6];
  parkourSpecs.push({x,y:Math.max(145,terrainHeight(x)-lift),w:132,parkour:true});
 }
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
-const TUNNEL_ROUTE_START=35700,TUNNEL_MOUTH_START=35700,TUNNEL_MOUTH_END=36600,TUNNEL_EXIT_X=57000,TUNNEL_FLOOR=490;
+const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=21800,TUNNEL_EXIT_X=57000,TUNNEL_FLOOR=490;
 function tunnelCeiling(wx){
- if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return terrainHeight(wx)-9;
- if(wx>=TUNNEL_EXIT_X-600&&wx<=TUNNEL_EXIT_X)return terrainHeight(wx)-9;
- return Math.max(terrainHeight(wx)+12,360);
+ // En la entrada y salida, el hueco corta completamente la superficie para mostrar la boca de la cueva.
+ if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return terrainHeight(wx)-14;
+ if(wx>=TUNNEL_EXIT_X-700&&wx<=TUNNEL_EXIT_X)return terrainHeight(wx)-14;
+ // En el tramo interior queda una capa de roca por encima del pasadizo.
+ return Math.max(terrainHeight(wx)+8,350);
 }
 const platforms=[];
 let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
@@ -131,8 +138,8 @@ function buildLevel(){
   if(index%3!==1)return;
   rings.push({id:"upper-"+index,x:p.x+p.w/2,y:p.y-25,got:false});
  });
- for(let x=37800,index=0;x<TUNNEL_EXIT_X-350;x+=1900,index++){
-  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?65:43),got:false});
+ for(let x=TUNNEL_MOUTH_END+450,index=0;x<TUNNEL_EXIT_X-350;x+=1900,index++){
+  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?78:60),got:false});
  }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
  enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
@@ -533,16 +540,44 @@ function drawTunnel(){
  }
  g.restore();
  const entranceX=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2-camera;
- if(entranceX>-160&&entranceX<w+160){
-  const y=terrainHeight(TUNNEL_MOUTH_START+120)-30;
-  g.save();g.textAlign="center";g.font="900 12px Arial";g.lineWidth=3;g.strokeStyle="#102439";
-  g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,y);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,y);g.restore();
+ if(entranceX>-240&&entranceX<w+240){
+  const wx=TUNNEL_MOUTH_START+400,roof=tunnelCeiling(wx),base=TUNNEL_FLOOR;
+  const left=TUNNEL_MOUTH_START-camera,right=TUNNEL_MOUTH_END-camera;
+  // Marco pétreo colocado en los extremos de la abertura, dejando libre el hueco para caer.
+  g.save();
+  for(const px of [left+8,right-22]){
+   g.fillStyle="#263c4e";g.fillRect(px,roof+3,18,base-roof-3);
+   g.fillStyle="#607889";g.fillRect(px+3,roof+8,6,Math.max(8,base-roof-16));
+   g.fillStyle="#a5d9e8";g.fillRect(px-3,roof+1,24,8);
+   g.fillStyle="#40586b";g.fillRect(px-6,roof+9,30,7);
+  }
+  g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
+  g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
+  g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
+  const labelY=Math.max(26,terrainHeight(wx)-28);
+  g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);
+  g.restore();
  }
  const exitScreen=TUNNEL_EXIT_X-camera;
  if(exitScreen>-100&&exitScreen<w+100){
   const y=terrainHeight(TUNNEL_EXIT_X)-25;
   g.save();g.textAlign="center";g.font="900 11px Arial";g.lineWidth=3;g.strokeStyle="#102439";
   g.strokeText("SALIDA A LA META →",exitScreen,y);g.fillStyle="#b7f3ff";g.fillText("SALIDA A LA META →",exitScreen,y);g.restore();
+ }
+}
+function drawMountainDetails(){
+ const peaks=[22500,25500,28500,31500,34500,37500,40500,43500,46500,49500,51600,54000,56400,58500];
+ for(let index=0;index<peaks.length;index++){
+  const wx=peaks[index],x=wx-camera,y=terrainHeight(wx);
+  if(x< -130||x>scene.width+130)continue;
+  g.save();g.imageSmoothingEnabled=false;
+  // Roca expuesta que marca la cima; no altera las colisiones del terreno.
+  g.fillStyle="#5c6c6d";g.beginPath();g.moveTo(x-74,y+32);g.lineTo(x-47,y+13);g.lineTo(x-30,y+8);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+27,y+9);g.lineTo(x+66,y+31);g.closePath();g.fill();
+  g.fillStyle="#899e98";g.beginPath();g.moveTo(x-48,y+14);g.lineTo(x-30,y+8);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+17,y+13);g.lineTo(x-2,y+9);g.lineTo(x-15,y+18);g.closePath();g.fill();
+  // Pequeña corona clara para que se identifique como cumbre y no como una colina normal.
+  g.fillStyle="#e6f7e9";g.beginPath();g.moveTo(x-17,y+1);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+11,y+7);g.lineTo(x+1,y+5);g.lineTo(x-5,y+9);g.closePath();g.fill();
+  g.fillStyle="#b5d7d5";g.fillRect(x-37,y+15,12,3);g.fillRect(x+23,y+17,15,3);
+  g.restore();
  }
 }
 function drawPalm(wx,variant=0){
@@ -917,6 +952,7 @@ function draw(){
  const stages=[
   ["FONDO",drawBackground],
   ["SUELO",drawGround],
+  ["CUMBRES ROCOSAS",drawMountainDetails],
   ["GRUTA SUBTERRÁNEA",drawTunnel],
   ["DECORACIÓN",drawDecorations],
   ["PLATAFORMAS",()=>platforms.forEach(drawPlatform)],
