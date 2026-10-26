@@ -295,31 +295,40 @@ function traceTerrain(){
 function drawGround(){
  const w=scene.width,h=scene.height,top=terrainHeight(camera);
  g.save();
- // Tierra café continua: sin mosaico de cuadrados repetidos.
+ // Suelo inspirado en los juegos clásicos de plataformas: cuadrados grandes alternados,
+ // en tonos naranja y café, con bordes de luz/sombra para dar profundidad.
  g.beginPath();g.moveTo(0,h);g.lineTo(0,top);for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));g.lineTo(w,h);g.closePath();g.clip();
- const soil=g.createLinearGradient(0,top,0,h);
- soil.addColorStop(0,"#a95d35");
- soil.addColorStop(.18,"#99502f");
- soil.addColorStop(.58,"#87442d");
- soil.addColorStop(1,"#713b2b");
- g.fillStyle=soil;g.fillRect(0,top,w,h-top);
- // Motas y vetas discretas, distribuidas irregularmente para que parezca tierra natural.
- for(let i=0;i<115;i++){
-  const x=((i*67-camera*.22)%(w+30)+(w+30))%(w+30)-15;
-  const y=top+13+(i*29%(Math.max(1,h-top-16)));
-  const ww=5+(i%5)*3;
-  g.fillStyle=i%4===0?"rgba(222,151,91,.32)":i%3===0?"rgba(65,37,30,.2)":"rgba(236,166,100,.14)";
-  g.fillRect(x,y,ww,1+(i%2));
-  if(i%4===1){g.fillStyle="rgba(69,38,29,.18)";g.fillRect(x+3,y+4,ww*.55,1)}
+ const tile=32;
+ const offsetX=-((camera%tile)+tile)%tile;
+ const offsetY=top;
+ for(let row=0,y=offsetY;y<h;y+=tile,row++){
+  const shift=row%2===0?0:tile/2;
+  for(let x=offsetX-tile;x<w+tile;x+=tile){
+   const xx=x+shift;
+   const col=Math.floor((xx+camera)/tile);
+   const dark=(col+row)%2===0;
+   const base=dark?"#9b4b2d":"#c8753e";
+   g.fillStyle=base;g.fillRect(xx,y,tile,tile);
+   // Luz arriba/izquierda y sombra abajo/derecha: efecto de relieve pixelado.
+   g.fillStyle=dark?"#b45d35":"#e18b4b";
+   g.fillRect(xx,y,tile,3);g.fillRect(xx,y,3,tile);
+   g.fillStyle=dark?"#713b2a":"#a75832";
+   g.fillRect(xx,y+tile-3,tile,3);g.fillRect(xx+tile-3,y,3,tile);
+   // Algunas marcas de roca, variadas y discretas dentro de cada cuadrado.
+   if((Math.abs(col*7+row*11)%4)===0){
+    g.fillStyle="rgba(245,169,95,.34)";g.fillRect(xx+7,y+9,8,2);g.fillRect(xx+10,y+11,5,2);
+   }else if((Math.abs(col*5-row*3)%5)===0){
+    g.fillStyle="rgba(72,35,27,.22)";g.fillRect(xx+8,y+18,11,2);g.fillRect(xx+17,y+20,5,2);
+   }
+  }
  }
- // Textura original muy tenue y ampliada, sin bordes duros entre mosaicos.
- if(greenIslandReady){
-  g.save();g.globalAlpha=.12;g.imageSmoothingEnabled=true;
-  g.drawImage(greenIsland,16,39,48,41,0,top,w,h-top);
-  g.restore();
- }
+ // Textura de roca suave por encima del patrón, sin tapar el diseño ajedrezado.
+ const soilShade=g.createLinearGradient(0,top,0,h);
+ soilShade.addColorStop(0,"rgba(255,190,103,.04)");
+ soilShade.addColorStop(1,"rgba(45,27,25,.18)");
+ g.fillStyle=soilShade;g.fillRect(0,top,w,h-top);
  g.restore();
- // Borde de césped continuo, conservando el estilo pixel-art del juego.
+ // Borde de césped brillante y pixelado, como una capa separada sobre la tierra.
  g.save();g.imageSmoothingEnabled=false;
  g.fillStyle="#165b32";g.fillRect(0,top,w,13);
  g.fillStyle="#249b43";g.fillRect(0,top,w,8);
