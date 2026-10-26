@@ -100,20 +100,28 @@ for(let x=47500,index=0;x<59600;x+=300,index++){
  parkourSpecs.push({x,y:Math.max(145,terrainHeight(x)-lift),w:132,parkour:true});
 }
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
-const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=22000,TUNNEL_EXIT_X=57000,TUNNEL_EXIT_MOUTH_START=55900,TUNNEL_RENDER_END=57400,TUNNEL_FLOOR=490;
-// El techo interior queda siempre debajo de la superficie. En las bocas se abre suavemente
-// por encima del terreno, sin saltos verticales que rompan la textura del suelo.
+const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=22000,TUNNEL_ENTRY_TRANSITION_END=22900,TUNNEL_EXIT_X=57000,TUNNEL_EXIT_TRANSITION_START=55000,TUNNEL_EXIT_MOUTH_START=55900,TUNNEL_RENDER_END=57400,TUNNEL_FLOOR=490;
+// El techo del túnel acompaña la tierra. Las aberturas cortan el suelo solo en el portal;
+// las transiciones suaves evitan saltos de textura y paredes verticales accidentales.
 function tunnelInteriorRoof(wx){return Math.max(terrainHeight(wx)+8,350)}
 function tunnelOpeningRoof(wx,start,end){
  const t=Math.max(0,Math.min(1,(wx-start)/(end-start)));
- const interior=tunnelInteriorRoof(wx);
- const depth=Math.max(95,interior-(terrainHeight(wx)-62));
- return interior-depth*Math.sin(Math.PI*t);
+ return terrainHeight(wx)+8-105*Math.sin(Math.PI*t);
 }
+function tunnelBlend(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function tunnelCeiling(wx){
+ const surface=terrainHeight(wx)+8,interior=tunnelInteriorRoof(wx);
  if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return tunnelOpeningRoof(wx,TUNNEL_MOUTH_START,TUNNEL_MOUTH_END);
+ if(wx>TUNNEL_MOUTH_END&&wx<TUNNEL_ENTRY_TRANSITION_END){
+  const t=tunnelBlend((wx-TUNNEL_MOUTH_END)/(TUNNEL_ENTRY_TRANSITION_END-TUNNEL_MOUTH_END));
+  return surface+(interior-surface)*t;
+ }
  if(wx>=TUNNEL_EXIT_MOUTH_START&&wx<=TUNNEL_RENDER_END)return tunnelOpeningRoof(wx,TUNNEL_EXIT_MOUTH_START,TUNNEL_RENDER_END);
- return tunnelInteriorRoof(wx);
+ if(wx>=TUNNEL_EXIT_TRANSITION_START&&wx<TUNNEL_EXIT_MOUTH_START){
+  const t=tunnelBlend((wx-TUNNEL_EXIT_TRANSITION_START)/(TUNNEL_EXIT_MOUTH_START-TUNNEL_EXIT_TRANSITION_START));
+  return interior+(surface-interior)*t;
+ }
+ return interior;
 }
 const platforms=[];
 let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
@@ -146,7 +154,7 @@ function buildLevel(){
   rings.push({id:"upper-"+index,x:p.x+p.w/2,y:p.y-25,got:false});
  });
  for(let x=TUNNEL_MOUTH_END+450,index=0;x<TUNNEL_EXIT_X-350;x+=1900,index++){
-  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?60:40),got:false});
+  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?66:42),got:false});
  }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
  enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
@@ -548,7 +556,7 @@ function drawTunnel(){
  g.restore();
  const entranceX=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2-camera;
  if(entranceX>-240&&entranceX<w+240){
-  const wx=TUNNEL_MOUTH_START+400,roof=tunnelCeiling(wx),base=TUNNEL_FLOOR;
+  const wx=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2,roof=tunnelCeiling(wx),base=TUNNEL_FLOOR;
   const left=TUNNEL_MOUTH_START-camera,right=TUNNEL_MOUTH_END-camera;
   // Portal ancho con columnas de roca y arco brillante; el centro queda libre para entrar.
   g.save();
@@ -564,7 +572,7 @@ function drawTunnel(){
   g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
   g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
   g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
-  const labelY=Math.max(26,terrainHeight(wx)-28);
+  const labelY=Math.max(26,Math.min(terrainHeight(wx),roof)-25);
   g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);
   g.restore();
  }
