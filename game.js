@@ -357,67 +357,66 @@ function traceTerrain(){
 }
 function drawGround(){
  const w=scene.width,h=scene.height,tile=32;
- // Base continua de tierra: siempre cubre toda el área bajo la curva del terreno.
+ // Primero se pinta una base sólida; nunca puede quedar transparente el espacio bajo la superficie.
  g.save();
  g.beginPath();
  g.moveTo(0,terrainHeight(camera));
  for(let x=0;x<=w;x+=3)g.lineTo(x,terrainHeight(camera+x));
  g.lineTo(w,h);g.lineTo(0,h);g.closePath();
- g.fillStyle="#8f452b";g.fill();
+ g.fillStyle="#9b4b2d";g.fill();
 
- // Patrón de tierra a cuadros, recortado a la forma exacta del suelo.
- g.save();
- g.beginPath();g.moveTo(0,terrainHeight(camera));
- for(let x=0;x<=w;x+=3)g.lineTo(x,terrainHeight(camera+x));
- g.lineTo(w,h);g.lineTo(0,h);g.closePath();g.clip();
+ // Textura a cuadros sin depender de clip(): cada baldosa se recorta contra la altura local del suelo.
+ // Esto evita que el patrón desaparezca si el canvas o la cámara cambian de escala.
  const offsetX=-(((camera%tile)+tile)%tile);
- let minTop=Infinity;
- for(let x=0;x<=w;x+=12)minTop=Math.min(minTop,terrainHeight(camera+x));
- const startY=Math.max(0,Math.floor(minTop/tile)*tile-tile);
- for(let y=startY;y<h;y+=tile){
+ for(let y=0;y<h;y+=tile){
   const row=Math.floor(y/tile),shift=(row%2===0)?0:tile/2;
-  for(let x=offsetX-tile;x<w+tile;x+=tile){
-   const xx=x+shift,col=Math.floor((xx+camera)/tile);
+  for(let xx=offsetX-tile;xx<w+tile;xx+=tile){
+   const worldX=camera+xx+shift+tile/2;
+   const groundY=terrainHeight(worldX);
+   const bottom=Math.min(h,y+tile);
+   if(bottom<=groundY)continue;
+   const top=Math.max(y,groundY);
+   const tileH=bottom-top;
+   if(tileH<=0)continue;
+   const col=Math.floor((worldX)/tile);
    const dark=((col+row)%2===0);
    g.fillStyle=dark?"#9b4b2d":"#c8753e";
-   g.fillRect(xx,y,tile,tile);
+   g.fillRect(xx+shift,top,tile,tileH);
+   // Bordes de cada bloque dan el aspecto clásico de tierra a cuadros.
    g.fillStyle=dark?"#b45d35":"#e18b4b";
-   g.fillRect(xx,y,tile,3);g.fillRect(xx,y,3,tile);
+   g.fillRect(xx+shift,top,tile,Math.min(3,tileH));
+   g.fillRect(xx+shift,top,3,tileH);
    g.fillStyle=dark?"#713b2a":"#a75832";
-   g.fillRect(xx,y+tile-3,tile,3);g.fillRect(xx+tile-3,y,3,tile);
-   if(Math.abs(col*7+row*11)%4===0){
-    g.fillStyle="rgba(245,169,95,.34)";
-    g.fillRect(xx+7,y+9,8,2);g.fillRect(xx+10,y+11,5,2);
-   }else if(Math.abs(col*5-row*3)%5===0){
-    g.fillStyle="rgba(72,35,27,.22)";
-    g.fillRect(xx+8,y+18,11,2);g.fillRect(xx+17,y+20,5,2);
+   if(tileH>4)g.fillRect(xx+shift,Math.max(top,bottom-3),tile,Math.min(3,tileH));
+   g.fillRect(xx+shift+tile-3,top,3,tileH);
+   if(tileH>12&&Math.abs(col*7+row*11)%4===0){
+    g.fillStyle="rgba(245,169,95,.38)";
+    g.fillRect(xx+shift+7,top+Math.min(9,tileH-3),8,2);
+   }else if(tileH>22&&Math.abs(col*5-row*3)%5===0){
+    g.fillStyle="rgba(72,35,27,.28)";
+    g.fillRect(xx+shift+8,top+18,11,2);
    }
   }
  }
- const soilShade=g.createLinearGradient(0,startY,0,h);
- soilShade.addColorStop(0,"rgba(255,190,103,.02)");
- soilShade.addColorStop(1,"rgba(45,27,25,.12)");
- g.fillStyle=soilShade;g.fillRect(0,startY,w,h-startY);
- g.restore();
 
- // Césped continuo y grueso encima de la tierra, incluso en las pendientes.
+ // Césped sólido que cubre el borde de las baldosas y sigue todas las pendientes.
  g.beginPath();g.moveTo(0,terrainHeight(camera));
  for(let x=0;x<=w;x+=3)g.lineTo(x,terrainHeight(camera+x));
  for(let x=w;x>=0;x-=3)g.lineTo(x,terrainHeight(camera+x)+18);
  g.closePath();g.fillStyle="#165b32";g.fill();
 
- // Franja superior brillante para que se identifique claramente el piso.
+ // Franja de hierba brillante continua, dibujada al final para que la silueta del piso quede limpia.
  for(let x=0;x<w+4;x+=4){
-  const gy=terrainHeight(camera+x);
+  const wx=camera+x,gy=terrainHeight(wx);
   g.fillStyle="#249b43";g.fillRect(x,gy+2,4,8);
-  const n=Math.abs(Math.floor((camera+x)/24))%4;
+  const n=Math.abs(Math.floor(wx/24))%4;
   g.fillStyle=n===0?"#a4f45c":n===1?"#54d849":n===2?"#d0f779":"#36ae3b";
   g.fillRect(x,gy+2,4,4);
  }
  g.beginPath();g.moveTo(0,terrainHeight(camera));
  for(let x=0;x<=w;x+=3)g.lineTo(x,terrainHeight(camera+x));
  g.strokeStyle="#b7f66a";g.lineWidth=3;g.stroke();
- // Pequeñas raíces/terrones por debajo del borde, anclados al perfil de terreno.
+ // Pequeños brotes verdes bajo el borde superior.
  for(let x=-(((camera%19)+19)%19);x<w+19;x+=19){
   const gy=terrainHeight(camera+x),n=Math.abs(Math.floor((camera+x)/19))%3;
   g.fillStyle=n===0?"#238b3b":n===1?"#48c844":"#a4ed57";
