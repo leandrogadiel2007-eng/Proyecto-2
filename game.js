@@ -145,7 +145,33 @@ function update(dt){
   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
   startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
  }
- camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.34));
+ // Cámara lateral de estilo clásico: deja que Sonic se mueva dentro de una zona segura
+ // y desplaza el escenario suavemente cuando llega a los bordes de seguimiento.
+ const playerCenter=player.x+player.w/2;
+ const screenX=playerCenter-camera;
+ let targetCamera=camera;
+ if(player.vx>=-25){
+  const rightBoundary=W*.40;
+  if(screenX>rightBoundary){
+   const lookAhead=Math.min(90,Math.max(0,player.vx)*.13);
+   targetCamera=playerCenter-rightBoundary+lookAhead;
+  }
+ }else{
+  const leftBoundary=W*.28;
+  if(screenX<leftBoundary){
+   const lookBack=Math.min(55,Math.abs(player.vx)*.09);
+   targetCamera=playerCenter-leftBoundary-lookBack;
+  }
+ }
+ targetCamera=Math.max(0,Math.min(worldWidth-W,targetCamera));
+ // Si Sonic reaparece en un checkpoint lejano, recentrar enseguida para evitar verlo fuera de pantalla.
+ if(Math.abs(screenX)>W*.72){
+  camera=Math.max(0,Math.min(worldWidth-W,playerCenter-W*.36));
+ }else{
+  const cameraEase=1-Math.exp(-9*dt);
+  camera+= (targetCamera-camera)*cameraEase;
+ }
+ camera=Math.max(0,Math.min(worldWidth-W,camera));
  const zone=sectionAt(player.x);
  status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
