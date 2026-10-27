@@ -106,7 +106,8 @@ const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=22000,T
 function tunnelInteriorRoof(wx){return Math.max(terrainHeight(wx)+8,350)}
 function tunnelOpeningRoof(wx,start,end){
  const t=Math.max(0,Math.min(1,(wx-start)/(end-start)));
- return terrainHeight(wx)+8-105*Math.sin(Math.PI*t);
+ // Solo se abre hacia arriba en el centro de la boca; en ambos extremos empata con la ladera.
+ return terrainHeight(wx)+8-74*Math.sin(Math.PI*t);
 }
 function tunnelBlend(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function tunnelCeiling(wx){
@@ -556,21 +557,26 @@ function drawTunnel(){
  g.restore();
  const entranceX=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2-camera;
  if(entranceX>-240&&entranceX<w+240){
-  const wx=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2,roof=tunnelCeiling(wx),base=TUNNEL_FLOOR;
+  const leftWorld=TUNNEL_MOUTH_START,rightWorld=TUNNEL_MOUTH_END;
   const left=TUNNEL_MOUTH_START-camera,right=TUNNEL_MOUTH_END-camera;
-  // Portal ancho con columnas de roca y arco brillante; el centro queda libre para entrar.
+  const leftRoof=tunnelCeiling(leftWorld),rightRoof=tunnelCeiling(rightWorld);
+  const centerWorld=(leftWorld+rightWorld)/2,centerRoof=tunnelCeiling(centerWorld),base=TUNNEL_FLOOR;
+  // Los pilares siguen la pendiente real de la montaña: ya no flotan sobre el suelo.
   g.save();
-  for(const px of [left+8,right-22]){
-   g.fillStyle="#172635";g.fillRect(px,roof+3,18,base-roof-3);
-   g.fillStyle="#344b5c";g.fillRect(px+3,roof+8,6,Math.max(8,base-roof-16));
-   g.fillStyle="#8da9b8";g.fillRect(px-3,roof+1,24,8);
-   g.fillStyle="#40586b";g.fillRect(px-6,roof+9,30,7);
-   g.fillStyle="#b7f3ff";g.fillRect(px+5,roof+11,3,Math.max(6,Math.min(24,base-roof-18)));
+  for(const post of [{x:left+8,roof:leftRoof},{x:right-22,roof:rightRoof}]){
+   const top=post.roof+3;
+   g.fillStyle="#172635";g.fillRect(post.x,top,18,Math.max(0,base-top));
+   g.fillStyle="#344b5c";g.fillRect(post.x+3,top+5,6,Math.max(8,base-top-12));
+   g.fillStyle="#8da9b8";g.fillRect(post.x-3,top-2,24,8);
+   g.fillStyle="#40586b";g.fillRect(post.x-6,top+6,30,7);
+   g.fillStyle="#b7f3ff";g.fillRect(post.x+5,top+8,3,Math.max(6,Math.min(24,base-top-15)));
   }
+  // El arco une ambos lados de la abertura siguiendo la inclinación de la ladera.
+  const archLeftY=leftRoof+8,archRightY=rightRoof+8,archPeakY=centerRoof-80;
   g.strokeStyle="#12364b";g.lineWidth=10;g.beginPath();
-  g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
+  g.moveTo(left+22,archLeftY);g.quadraticCurveTo(entranceX,archPeakY,right-22,archRightY);g.stroke();
   g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
-  g.moveTo(left+22,roof+8);g.quadraticCurveTo(entranceX,roof-28,right-22,roof+8);g.stroke();
+  g.moveTo(left+22,archLeftY);g.quadraticCurveTo(entranceX,archPeakY,right-22,archRightY);g.stroke();
   g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
   const labelY=Math.max(26,Math.min(terrainHeight(wx),roof)-25);
   g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);
@@ -973,9 +979,10 @@ function draw(){
   ["FONDO",drawBackground],
   ["SUELO",drawGround],
   ["CUMBRES ROCOSAS",drawMountainDetails],
-  ["GRUTA SUBTERRÁNEA",drawTunnel],
   ["DECORACIÓN",drawDecorations],
   ["PLATAFORMAS",()=>platforms.forEach(drawPlatform)],
+  // La gruta se dibuja después de las plataformas para que no aparezcan texturas flotando dentro del túnel.
+  ["GRUTA SUBTERRÁNEA",drawTunnel],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
   ["SONIC",drawPlayer],
