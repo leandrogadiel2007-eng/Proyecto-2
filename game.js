@@ -4,6 +4,8 @@ const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
 let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
+// Zoom-out estilo clásico: el mundo se dibuja en una vista virtual más amplia y luego se adapta a pantalla.
+const GAME_ZOOM=0.80,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM);
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
@@ -136,7 +138,7 @@ function update(dt){
    }
   }
  });
- if(player.y>H+100){
+ if(player.y>VIEW_H+100){
   player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
   if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
  }
@@ -145,33 +147,32 @@ function update(dt){
   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
   startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
  }
- // Cámara lateral de estilo clásico: deja que Sonic se mueva dentro de una zona segura
- // y desplaza el escenario suavemente cuando llega a los bordes de seguimiento.
+ // Cámara clásica con zoom alejado: VIEW_W representa toda la zona visible del mundo.
  const playerCenter=player.x+player.w/2;
  const screenX=playerCenter-camera;
  let targetCamera=camera;
  if(player.vx>=-25){
-  const rightBoundary=W*.40;
+  const rightBoundary=VIEW_W*.40;
   if(screenX>rightBoundary){
    const lookAhead=Math.min(90,Math.max(0,player.vx)*.13);
    targetCamera=playerCenter-rightBoundary+lookAhead;
   }
  }else{
-  const leftBoundary=W*.28;
+  const leftBoundary=VIEW_W*.28;
   if(screenX<leftBoundary){
    const lookBack=Math.min(55,Math.abs(player.vx)*.09);
    targetCamera=playerCenter-leftBoundary-lookBack;
   }
  }
- targetCamera=Math.max(0,Math.min(worldWidth-W,targetCamera));
- // Si Sonic reaparece en un checkpoint lejano, recentrar enseguida para evitar verlo fuera de pantalla.
- if(Math.abs(screenX)>W*.72){
-  camera=Math.max(0,Math.min(worldWidth-W,playerCenter-W*.36));
+ targetCamera=Math.max(0,Math.min(worldWidth-VIEW_W,targetCamera));
+ // Al reaparecer muy lejos de la cámara, centrar a Sonic sin dejarlo fuera del encuadre.
+ if(screenX<VIEW_W*.12||screenX>VIEW_W*.82){
+  camera=Math.max(0,Math.min(worldWidth-VIEW_W,playerCenter-VIEW_W*.36));
  }else{
   const cameraEase=1-Math.exp(-9*dt);
-  camera+= (targetCamera-camera)*cameraEase;
+  camera+=(targetCamera-camera)*cameraEase;
  }
- camera=Math.max(0,Math.min(worldWidth-W,camera));
+ camera=Math.max(0,Math.min(worldWidth-VIEW_W,camera));
  const zone=sectionAt(player.x);
  status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
@@ -180,7 +181,7 @@ function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0
 // Render retro: baja resolución virtual ampliada sin suavizado.
 const PIXEL=1;
 const scene=document.createElement('canvas');
-scene.width=Math.floor(W/PIXEL);scene.height=Math.floor(H/PIXEL);
+scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);
 const g=scene.getContext('2d');
 g.imageSmoothingEnabled=true;
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
@@ -807,7 +808,7 @@ function draw(){
    }
    // If an error left a canvas save/clip state unbalanced, reset the offscreen context.
    try{
-    scene.width=W;scene.height=H;g.imageSmoothingEnabled=true;
+    scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);g.imageSmoothingEnabled=true;
     drawBackground();copyScene();copied=true;
    }catch(recoveryError){
     console.error("[Blue Rush] No se pudo recuperar el canvas",recoveryError);
