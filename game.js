@@ -110,14 +110,33 @@ function update(dt){
  }
  const speedLimit=player.speed;
  player.vx=Math.max(-speedLimit,Math.min(speedLimit,player.vx));
+ // Si ya estaba apoyado, sigue la superficie aunque el terreno suba o baje.
+ // El salto pone onGround=false antes del siguiente frame, por lo que no se cancela.
+ const wasGrounded=player.onGround;
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
- player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
  const worldCenter=player.x+player.w/2;
- const groundNow=terrainHeight(worldCenter),groundPrev=oldGround,descending=player.vy>=0;
- if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(18,Math.abs(player.vx)*dt*.8)){
-  player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+ const groundNow=terrainHeight(worldCenter);
+ if(wasGrounded){
+  player.y=groundNow-player.h;
+  player.vy=0;
+  player.onGround=true;
+  player.spin=0;
+  player.spinAngle=0;
+ }else{
+  player.vy+=1550*dt;
+  player.y+=player.vy*dt;
+  player.onGround=false;
+  const descending=player.vy>=0;
+  // Margen adicional para aterrizar correctamente al correr por laderas.
+  if(descending&&player.y+player.h>=groundNow&&oldBottom<=oldGround+Math.max(28,Math.abs(player.vx)*dt*1.4)){
+   player.y=groundNow-player.h;
+   player.vy=0;
+   player.onGround=true;
+   player.spin=0;
+   player.spinAngle=0;
+  }
  }
  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
