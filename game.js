@@ -578,7 +578,7 @@ function drawTunnel(){
   g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
   g.moveTo(left+22,archLeftY);g.quadraticCurveTo(entranceX,archPeakY,right-22,archRightY);g.stroke();
   g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
-  const labelY=Math.max(26,Math.min(terrainHeight(wx),roof)-25);
+  const labelY=Math.max(26,Math.min(terrainHeight(centerWorld),centerRoof)-25);
   g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);
   g.restore();
  }
