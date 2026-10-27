@@ -5,7 +5,7 @@ const startScreen=document.getElementById('startScreen'),startButton=document.ge
 let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
 // Zoom-out estilo clásico: el mundo se dibuja en una vista virtual más amplia y luego se adapta a pantalla.
-const GAME_ZOOM=1.0,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM);
+const GAME_ZOOM=1.15,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),VIEW_CROP_Y=Math.max(0,H-VIEW_H);
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
@@ -388,7 +388,7 @@ function traceTerrain(){
  for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
 }
 function drawGround(){
- const w=scene.width,h=scene.height,tile=32;
+ const w=scene.width,h=scene.height+VIEW_CROP_Y,tile=32;
  g.save();
  // Recorta el suelo siguiendo exactamente la curva del terreno.
  g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
@@ -812,7 +812,15 @@ function draw(){
  let copied=false;
  for(const [name,render] of stages){
   try{
-   render();
+   // Acercamiento anclado al suelo: muestra a Sonic más grande sin cortar el terreno.
+   g.save();
+   try{
+    if(VIEW_CROP_Y>0){
+     if(name==="FONDO"){g.fillStyle="#0878dc";g.fillRect(0,0,scene.width,scene.height);}
+     g.translate(0,-VIEW_CROP_Y);
+    }
+    render();
+   }finally{g.restore()}
    copyScene();
    copied=true;
   }catch(error){
