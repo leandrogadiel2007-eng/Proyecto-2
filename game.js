@@ -45,126 +45,47 @@ const levelSections=[
  {start:12000,end:17000,name:"PUENTES DE LA LAGUNA",kind:"lagoon"},
  {start:17000,end:21000,name:"RUINAS DE LA ISLA",kind:"ruins"},
  {start:21000,end:27000,name:"GRAN CORDILLERA",kind:"mountain"},
- {start:27000,end:33000,name:"PARKOUR DE LAS CUMBRES",kind:"parkour"},
+ {start:27000,end:33000,name:"CORDILLERA CENTRAL",kind:"mountain"},
  {start:33000,end:35700,name:"CORDILLERA DEL VIENTO",kind:"mountain"},
- {start:35700,end:36600,name:"BOCA DE LA GRUTA",kind:"cave"},
- {start:36600,end:39000,name:"PARKOUR DE LA PRIMERA CUMBRE",kind:"parkour"},
+ {start:35700,end:36600,name:"VALLE ROCOSO",kind:"mountain"},
+ {start:36600,end:39000,name:"LADERAS ROCOSAS",kind:"mountain"},
  {start:39000,end:42000,name:"MONTAÑA DEL VIENTO",kind:"mountain"},
- {start:42000,end:44700,name:"PARKOUR DE LAS CRESTAS",kind:"parkour"},
+ {start:42000,end:44700,name:"PICOS DEL VIENTO",kind:"mountain"},
  {start:44700,end:48000,name:"CORDILLERA FINAL",kind:"mountain"},
  {start:48000,end:52000,name:"COLINAS LEJANAS",kind:"mountain"},
  {start:52000,end:56000,name:"PASO DE PIEDRA",kind:"mountain"},
- {start:56000,end:59000,name:"SALIDA DE LA GRUTA",kind:"mountain"},
+ {start:56000,end:59000,name:"COLINAS FINALES",kind:"mountain"},
  {start:59000,end:60000,name:"RECTA FINAL",kind:"finish"}
 ];
 function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<section.end)||levelSections[levelSections.length-1]}
 
 let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
-// Plataformas en alturas alcanzables: forman caminos opcionales sobre el recorrido.
-const platformSpecs=[
- [560,88,124],[1120,105,112],[1760,86,138],[2480,98,116],
- [3380,96,130],[4050,114,118],[4740,92,150],[5480,104,124],[6250,88,138],
- [7120,102,120],[7520,96,126],[7820,91,138],[8170,98,124],[8520,116,124],[8870,94,132],[9270,88,142],[9630,96,130],[10000,104,126],
- [10400,100,132],[10900,90,132],[11280,104,124],[11650,112,142],[11900,88,126],[12480,86,126],[13450,100,146],[14380,92,132],[15300,112,138],[16250,88,126],
- [17180,100,142],[17580,96,126],[18050,116,126],[18480,90,132],[18950,86,148],[19380,96,124],[19800,104,126],[20250,110,134],[20750,90,140],[21150,94,130],
- [21600,112,132],[21900,96,126],[22500,88,126],[22950,100,132],[23400,105,148],[23850,92,126],[24350,91,126],[24780,108,134],[25200,112,142],[25680,100,128],[26100,86,132],[26500,96,130],
- [27000,98,142],[27500,104,124],[27950,112,124],[28400,94,136],[28900,88,148],[29350,100,126],[29800,104,130],[30250,96,132],[30700,91,142],[31150,105,126],[31600,110,128],[32050,96,134],
- [32500,90,142],[32800,96,126],[33400,104,126],[33850,96,140],[34300,92,148],[34750,98,126],[35200,86,126],[35600,90,130]
-].map(([x,clearance,w])=>({
- // Elevar la ruta sin superar una diferencia de altura excesiva para el salto normal.
- x,y:Math.max(175,terrainHeight(x)-Math.min(clearance+20,126)),w
-}));
-const parkourSpecs=[
- // Puente de parkour sobre la boca de la gruta: permite elegir seguir por las cumbres.
- {x:35800,y:272,w:140},{x:36000,y:251,w:136},{x:36200,y:231,w:136},{x:36400,y:218,w:136},{x:36600,y:224,w:136},
- // Primera cumbre: se asciende en pequeños saltos y se cruza por arriba.
- {x:36720,y:238,w:126},{x:36900,y:214,w:126},{x:37080,y:190,w:126},{x:37260,y:166,w:132},
- {x:37450,y:145,w:140},{x:37650,y:145,w:132},{x:37840,y:164,w:132},{x:38030,y:187,w:130},{x:38220,y:211,w:132},{x:38410,y:233,w:130},
- // Segunda cumbre: plataformas escalonadas con un pequeño salto largo en la cima.
- {x:39620,y:245,w:126},{x:39800,y:220,w:126},{x:39980,y:195,w:126},{x:40160,y:170,w:132},
- {x:40350,y:148,w:140},{x:40550,y:140,w:132},{x:40750,y:155,w:132},{x:40940,y:178,w:132},{x:41130,y:201,w:132},{x:41320,y:225,w:130},
- // Tercera cumbre: zigzag para que el jugador use saltos precisos.
- {x:42630,y:244,w:126},{x:42810,y:218,w:126},{x:42990,y:192,w:126},{x:43170,y:166,w:132},
- {x:43360,y:142,w:142},{x:43560,y:142,w:132},{x:43760,y:160,w:132},{x:43950,y:184,w:132},{x:44140,y:208,w:132},{x:44330,y:231,w:130},
- // Última cumbre y conexión con la meta.
- {x:45630,y:242,w:126},{x:45810,y:216,w:126},{x:45990,y:190,w:126},{x:46170,y:165,w:132},
- {x:46360,y:143,w:142},{x:46560,y:145,w:132},{x:46760,y:166,w:132},{x:46950,y:190,w:132},{x:47140,y:217,w:132},{x:47330,y:240,w:130}
-].map(p=>({...p,parkour:true}));
-// Nuevo parkour sobre las montañas que aparece a mitad del nivel, no solo al final.
-for(let x=21100,index=0;x<36000;x+=230,index++){
- const clearance=[48,58,44,66,52,60][index%6];
- parkourSpecs.push({x,y:Math.max(72,terrainHeight(x)-clearance),w:132,parkour:true});
-}
-for(let x=47500,index=0;x<59600;x+=300,index++){
- const lift=[108,126,92,140,112,130][index%6];
- parkourSpecs.push({x,y:Math.max(145,terrainHeight(x)-lift),w:132,parkour:true});
-}
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
-const TUNNEL_ROUTE_START=21000,TUNNEL_MOUTH_START=21000,TUNNEL_MOUTH_END=22000,TUNNEL_ENTRY_TRANSITION_END=22900,TUNNEL_EXIT_X=57000,TUNNEL_EXIT_TRANSITION_START=55000,TUNNEL_EXIT_MOUTH_START=55900,TUNNEL_RENDER_END=57400,TUNNEL_FLOOR=490;
-// El techo del túnel acompaña la tierra. Las aberturas cortan el suelo solo en el portal;
-// las transiciones suaves evitan saltos de textura y paredes verticales accidentales.
-function tunnelInteriorRoof(wx){return Math.max(terrainHeight(wx)+8,350)}
-function tunnelOpeningRoof(wx,start,end){
- const t=Math.max(0,Math.min(1,(wx-start)/(end-start)));
- // Solo se abre hacia arriba en el centro de la boca; en ambos extremos empata con la ladera.
- return terrainHeight(wx)+8-74*Math.sin(Math.PI*t);
-}
-function tunnelBlend(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
-function tunnelCeiling(wx){
- const surface=terrainHeight(wx)+8,interior=tunnelInteriorRoof(wx);
- if(wx>=TUNNEL_MOUTH_START&&wx<=TUNNEL_MOUTH_END)return tunnelOpeningRoof(wx,TUNNEL_MOUTH_START,TUNNEL_MOUTH_END);
- if(wx>TUNNEL_MOUTH_END&&wx<TUNNEL_ENTRY_TRANSITION_END){
-  const t=tunnelBlend((wx-TUNNEL_MOUTH_END)/(TUNNEL_ENTRY_TRANSITION_END-TUNNEL_MOUTH_END));
-  return surface+(interior-surface)*t;
- }
- if(wx>=TUNNEL_EXIT_MOUTH_START&&wx<=TUNNEL_RENDER_END)return tunnelOpeningRoof(wx,TUNNEL_EXIT_MOUTH_START,TUNNEL_RENDER_END);
- if(wx>=TUNNEL_EXIT_TRANSITION_START&&wx<TUNNEL_EXIT_MOUTH_START){
-  const t=tunnelBlend((wx-TUNNEL_EXIT_TRANSITION_START)/(TUNNEL_EXIT_MOUTH_START-TUNNEL_EXIT_TRANSITION_START));
-  return interior+(surface-interior)*t;
- }
- return interior;
-}
-const platforms=[];
-let rings=[],enemies=[],collected=new Set(),springs=[],boosters=[],checkpoints=[];
+let rings=[],enemies=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
 function buildLevel(){
- rings=[];collected=new Set();platforms.length=0;
- platformSpecs.forEach(p=>platforms.push({...p,h:34}));
- parkourSpecs.forEach(p=>platforms.push({...p,h:34}));
- // Menos anillos y con mayor separación: aparecen en saltos y puntos de decisión.
+ rings=[];collected=new Set();
  let group=0;
+ // Anillos repartidos por el recorrido principal.
  for(let x=220;x<worldWidth-280;x+=820,group++){
   const zone=sectionAt(x),pattern=(group+(Math.floor(x/5000)*2))%5,count=2+(group%2);
   for(let i=0;i<count;i++){
-   const rx=x+i*38;
-   if(rx>=TUNNEL_ROUTE_START&&rx<=TUNNEL_EXIT_X)continue;
-   const base=terrainHeight(rx);
+   const rx=x+i*38,base=terrainHeight(rx);
    let offset;
    if(pattern===0)offset=44;
    else if(pattern===1)offset=52+Math.sin(i/(count-1)*Math.PI)*54;
-   else if(pattern===2)offset=zone.kind==="parkour"?96:zone.kind==="ruins"?110:86;
+   else if(pattern===2)offset=zone.kind==="ruins"?110:86;
    else if(pattern===3)offset=46+Math.sin(i/(count-1)*Math.PI)*34;
    else offset=zone.kind==="finish"?70:42;
    rings.push({id:group+"-"+i,x:rx,y:Math.max(118,base-offset),got:false});
   }
  }
- // Algunas plataformas tienen anillos como recompensa; no se llena cada tramo.
- const rewardPlatforms=platformSpecs.concat(parkourSpecs);
- rewardPlatforms.forEach((p,index)=>{
-  if(index%3!==1)return;
-  rings.push({id:"upper-"+index,x:p.x+p.w/2,y:p.y-25,got:false});
- });
- for(let x=TUNNEL_MOUTH_END+450,index=0;x<TUNNEL_EXIT_X-350;x+=1900,index++){
-  rings.push({id:"cave-"+x,x,y:TUNNEL_FLOOR-(index%3===1?66:42),got:false});
- }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
  enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
- springs=[2250,5850,9250,11620,14820,18720,21680,24900,28600,31950,34080,36650,39350,42350,45250,47700,49500,51700,54200,57700,59200].map((x,index)=>({x,y:terrainHeight(x),w:34,h:20,used:false,index}));
- boosters=[3350,6900,10350,13200,16850,20250,23500,26600,30200,32500,35000,36350,39050,42080,44850,47050,48300,50600,53000,55300,57400,59000].map((x,index)=>({x,y:terrainHeight(x),w:76,h:12,active:false,index}));
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,boost:0,jump:625,onGround:true,inTunnel:false,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
 function startGame(){if(!running){if(levelCompleted)resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
@@ -175,18 +96,17 @@ startButton.addEventListener('click',startGame);resetButton.addEventListener('cl
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump')jump();else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c!=='jump')keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 function update(dt){
  if(!running)return;elapsed+=dt;
- if(player.boost>0)player.boost=Math.max(0,player.boost-dt);
  const dir=Number(keys.right)-Number(keys.left);
  if(dir){
   if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
   else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
-  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge+(player.boost>0?160:0));
+  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
   player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
  }else{
   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.0008,dt);
   if(Math.abs(player.vx)<8)player.vx=0;
  }
- const speedLimit=player.speed+(player.boost>0?160:0);
+ const speedLimit=player.speed;
  player.vx=Math.max(-speedLimit,Math.min(speedLimit,player.vx));
  const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
@@ -194,38 +114,10 @@ function update(dt){
  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
  const worldCenter=player.x+player.w/2;
  const groundNow=terrainHeight(worldCenter),groundPrev=oldGround,descending=player.vy>=0;
- const atTunnelMouth=!player.inTunnel&&worldCenter>=TUNNEL_MOUTH_START&&worldCenter<=TUNNEL_MOUTH_END;
- if(!player.inTunnel&&!atTunnelMouth&&descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(18,Math.abs(player.vx)*dt*.8)){
+ if(descending&&player.y+player.h>=groundNow&&oldBottom<=groundPrev+Math.max(18,Math.abs(player.vx)*dt*.8)){
   player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
  }
- if(atTunnelMouth&&player.y+player.h>groundNow+7)player.inTunnel=true;
- if(player.inTunnel){
-  const roof=tunnelCeiling(worldCenter);
-  if(player.y<roof+3){player.y=roof+3;if(player.vy<0)player.vy=0}
-  if(player.y+player.h>=TUNNEL_FLOOR){player.y=TUNNEL_FLOOR-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
-  if(worldCenter>=TUNNEL_EXIT_X){
-   player.inTunnel=false;player.y=terrainHeight(worldCenter)-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
-  }
- }
- for(const p of platforms){
-  const bottom=player.y+player.h,overlap=player.x+player.w>p.x&&player.x<p.x+p.w;
-  if(player.vy>=0&&overlap&&oldBottom<=p.y+8&&bottom>=p.y){player.y=p.y-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0}
- }
- // Saltos elásticos en resortes.
- for(const spring of springs){
-  const touching=!player.inTunnel&&player.x+player.w>spring.x-4&&player.x<spring.x+spring.w+4;
-  if(touching&&player.onGround){
-   player.y=terrainHeight(player.x+player.w/2)-player.h-2;player.vy=-820;player.onGround=false;player.spin=1;player.spinAngle=0;player.spinPhase=0;
-   player.speedCharge=Math.min(1,player.speedCharge+.22);if(!spring.used){score+=50;spring.used=true}break;
-  }
- }
- // Aceleradores: impulsan hacia donde mira el jugador, una vez por contacto.
- for(const pad of boosters){
-  const touching=!player.inTunnel&&player.onGround&&player.x+player.w>pad.x&&player.x<pad.x+pad.w;
-  if(touching&&!pad.active){const boostDir=player.facing||1;player.boost=1.8;player.vx=boostDir*Math.max(650,Math.abs(player.vx));player.facing=boostDir;player.speedCharge=1;pad.active=true}
-  else if(!touching)pad.active=false;
- }
- if(!player.inTunnel)for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
+ for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(player.onGround){player.fallPhase=0;if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
@@ -245,7 +137,7 @@ function update(dt){
   }
  });
  if(player.y>H+100){
-  player.inTunnel=false;player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
+  player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
   if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
  }
  if(player.x>=worldWidth-player.w-90&&!levelCompleted){
@@ -255,7 +147,7 @@ function update(dt){
  }
  camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.34));
  const zone=sectionAt(player.x);
- status.textContent=(player.inTunnel?"RUTA SUBTERRÁNEA":zone.name)+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
+ status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -519,76 +411,6 @@ function drawGround(){
  g.strokeStyle="#a5ef63";g.lineWidth=2;g.stroke();
  g.restore();
 }
-function drawTunnel(){
- const w=scene.width,h=scene.height;
- const left=Math.max(0,TUNNEL_ROUTE_START-camera),right=Math.min(w,TUNNEL_RENDER_END-camera);
- if(right<=left)return;
- g.save();
- g.beginPath();g.moveTo(left,tunnelCeiling(camera+left));
- for(let x=left+4;x<right;x+=4)g.lineTo(x,tunnelCeiling(camera+x));
- g.lineTo(right,TUNNEL_FLOOR);g.lineTo(left,TUNNEL_FLOOR);g.closePath();g.clip();
- const cave=g.createLinearGradient(0,345,0,TUNNEL_FLOOR+10);
- cave.addColorStop(0,"#172737");cave.addColorStop(.45,"#0d1c2b");cave.addColorStop(1,"#070f1c");
- g.fillStyle=cave;g.fillRect(left,0,right-left,h);
- // Estratos de roca en el techo y pequeñas estalactitas.
- for(let wx=Math.floor((camera+left)/180)*180;wx<camera+right;wx+=180){
-  const sx=wx-camera,roof=tunnelCeiling(wx);
-  g.fillStyle="#344858";g.fillRect(sx,roof+2,28,4);
-  g.fillStyle="#4a5660";g.fillRect(sx+5,roof+7,14,2);
-  if(Math.abs(Math.floor(wx/180))%3===0){
-   const len=9+(Math.abs(Math.floor(wx/180))%4)*5;
-   g.fillStyle="#263a4b";g.beginPath();g.moveTo(sx+38,roof+2);g.lineTo(sx+48,roof+len);g.lineTo(sx+58,roof+2);g.closePath();g.fill();
-   g.fillStyle="#526579";g.fillRect(sx+47,roof+7,2,Math.max(2,len-8));
-  }
- }
- // Cristales luminosos a intervalos largos para mantener el camino legible.
- for(let wx=Math.floor((camera+left)/560)*560;wx<camera+right;wx+=560){
-  const sx=wx-camera,cy=Math.max(tunnelCeiling(wx)+18,405);
-  g.fillStyle="#176c91";g.beginPath();g.moveTo(sx,cy+10);g.lineTo(sx+8,cy-8);g.lineTo(sx+16,cy+10);g.closePath();g.fill();
-  g.fillStyle="#46d9ef";g.beginPath();g.moveTo(sx+5,cy+7);g.lineTo(sx+8,cy-5);g.lineTo(sx+12,cy+7);g.closePath();g.fill();
-  g.fillStyle="#b5fbff";g.fillRect(sx+7,cy-2,2,7);
- }
- g.fillStyle="#293d4e";g.fillRect(left,TUNNEL_FLOOR,right-left,h-TUNNEL_FLOOR);
- g.fillStyle="#53606a";g.fillRect(left,TUNNEL_FLOOR,right-left,4);
- for(let wx=Math.floor((camera+left)/44)*44;wx<camera+right;wx+=44){
-  const sx=wx-camera;g.fillStyle=Math.abs(Math.floor(wx/44))%2===0?"#344958":"#203646";
-  g.fillRect(sx,TUNNEL_FLOOR+5,39,5);g.fillStyle="#62717b";g.fillRect(sx+4,TUNNEL_FLOOR+6,12,2);
- }
- g.restore();
- const entranceX=(TUNNEL_MOUTH_START+TUNNEL_MOUTH_END)/2-camera;
- if(entranceX>-240&&entranceX<w+240){
-  const leftWorld=TUNNEL_MOUTH_START,rightWorld=TUNNEL_MOUTH_END;
-  const left=TUNNEL_MOUTH_START-camera,right=TUNNEL_MOUTH_END-camera;
-  const leftRoof=tunnelCeiling(leftWorld),rightRoof=tunnelCeiling(rightWorld);
-  const centerWorld=(leftWorld+rightWorld)/2,centerRoof=tunnelCeiling(centerWorld),base=TUNNEL_FLOOR;
-  // Los pilares siguen la pendiente real de la montaña: ya no flotan sobre el suelo.
-  g.save();
-  for(const post of [{x:left+8,roof:leftRoof},{x:right-22,roof:rightRoof}]){
-   const top=post.roof+3;
-   g.fillStyle="#172635";g.fillRect(post.x,top,18,Math.max(0,base-top));
-   g.fillStyle="#344b5c";g.fillRect(post.x+3,top+5,6,Math.max(8,base-top-12));
-   g.fillStyle="#8da9b8";g.fillRect(post.x-3,top-2,24,8);
-   g.fillStyle="#40586b";g.fillRect(post.x-6,top+6,30,7);
-   g.fillStyle="#b7f3ff";g.fillRect(post.x+5,top+8,3,Math.max(6,Math.min(24,base-top-15)));
-  }
-  // El arco une ambos lados de la abertura siguiendo la inclinación de la ladera.
-  const archLeftY=leftRoof+8,archRightY=rightRoof+8,archPeakY=centerRoof-80;
-  g.strokeStyle="#12364b";g.lineWidth=10;g.beginPath();
-  g.moveTo(left+22,archLeftY);g.quadraticCurveTo(entranceX,archPeakY,right-22,archRightY);g.stroke();
-  g.strokeStyle="#55d9f3";g.lineWidth=4;g.beginPath();
-  g.moveTo(left+22,archLeftY);g.quadraticCurveTo(entranceX,archPeakY,right-22,archRightY);g.stroke();
-  g.textAlign="center";g.font="900 12px Arial";g.lineWidth=4;g.strokeStyle="#102439";
-  const labelY=Math.max(26,Math.min(terrainHeight(centerWorld),centerRoof)-25);
-  g.strokeText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);g.fillStyle="#b7f3ff";g.fillText("RUTA SUBTERRÁNEA ↓",entranceX,labelY);
-  g.restore();
- }
- const exitScreen=TUNNEL_EXIT_X-camera;
- if(exitScreen>-100&&exitScreen<w+100){
-  const y=terrainHeight(TUNNEL_EXIT_X)-25;
-  g.save();g.textAlign="center";g.font="900 11px Arial";g.lineWidth=3;g.strokeStyle="#102439";
-  g.strokeText("SALIDA A LA META →",exitScreen,y);g.fillStyle="#b7f3ff";g.fillText("SALIDA A LA META →",exitScreen,y);g.restore();
- }
-}
 function drawMountainDetails(){
  const peaks=[22500,25500,28500,31500,34500,37500,40500,43500,46500,49500,51600,54000,56400,58500];
  for(let index=0;index<peaks.length;index++){
@@ -661,20 +483,6 @@ function drawRuin(wx,variant=0){
  for(let y=base-height+20;y<base-12;y+=20){g.fillStyle="#694d40";g.fillRect(x-14,y,28,3);g.fillStyle="#d0a879";g.fillRect(x-11,y+4,7,2)}
  g.fillStyle="#297e45";g.fillRect(x-14,base-height-10,12,3);g.fillRect(x+5,base-height-13,13,4);g.restore();
 }
-function drawSpring(spring){
- const x=spring.x-camera,y=terrainHeight(spring.x);if(x< -50||x>scene.width+50)return;
- g.save();g.fillStyle="rgba(10,52,44,.28)";g.beginPath();g.ellipse(x+spring.w/2,y+2,24,6,0,0,Math.PI*2);g.fill();
- g.fillStyle="#b41f33";g.fillRect(x,y-20,spring.w,18);g.fillStyle="#f34b45";g.fillRect(x+3,y-18,spring.w-6,12);
- g.fillStyle="#ffe45c";g.fillRect(x-3,y-23,spring.w+6,6);g.fillStyle="#fff6b4";g.fillRect(x+2,y-22,8,2);
- g.fillStyle="#6c2737";g.fillRect(x+4,y-7,spring.w-8,3);g.restore();
-}
-function drawBooster(pad){
- const x=pad.x-camera,y=terrainHeight(pad.x);if(x>scene.width+90||x+pad.w< -90)return;
- g.save();g.fillStyle="rgba(8,58,58,.2)";g.fillRect(x,y-2,pad.w,7);g.fillStyle="#075b84";g.fillRect(x,y-10,pad.w,10);
- g.fillStyle=pad.active?"#8bd7e7":"#26c9ef";g.fillRect(x+3,y-9,pad.w-6,5);
- for(let i=0;i<3;i++){const ax=x+12+i*22;g.fillStyle="#fff";g.beginPath();g.moveTo(ax,y-8);g.lineTo(ax+11,y-6);g.lineTo(ax,y-3);g.closePath();g.fill()}
- g.restore();
-}
 function drawCheckpoint(cp){
  const x=cp.x-camera,base=terrainHeight(cp.x);if(x< -40||x>scene.width+40)return;
  g.save();g.fillStyle="#6b4a32";g.fillRect(x,base-57,5,57);
@@ -691,47 +499,13 @@ function drawDecorations(){
  for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
  for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
  bridgeSpecs.forEach(drawWoodBridge);
- // No dibujar ruinas encima de la entrada de la gruta (x=21000–21800).
  for(let wx=17300;wx<20500;wx+=470)drawRuin(wx,Math.floor(wx/470)%3);
  for(let wx=22000;wx<26800;wx+=1320){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1320)%3);else drawRuin(wx,1)}
- // En la gran cordillera dejamos libres las cimas; los detalles rocosos muestran las alturas.
  for(let wx=27100;wx<32900;wx+=1050){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1050)%3);else drawRuin(wx,1)}
  for(let wx=33100;wx<35800;wx+=740)drawPalm(wx,Math.floor(wx/740)%3);
+ for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/980)%3);else drawRuin(wx,1)}
  for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
- springs.forEach(drawSpring);boosters.forEach(drawBooster);checkpoints.forEach(drawCheckpoint);drawFinish();
-}
-function drawPlatform(p){
- const x=p.x-camera,y=p.y,w=p.w,h=34;
- if(greenIslandReady){
-  g.save();g.imageSmoothingEnabled=false;g.drawImage(greenIsland,144,80,80,32,x,y,w,h);
-  if(p.parkour){
-   g.fillStyle="rgba(158,255,94,.24)";g.fillRect(x+2,y+1,w-4,8);
-   g.fillStyle="#c8ff79";g.fillRect(x+7,y+1,w-14,3);
-   g.fillStyle="#f2ffb0";for(let mark=x+13;mark<x+w-8;mark+=28)g.fillRect(mark,y+4,8,2);
-  }
-  g.imageSmoothingEnabled=true;g.restore();return;
- }
- g.save();
- // Bold shadow and rounded soil block, consistent with the character's outlined SVG art.
- g.fillStyle="rgba(7,51,43,.24)";g.beginPath();g.ellipse(x+w/2,y+h+5,w*.54,7,0,0,Math.PI*2);g.fill();
- const soil=g.createLinearGradient(0,y+8,0,y+h);
- soil.addColorStop(0,"#d98b43");soil.addColorStop(.5,"#b25d32");soil.addColorStop(1,"#773b2c");
- g.fillStyle=soil;g.strokeStyle="#6c3929";g.lineWidth=2;
- roundedRectPath(g,x,y+7,w,h-7,4);g.fill();g.stroke();
- for(let xx=x+2;xx<x+w-1;xx+=22){
-  for(let yy=y+10;yy<y+h-2;yy+=12){
-   g.fillStyle=(Math.floor((xx+p.x)/22)+Math.floor(yy/12))%2===0?"rgba(255,191,99,.65)":"rgba(87,43,30,.28)";
-   g.fillRect(xx,yy,20,10);
-  }
- }
- const grass=g.createLinearGradient(0,y,0,y+12);
- grass.addColorStop(0,"#9ed879");grass.addColorStop(.36,"#398c4d");grass.addColorStop(1,"#1b5f39");
- g.fillStyle=grass;g.strokeStyle="#086c38";g.lineWidth=2.3;
- roundedRectPath(g,x,y,w,11,4);g.fill();g.stroke();
- g.strokeStyle="#efffa4";g.lineWidth=2;g.beginPath();g.moveTo(x+6,y+2);g.lineTo(x+w-7,y+2);g.stroke();
- for(let xx=x+14;xx<x+w-4;xx+=29){g.strokeStyle="#08763b";g.lineWidth=1.4;g.beginPath();g.moveTo(xx,y+10);g.lineTo(xx-2,y+15);g.stroke()}
- if(p.parkour){g.fillStyle="#b9f56b";g.fillRect(x+7,y+1,w-14,3);g.fillStyle="#eaffb2";for(let mark=x+13;mark<x+w-8;mark+=28)g.fillRect(mark,y+4,8,2)}
- g.restore();
+ checkpoints.forEach(drawCheckpoint);drawFinish();
 }
 function drawRing(r){
  if(r.got)return;
@@ -980,9 +754,6 @@ function draw(){
   ["SUELO",drawGround],
   ["CUMBRES ROCOSAS",drawMountainDetails],
   ["DECORACIÓN",drawDecorations],
-  ["PLATAFORMAS",()=>platforms.forEach(drawPlatform)],
-  // La gruta se dibuja después de las plataformas para que no aparezcan texturas flotando dentro del túnel.
-  ["GRUTA SUBTERRÁNEA",drawTunnel],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
   ["SONIC",drawPlayer],
