@@ -320,19 +320,6 @@ function drawBackground(){
   g.fillRect(mx,my,len,2);
   g.fillRect(mx+4,my+4,Math.max(4,len-9),2);
  }
- // Palmeras lejanas en silueta para reforzar el ambiente tropical.
- for(let i=0;i<9;i++){
-  const tx=((i*151-camera*.045)%(w+130)+(w+130))%(w+130)-45;
-  const ty=292+(i%3)*9,th=17+(i%4)*5;
-  g.fillStyle="#8b654c";
-  g.fillRect(tx,ty-th,3,th);
-  g.fillStyle="#176b43";
-  g.fillRect(tx-10,ty-th-3,10,3);g.fillRect(tx-8,ty-th-7,8,4);
-  g.fillRect(tx+2,ty-th-5,11,3);g.fillRect(tx+4,ty-th-9,9,4);
-  g.fillRect(tx-5,ty-th-12,7,4);g.fillRect(tx-2,ty-th-15,5,4);
-  g.fillStyle="#55c84c";
-  g.fillRect(tx-8,ty-th-6,7,2);g.fillRect(tx+5,ty-th-8,6,2);
- }
  // Destellos y pequeñas olas horizontales en varias profundidades del océano.
  for(let i=0;i<76;i++){
   const ox=((i*37-camera*(.09+(i%4)*.035))%(w+40)+(w+40))%(w+40)-20;
@@ -454,53 +441,6 @@ function drawMountainDetails(){
   g.restore();
  }
 }
-function drawPalm(wx,variant=0){
- const x=wx-camera;if(x< -340||x>scene.width+340)return;
- const base=terrainHeight(wx);
- // Altura mucho mayor: la copa queda cerca del borde superior y el tronco llega hasta el piso.
- const trunkH=variant%3===0?342:variant%3===1?318:354;
- const crownY=base-trunkH;
- g.save();g.imageSmoothingEnabled=false;
- // Tronco ancho, alto y con bandas pixeladas.
- g.fillStyle="#4d3025";g.fillRect(x-9,crownY+45,18,trunkH-45);
- g.fillStyle="#80502e";g.fillRect(x-6,crownY+48,8,trunkH-53);
- g.fillStyle="#c18343";g.fillRect(x+2,crownY+53,3,trunkH-60);
- for(let yy=crownY+62;yy<base-8;yy+=21){
-  g.fillStyle="#4b2d23";g.fillRect(x-9,yy,18,4);
-  g.fillStyle="#9b6034";g.fillRect(x-6,yy+5,12,4);
-  g.fillStyle="#d08a45";g.fillRect(x-3,yy+6,5,2);
- }
- // Copa amplia, por capas, con hojas que se extienden mucho a ambos lados.
- g.fillStyle="#06452e";
- g.fillRect(x-110,crownY+27,64,13);g.fillRect(x-96,crownY+7,65,13);g.fillRect(x-69,crownY-8,57,13);
- g.fillRect(x-44,crownY-22,43,13);g.fillRect(x+4,crownY-22,43,13);g.fillRect(x+14,crownY-8,57,13);
- g.fillRect(x+31,crownY+7,65,13);g.fillRect(x+46,crownY+27,64,13);
- g.fillStyle="#08743b";
- g.fillRect(x-101,crownY+18,65,13);g.fillRect(x-83,crownY-1,58,13);g.fillRect(x-54,crownY-16,48,13);
- g.fillRect(x+6,crownY-16,48,13);g.fillRect(x+25,crownY-1,58,13);g.fillRect(x+36,crownY+18,65,13);
- g.fillStyle="#20a447";
- g.fillRect(x-88,crownY+13,52,9);g.fillRect(x-68,crownY-6,46,9);g.fillRect(x-43,crownY-22,37,9);
- g.fillRect(x+7,crownY-22,37,9);g.fillRect(x+22,crownY-6,46,9);g.fillRect(x+36,crownY+13,52,9);
- g.fillStyle="#5bd34c";
- g.fillRect(x-77,crownY+14,31,5);g.fillRect(x-58,crownY-5,27,5);g.fillRect(x-34,crownY-21,21,5);
- g.fillRect(x+13,crownY-21,21,5);g.fillRect(x+31,crownY-5,27,5);g.fillRect(x+46,crownY+14,31,5);
- g.fillStyle="#a5ec63";
- g.fillRect(x-66,crownY+15,12,3);g.fillRect(x-48,crownY-4,10,3);g.fillRect(x-26,crownY-20,8,3);
- g.fillRect(x+16,crownY-20,8,3);g.fillRect(x+36,crownY-4,10,3);g.fillRect(x+53,crownY+15,12,3);
- // Cocos y pequeñas sombras bajo la copa.
- g.fillStyle="#754321";g.fillRect(x-8,crownY+28,6,9);g.fillRect(x+1,crownY+30,6,9);g.fillRect(x+8,crownY+26,5,8);
- g.fillStyle="#c4873e";g.fillRect(x-7,crownY+29,2,4);g.fillRect(x+2,crownY+31,2,4);
- g.restore();
-}
-function drawWoodBridge(bridge){
- const x=bridge.x-camera,w=bridge.w;if(x>scene.width+20||x+w< -20)return;
- const base=terrainHeight(bridge.x+w/2),top=base-6;
- g.save();g.fillStyle="#6f4029";g.fillRect(x,top+7,w,9);
- for(let i=0;i<w;i+=24){g.fillStyle=i%48===0?"#bd8246":"#d49a55";g.fillRect(x+i,top,21,10);g.fillStyle="#70462d";g.fillRect(x+i,top+8,21,3);g.fillStyle="#ffe0a0";g.fillRect(x+i+2,top+1,14,2)}
- g.fillStyle="#80502d";g.fillRect(x,top-4,w,4);
- for(let i=0;i<=w;i+=52){g.fillStyle="#7f4b2e";g.fillRect(x+i,top-12,5,12);g.fillStyle="#e4bd7a";g.fillRect(x+i+1,top-11,2,7)}
- g.restore();
-}
 function drawRuin(wx,variant=0){
  const x=wx-camera;if(x< -100||x>scene.width+100)return;
  const base=terrainHeight(wx),height=variant%3===0?76:variant%3===1?58:92;
@@ -524,15 +464,11 @@ function drawFinish(){
  g.fillStyle="#ffe45c";g.fillRect(x-6,base-109,19,7);g.fillStyle="#47c85b";g.fillRect(x-12,base-4,30,4);g.restore();
 }
 function drawDecorations(){
- for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
- for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
  bridgeSpecs.forEach(drawWoodBridge);
  for(let wx=17300;wx<20500;wx+=470)drawRuin(wx,Math.floor(wx/470)%3);
- for(let wx=22000;wx<26800;wx+=1320){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1320)%3);else drawRuin(wx,1)}
- for(let wx=27100;wx<32900;wx+=1050){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/1050)%3);else drawRuin(wx,1)}
- for(let wx=33100;wx<35800;wx+=740)drawPalm(wx,Math.floor(wx/740)%3);
- for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/980)%3);else drawRuin(wx,1)}
- for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
+ for(let wx=22000;wx<35800;wx+=1050){if(terrainHeight(wx)<=340)drawRuin(wx,1)}
+ for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)<=340)drawRuin(wx,1)}
+ for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3)}
  checkpoints.forEach(drawCheckpoint);drawFinish();
 }
 function drawRing(r){
