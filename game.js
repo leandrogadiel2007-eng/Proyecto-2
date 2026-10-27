@@ -5,7 +5,7 @@ const startScreen=document.getElementById('startScreen'),startButton=document.ge
 let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
 // Zoom-out estilo clásico: el mundo se dibuja en una vista virtual más amplia y luego se adapta a pantalla.
-const GAME_ZOOM=0.95,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM);
+const GAME_ZOOM=0.50,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM);
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
