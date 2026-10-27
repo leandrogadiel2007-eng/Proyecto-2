@@ -713,10 +713,13 @@ function drawFallbackPlayer(){
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- const moving=player.onGround&&Math.abs(player.vx)>25;
+ const groundGap=terrainHeight(player.x+player.w/2)-(player.y+player.h);
+ // En una bajada, la inclinación y la velocidad pueden crear una separación mínima.
+ // Cerca del suelo, conserva el sprite de carrera; el salto mantiene su animación aérea.
+ const slopeRunning=!player.onGround&&!player.spin&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
+ const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
  const rolling=Boolean(player.spin)&&!player.onGround;
- // El salto manual usa bolita; la caída se reserva para el aire sin salto.
- const falling=!player.onGround&&!rolling;
+ const falling=!player.onGround&&!rolling&&!slopeRunning;
  let frames,index;
  if(rolling){
   frames=sonicAnimations.spin;
