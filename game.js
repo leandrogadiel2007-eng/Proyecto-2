@@ -149,11 +149,11 @@ function update(dt){
   if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;
   const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;
   if(hit){
-   if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;score+=100}
+   if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
    else if(player.invincible<=0){
     if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}
     else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()}}
-    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.vx=-player.facing*180;
+    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.onGround=false;player.vx=-player.facing*180;
    }
   }
  });
