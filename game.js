@@ -131,7 +131,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,platformId:null};keys.spindash=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,platformId:null};keys.spindash=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -177,7 +177,7 @@ async function startOnlineGame(){
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
    if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
    other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
-   const animations=['idle','run','dash','speeddash','jump','spin','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
+   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
   roomChannel.on('presence',{event:'sync'},()=>{
@@ -206,8 +206,8 @@ function leaveOnlineRoom(){
 }
 function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
- if(running){if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.78)animation='speeddash';else if(speedRatio>=0.47)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
- const phase=animation==='spin'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+ if(running){if(player.spinDashCharging)animation='spindash';else if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.78)animation='speeddash';else if(speedRatio>=0.47)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
+ const phase=animation==='spin'||animation==='spindash'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
  const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
 }
@@ -217,7 +217,7 @@ function drawRemotePlayers(){
   if(now-other.lastSeen>9000){remotePlayers.delete(id);continue}other.x+=(other.targetX-other.x)*0.32;other.y+=(other.targetY-other.y)*0.32;
   const animation=other.animation||'idle',frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;if(!frames||!frames.length)continue;
   const frame=frames[Math.floor(Math.max(0,other.phase)*Math.max(1,frames.length))%frames.length];if(!frame||!frame.img||!frame.img.naturalWidth)continue;
-  const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
+  const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
   const targetW=falling?66:(rolling?46:(fast?76:56)),targetH=falling?66:(rolling?46:(fast?72:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
   const sx=other.x-camera+player.w/2,sy=other.y+player.h/2;g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
   g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
@@ -225,7 +225,7 @@ function drawRemotePlayers(){
  }
 }
 function resetGame(){
- leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function finishRunAfterDeath(){
@@ -292,8 +292,8 @@ function releaseSpinDash(){
  const charge=Math.max(.12,Math.min(1,player.spinDashCharge||0));
  const direction=keys.left&&!keys.right?-1:(keys.right&&!keys.left?1:(player.facing||1));
  player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=true;
- player.spinDashRollTime=1.8+charge*1.1;player.facing=direction;
- player.vx=direction*(300+260*charge);player.vy=0;player.onGround=true;
+ player.spinDashRollTime=2.4+charge*2.4;player.facing=direction;
+ player.vx=direction*(420+450*charge);player.vy=0;player.onGround=true;
  player.platformId=null;player.spin=1;player.spinAngle=0;
  player.speedCharge=Math.max(player.speedCharge,.25+.75*charge);
 }
@@ -341,7 +341,7 @@ function update(dt){
    player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
    player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
   }else{
-   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.12,dt);
+   player.speedCharge=Math.max(0,player.speedCharge-(player.spinDashRolling ? 0.22 : 2.4)*dt);player.vx*=Math.pow(player.spinDashRolling ? 0.78 : 0.12,dt);
    if(Math.abs(player.vx)<8)player.vx=0;
   }
   const wasGrounded=player.onGround,oldBottom=player.y+player.h,oldX=player.x,oldY=player.y,oldPlatformId=player.platformId,oldGround=groundSurfaceAt(oldX+player.w/2);
@@ -1103,9 +1103,8 @@ function drawEnemyFallback(e){
    g.fillStyle="#d6e1e9";g.strokeStyle="#26374b";g.lineWidth=2;g.beginPath();g.ellipse(7,-8,10,8,-.15,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffdf4d";g.beginPath();g.ellipse(8,-8,7,5,0,0,Math.PI*2);g.fill();g.fillStyle="#fff";g.beginPath();g.ellipse(10,-9,3.1,3.8,0,0,Math.PI*2);g.fill();g.fillStyle="#162944";g.beginPath();g.arc(11,-8,1.7,0,Math.PI*2);g.fill();g.fillStyle="#e83c4a";g.strokeStyle="#791f37";g.lineWidth=1.5;g.beginPath();g.moveTo(-10,7);g.lineTo(-22,11);g.lineTo(-12,1);g.closePath();g.fill();g.stroke();g.fillStyle="#172a43";g.fillRect(-5,14,6,5);g.fillRect(7,13,6,5);g.fillStyle="#79eaff";g.fillRect(12,-4,4,3);g.fillStyle="#fff3a1";g.fillRect(4,-14,5,2);
   }
   g.restore();
-}/* Carga directamente los SVG que sí están en assets/sonic.
-   No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
-let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],fall:[],ready:false};
+}/* Carga directa de los SVG en assets/sonic. La secuencia Spin Dash se identificó en assets/sonic/project.json. */
+let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],ready:false};
 const sonicSpriteFiles={
  idle:[
   "01740b16763e9570f66ce0faf001c035.svg",
@@ -1145,6 +1144,18 @@ const sonicSpriteFiles={
   "3b6181d7c0f1ca61f51c81a31b90ff35.svg",
   "f36bc5dd5dd01907d45daacf611eccd8.svg",
   "272d17a2be621eb6c5a6448ef3f38ee3.svg"
+ ],
+ spindash:[
+  "ae3ea09ee21b6581b863d85d0a2f0809.svg",
+  "75baeb8e4efd54402e93d790f23c3ca7.svg",
+  "72eb3473aee982a542f91c77b660622a.svg",
+  "fe0867e9bf3f7eb4685dd9066a7d0fe3.svg",
+  "b342eff97e29b1785d7846611d3a1949.svg",
+  "51c9d39f0188245f4f41970dda3315ea.svg",
+  "956335f02212c02a759cbd6458cffd59.svg",
+  "9deb5eb2ace01864f0ee3608fdf4214d.svg",
+  "2e35050243bb1a9740af66232b4157ab.svg",
+  "709f200d37b7a243470df5094b771a3c.svg"
  ]
 };
 function visibleImageBounds(img){
@@ -1183,12 +1194,13 @@ async function loadSonicCostumes(){
   speeddash:result.speeddash||[],
   jump:result.jump||[],
   spin:result.spin||[],
+  spindash:result.spindash||[],
   fall:result.fall||[],
-  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.dash||[]).length&&(result.speeddash||[]).length&&(result.spin||[]).length&&(result.fall||[]).length)
+  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.dash||[]).length&&(result.speeddash||[]).length&&(result.spin||[]).length&&(result.spindash||[]).length&&(result.fall||[]).length)
  };
  console.info("Blue Rush: animaciones de Sonic",{
   idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,dash:sonicAnimations.dash.length,
-  speeddash:sonicAnimations.speeddash.length,spin:sonicAnimations.spin.length,fall:sonicAnimations.fall.length
+  speeddash:sonicAnimations.speeddash.length,spin:sonicAnimations.spin.length,spindash:sonicAnimations.spindash.length,fall:sonicAnimations.fall.length
  });
  if(!running){
   status.textContent=sonicAnimations.ready
@@ -1235,7 +1247,10 @@ function drawFallbackPlayer(){
  const rolling=Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling);
  const falling=!player.onGround&&!rolling&&!slopeRunning;
  let frames,index;
- if(rolling){
+ if(player.spinDashCharging){
+   frames=sonicAnimations.spindash;
+   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
+  }else if(rolling){
   frames=sonicAnimations.spin;
   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
  }else if(falling){
