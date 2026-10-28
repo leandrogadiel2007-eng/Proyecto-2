@@ -67,6 +67,10 @@ function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<sec
 
 let running=false,lastTime=0,elapsed=0,camera=0,cameraY=0,score=0,lives=3,player;
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
+// Los tramos de puente sustituyen la superficie del terreno por una pasarela sólida.
+function bridgeAt(x){return bridgeSpecs.find(bridge=>x>=bridge.x&&x<=bridge.x+bridge.w)||null}
+function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
+function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 let rings=[],enemies=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
 function buildLevel(){
@@ -115,7 +119,7 @@ function update(dt){
  }
  // Las pendientes alteran la velocidad: bajadas impulsan y subidas frenan.
  const wasGrounded=player.onGround;
- const oldBottom=player.y+player.h,oldX=player.x,oldGround=terrainHeight(oldX+player.w/2);
+ const oldBottom=player.y+player.h,oldX=player.x,oldGround=groundSurfaceAt(oldX+player.w/2);
  if(wasGrounded){
   const slope=(terrainHeight(player.x+42)-terrainHeight(player.x-42))/84;
   player.vx+=Math.max(-230,Math.min(230,slope*720))*dt;
@@ -125,7 +129,7 @@ function update(dt){
  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
  const worldCenter=player.x+player.w/2;
- const groundNow=terrainHeight(worldCenter);
+ const groundNow=groundSurfaceAt(worldCenter);
  if(wasGrounded){
   player.y=groundNow-player.h;player.vy=0;player.onGround=true;
   player.spin=0;player.spinAngle=0;
@@ -439,6 +443,42 @@ function drawGround(){
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
  g.strokeStyle="#a5ef63";g.lineWidth=2;g.stroke();
  g.restore();
+
+ // Corta visualmente la tierra bajo cada puente y crea un cauce profundo con agua.
+ const channelBottom=scene.height+Math.max(0,cameraY)+220;
+ for(const bridge of bridgeSpecs){
+  const sx=bridge.x-camera,wBridge=bridge.w;
+  if(sx>scene.width+10||sx+wBridge< -10)continue;
+  let highestGround=Infinity;
+  for(let wx=bridge.x;wx<=bridge.x+wBridge;wx+=12)highestGround=Math.min(highestGround,terrainHeight(wx));
+  const deckY=bridgeSurfaceY(bridge);
+  const cutTop=Math.min(highestGround,deckY)-4;
+  const waterY=deckY+72;
+  g.save();
+  // Hueco oscuro bajo la pasarela; cubre la tierra y el césped del tramo.
+  g.fillStyle="#123d59";
+  g.fillRect(sx,cutTop,wBridge,channelBottom-cutTop);
+  // Caras rocosas verticales en ambos extremos del cauce.
+  g.fillStyle="#71442f";g.fillRect(sx,cutTop,9,Math.max(0,waterY-cutTop));
+  g.fillRect(sx+wBridge-9,cutTop,9,Math.max(0,waterY-cutTop));
+  g.fillStyle="#b56d3d";g.fillRect(sx,cutTop,wBridge,4);
+  g.fillStyle="#8b5238";g.fillRect(sx+9,cutTop+8,3,Math.max(0,waterY-cutTop-8));
+  g.fillRect(sx+wBridge-12,cutTop+8,3,Math.max(0,waterY-cutTop-8));
+  // El agua queda claramente por debajo de las tablas.
+  const waterGradient=g.createLinearGradient(0,waterY,0,channelBottom);
+  waterGradient.addColorStop(0,"#32b8e4");
+  waterGradient.addColorStop(.12,"#1686c5");
+  waterGradient.addColorStop(1,"#073c83");
+  g.fillStyle=waterGradient;g.fillRect(sx+9,waterY,wBridge-18,channelBottom-waterY);
+  g.fillStyle="#8cf4ff";g.fillRect(sx+10,waterY,wBridge-20,3);
+  g.fillStyle="#d2fbff";
+  for(let i=0;i<12;i++){
+   const waveX=sx+14+((i*37+elapsed*38)%(wBridge-34));
+   const waveY=waterY+8+(i%3)*15;
+   g.fillRect(waveX,waveY,12+(i%4)*5,2);
+  }
+  g.restore();
+ }
 }
 function drawMountainDetails(){
  const peaks=[22500,25500,28500,31500,34500,37500,40500,43500,46500,49500,51600,54000,56400,58500];
@@ -446,12 +486,18 @@ function drawMountainDetails(){
   const wx=peaks[index],x=wx-camera,y=terrainHeight(wx);
   if(x< -130||x>scene.width+130)continue;
   g.save();g.imageSmoothingEnabled=false;
-  // Roca expuesta que marca la cima; no altera las colisiones del terreno.
-  g.fillStyle="#5c6c6d";g.beginPath();g.moveTo(x-74,y+32);g.lineTo(x-47,y+13);g.lineTo(x-30,y+8);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+27,y+9);g.lineTo(x+66,y+31);g.closePath();g.fill();
-  g.fillStyle="#899e98";g.beginPath();g.moveTo(x-48,y+14);g.lineTo(x-30,y+8);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+17,y+13);g.lineTo(x-2,y+9);g.lineTo(x-15,y+18);g.closePath();g.fill();
-  // Pequeña corona clara para que se identifique como cumbre y no como una colina normal.
-  g.fillStyle="#e6f7e9";g.beginPath();g.moveTo(x-17,y+1);g.lineTo(x-11,y-7);g.lineTo(x+5,y+1);g.lineTo(x+11,y+7);g.lineTo(x+1,y+5);g.lineTo(x-5,y+9);g.closePath();g.fill();
-  g.fillStyle="#b5d7d5";g.fillRect(x-37,y+15,12,3);g.fillRect(x+23,y+17,15,3);
+  // Las piedras terminan exactamente en la línea del suelo: ninguna parte invade la hierba.
+  g.fillStyle="#53676b";g.beginPath();
+  g.moveTo(x-74,y);g.lineTo(x-48,y-15);g.lineTo(x-30,y-20);g.lineTo(x-11,y-35);
+  g.lineTo(x+5,y-29);g.lineTo(x+27,y-20);g.lineTo(x+66,y);g.closePath();g.fill();
+  g.fillStyle="#899e98";g.beginPath();
+  g.moveTo(x-48,y);g.lineTo(x-30,y-20);g.lineTo(x-11,y-35);g.lineTo(x+5,y-29);
+  g.lineTo(x+17,y-13);g.lineTo(x-2,y-17);g.lineTo(x-15,y-8);g.closePath();g.fill();
+  // Nieve y vetas rocosas se mantienen por encima de la superficie.
+  g.fillStyle="#e6f7e9";g.beginPath();
+  g.moveTo(x-17,y-30);g.lineTo(x-11,y-35);g.lineTo(x+5,y-29);
+  g.lineTo(x+11,y-21);g.lineTo(x+1,y-23);g.lineTo(x-5,y-20);g.closePath();g.fill();
+  g.fillStyle="#b5d7d5";g.fillRect(x-37,y-14,12,3);g.fillRect(x+23,y-10,15,3);
   g.restore();
  }
 }
@@ -494,12 +540,29 @@ function drawPalm(wx,variant=0){
  g.restore();
 }
 function drawWoodBridge(bridge){
- const x=bridge.x-camera,w=bridge.w;if(x>scene.width+20||x+w< -20)return;
- const base=terrainHeight(bridge.x+w/2),top=base-6;
- g.save();g.fillStyle="#6f4029";g.fillRect(x,top+7,w,9);
- for(let i=0;i<w;i+=24){g.fillStyle=i%48===0?"#bd8246":"#d49a55";g.fillRect(x+i,top,21,10);g.fillStyle="#70462d";g.fillRect(x+i,top+8,21,3);g.fillStyle="#ffe0a0";g.fillRect(x+i+2,top+1,14,2)}
+ const x=bridge.x-camera,w=bridge.w;
+ if(x>scene.width+20||x+w< -20)return;
+ const top=bridgeSurfaceY(bridge),waterY=top+72;
+ g.save();
+ // Pilotes de madera que bajan desde la estructura y terminan justo sobre el agua.
+ for(let i=22;i<w-10;i+=92){
+  g.fillStyle="#513425";g.fillRect(x+i,top+8,9,Math.max(0,waterY-top-10));
+  g.fillStyle="#a96b3a";g.fillRect(x+i+2,top+13,3,Math.max(0,waterY-top-17));
+  g.fillStyle="#6b4029";g.fillRect(x+i-4,waterY-3,17,4);
+ }
+ // Vigas inferiores y tablas superiores transitables.
+ g.fillStyle="#6f4029";g.fillRect(x,top+7,w,9);
+ for(let i=0;i<w;i+=24){
+  g.fillStyle=i%48===0?"#bd8246":"#d49a55";g.fillRect(x+i,top,Math.min(21,w-i),10);
+  g.fillStyle="#70462d";g.fillRect(x+i,top+8,Math.min(21,w-i),3);
+  g.fillStyle="#ffe0a0";g.fillRect(x+i+2,top+1,Math.min(14,w-i-2),2);
+ }
  g.fillStyle="#80502d";g.fillRect(x,top-4,w,4);
- for(let i=0;i<=w;i+=52){g.fillStyle="#7f4b2e";g.fillRect(x+i,top-12,5,12);g.fillStyle="#e4bd7a";g.fillRect(x+i+1,top-11,2,7)}
+ // Barandilla baja a ambos lados para dar silueta de puente.
+ for(let i=0;i<=w;i+=52){
+  g.fillStyle="#7f4b2e";g.fillRect(x+i,top-12,5,12);
+  g.fillStyle="#e4bd7a";g.fillRect(x+i+1,top-11,2,7);
+ }
  g.restore();
 }
 function drawRuin(wx,variant=0){
