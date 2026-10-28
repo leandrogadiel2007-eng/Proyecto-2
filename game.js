@@ -86,7 +86,8 @@ const aerialPlatforms=[
  {id:10,x:10870,lift:230,w:300}
 ];
 const aerialSpring={x:6800,w:72,cooldownUntil:0,flashUntil:0};
-function aerialPlatformY(platform){return Math.max(24,terrainHeight(platform.x+platform.w/2)-platform.lift)}
+// Eleva toda la ruta aérea otras 120 unidades; el límite inferior se elimina para que no se amontonen en la misma altura.
+function aerialPlatformY(platform){return terrainHeight(platform.x+platform.w/2)-platform.lift-120}
 function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.x+p.w-5)||null}
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
