@@ -124,9 +124,9 @@ function buildLevel(){
  beeProjectiles=[];
  enemies=enemyPositions.map((x,index)=>({
   x,
-  y:index%3===2?terrainHeight(x)-112:terrainHeight(x)-28,
+  y:index%3===2?terrainHeight(x)-190:terrainHeight(x)-28,
   alive:true,base:x,kind:index%3,
-  nextShot:1.35+(index%5)*0.28
+  hasFiredFirst:false,nextShot:0
  }));
 
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
@@ -321,18 +321,24 @@ function update(dt){
   e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;
   // Las abejas vuelan sobre el terreno con una oscilación suave.
   e.y=e.kind===2
-   ? terrainHeight(e.x)-112+Math.sin(elapsed*2.3+e.base*.014)*11
+   ? terrainHeight(e.x)-190+Math.sin(elapsed*2.3+e.base*.014)*13
    : terrainHeight(e.x)-28;
   if(e.kind===2){
-   const targetX=player.x+player.w/2-e.x,targetY=player.y+player.h/2-(e.y-9);
+   const targetX=player.x+player.w/2-e.x;
+   const targetY=player.y+player.h/2-(e.y-9);
    const distance=Math.hypot(targetX,targetY);
-   // Disparan cuando Sonic está cerca y dejan un intervalo entre bolitas.
-   if(Math.abs(targetX)<560&&Math.abs(targetX)>58&&elapsed>=e.nextShot&&distance>0){
-    const shotSpeed=285;
-    beeProjectiles.push({x:e.x+(targetX>0?17:-17),y:e.y-9,
+   // Al entrar por primera vez en pantalla, la abeja dispara sin retraso.
+   // Luego repite el ataque cada cinco segundos exactos mientras siga visible.
+   const beeVisible=e.x>=camera-32&&e.x<=camera+VIEW_W+32;
+   if(beeVisible&&distance>0&&(!e.hasFiredFirst||elapsed>=e.nextShot)){
+    const shotSpeed=340;
+    beeProjectiles.push({
+     x:e.x+(targetX>=0?17:-17),y:e.y-9,
      vx:targetX/distance*shotSpeed,vy:targetY/distance*shotSpeed,
-     radius:7,life:3.0,alive:true});
-    e.nextShot=elapsed+1.7+(Math.abs(e.base)%3)*0.12;
+     radius:8,life:4.2,alive:true
+    });
+    e.hasFiredFirst=true;
+    e.nextShot=elapsed+5;
    }
   }
   const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
