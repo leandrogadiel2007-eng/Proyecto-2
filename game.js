@@ -77,6 +77,7 @@ function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 let rings=[],enemies=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
+let raceFinished=false,raceWinner=null;
 function buildLevel(){
  rings=[];collected=new Set();
  let group=0;
@@ -100,7 +101,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -131,12 +132,21 @@ async function startOnlineGame(){
   multiplayerRoom=String(roomCodeInput.value||'GREEN-ISLAND').toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24)||'GREEN-ISLAND';
   multiplayerClient=window.supabase.createClient(url,key,{realtime:{params:{eventsPerSecond:10}}});const client=multiplayerClient;
   const roomChannel=client.channel('blue-rush:'+multiplayerRoom.toLowerCase(),{config:{broadcast:{self:false},presence:{key:multiplayerId},private:false}});
-  roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
+  roomChannel.on('broadcast',{event:'player-finished'},({payload})=>{
+    if(!payload||payload.id===multiplayerId||raceFinished)return;
+    const name=String(payload.name||'El rival').replace(/[<>]/g,'').slice(0,16)||'El rival';
+    raceFinished=true;raceWinner=name;levelCompleted=true;running=false;
+    startScreen.querySelector('h2').textContent='🏁 ¡'+name+' ganó la carrera!';
+    startScreen.querySelector('p:not(.start-kicker)').textContent='Tu rival llegó primero a la meta. ¡Vuelve a correr para intentar ganar!';
+    startButton.textContent='CORRER OTRA VEZ';startScreen.classList.remove('hidden');
+    status.textContent='CARRERA TERMINADA · GANADOR: '+name;
+   });
+   roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
    if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
    if(!Number.isFinite(x)||!Number.isFinite(y)||x< -200||x>worldWidth+200||y< -1000||y>5000)return;
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
-   if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
-   other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.facing=Number(payload.facing)<0?-1:1;
+   if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
+   other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
    const animations=['idle','run','dash','speeddash','jump','spin','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
@@ -168,7 +178,7 @@ function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
  if(running){if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.78)animation='speeddash';else if(speedRatio>=0.47)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
  const phase=animation==='spin'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
- const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,playing:running,sentAt:Date.now()};
+ const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
 }
 function drawRemotePlayers(){
@@ -256,9 +266,18 @@ function update(dt){
   if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
  }
  if(player.x>=worldWidth-player.w-90&&!levelCompleted){
-  running=false;levelCompleted=true;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Nivel completado!';
-  startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
-  startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
+  levelCompleted=true;
+  if(onlineMode&&!raceFinished){
+   raceFinished=true;raceWinner=playerName;running=false;
+   if(multiplayerChannel)multiplayerChannel.send({type:'broadcast',event:'player-finished',payload:{id:multiplayerId,name:playerName,time:Math.round(elapsed*100)/100,progress:100,finishedAt:Date.now()}}).catch(error=>console.warn('[Blue Rush] No se pudo anunciar la meta:',error));
+   startScreen.querySelector('h2').textContent='🏁 ¡Ganaste la carrera!';
+   startScreen.querySelector('p:not(.start-kicker)').textContent='Llegaste primero a la meta. Tiempo: '+elapsed.toFixed(1)+' s. ¡Desafía a tu rival otra vez!';
+   status.textContent='CARRERA TERMINADA · GANADOR: '+playerName;
+  }else{
+   running=false;startScreen.querySelector('h2').textContent='¡Nivel completado!';
+   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
+  }
+  startScreen.classList.remove('hidden');startButton.innerHTML='CORRER OTRA VEZ <span aria-hidden="true">↻</span>';
  }
  // Cámara fija sobre el centro de Sonic: no intenta encuadrar el terreno ni las cimas.
  // Se calcula desde la posición actual del personaje en cada frame, sin límites
@@ -267,7 +286,10 @@ function update(dt){
  camera=playerCenter-VIEW_W/2;
  cameraY=player.y+player.h/2-VIEW_H/2;
  const zone=sectionAt(player.x);
- status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
+ if(onlineMode){
+  const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
+  status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
+ }else status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
