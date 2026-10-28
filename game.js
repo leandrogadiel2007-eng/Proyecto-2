@@ -258,18 +258,21 @@ function applyPlayerDamage(){
   finishRunAfterDeath();
   return;
  }
- let dropped=0;
- rings.forEach(r=>{
-  if(r.got&&dropped<8){
-   const scatterIndex=dropped;
-   r.got=false;
-   // Lanza los anillos hacia delante; Sonic recibe el empujón en sentido contrario.
-   r.x=player.x+player.w/2+(player.facing||1)*(42+(scatterIndex%4)*24);
-   r.y=player.y-18-Math.floor(scatterIndex/4)*20;
-   // Evita que Sonic vuelva a recoger el anillo en el mismo lugar inmediatamente.
-   r.dropSafeUntil=elapsed+0.9;
-   dropped++;
-  }
+ const ownedRings=rings.filter(r=>r.got);
+ // Se pierde aproximadamente el 80 % del inventario (redondeado a anillos enteros).
+ const dropCount=Math.min(ownedRings.length,Math.max(1,Math.round(ownedRings.length*.8)));
+ ownedRings.slice(0,dropCount).forEach((r,index)=>{
+  const side=index%2===0?-1:1;
+  r.got=false;
+  // Los anillos salen desde Sonic hacia ambos lados y con un impulso hacia arriba.
+  r.x=player.x+player.w/2+side*(8+Math.floor(index/2)*8);
+  r.y=player.y+player.h/2-8;
+  r.vx=side*(150+Math.random()*250)+player.vx*.12;
+  r.vy=-(260+Math.random()*300);
+  r.bouncing=true;
+  r.bounceCount=0;
+  // Evita recogerlos otra vez inmediatamente.
+  r.dropSafeUntil=elapsed+0.85;
  });
  player.invincible=1.5;
  player.speedCharge=0;
@@ -363,7 +366,31 @@ function update(dt){
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
- rings.forEach(r=>{if(!r.got&&elapsed>=(r.dropSafeUntil||0)&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;r.dropSafeUntil=0;score+=10}});
+ rings.forEach(r=>{
+  if(!r.got&&r.bouncing){
+   // Física de los anillos lanzados: gravedad, desplazamiento y rebote sobre el terreno.
+   r.vy=(r.vy||0)+980*dt;
+   r.x+=(r.vx||0)*dt;
+   r.y+=r.vy*dt;
+   r.vx=(r.vx||0)*Math.pow(.62,dt);
+   if(r.x<10){r.x=10;r.vx=Math.abs(r.vx)*.7}
+   if(r.x>worldWidth-10){r.x=worldWidth-10;r.vx=-Math.abs(r.vx)*.7}
+   const ringFloor=groundSurfaceAt(r.x);
+   if(r.y+12>=ringFloor&&r.vy>0){
+    r.y=ringFloor-12;
+    if((r.bounceCount||0)<4&&r.vy>100){
+     r.vy=-r.vy*.46;
+     r.vx*=.72;
+     r.bounceCount=(r.bounceCount||0)+1;
+    }else{
+     r.vy=0;r.vx=0;r.bouncing=false;
+    }
+   }
+  }
+  if(!r.got&&elapsed>=(r.dropSafeUntil||0)&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){
+   r.got=true;r.bouncing=false;r.vx=0;r.vy=0;r.dropSafeUntil=0;score+=10;
+  }
+ });
  enemies.forEach(e=>{
   if(!e.alive)return;
   e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;
@@ -923,9 +950,11 @@ function drawBeeProjectile(shot){
 }
 function drawRing(r){
  if(r.got)return;
- const x=r.x-camera,y=r.y+Math.sin(elapsed*5+r.x)*2.3;
- const squash=.34+.66*Math.abs(Math.sin(elapsed*3.1+r.x*.018));
- g.save();g.translate(x,y);g.scale(squash,1);
+ const x=r.x-camera,y=r.y+(r.bouncing?0:Math.sin(elapsed*5+r.x)*2.3);
+ const squash=r.bouncing ? .82+.18*Math.abs(Math.sin(elapsed*8+r.x*.018)) : .34+.66*Math.abs(Math.sin(elapsed*3.1+r.x*.018));
+ g.save();g.translate(x,y);
+ if(r.bouncing)g.rotate(Math.sin(elapsed*13+r.x*.04)*.24);
+ g.scale(squash,1);
  // Gold ring: thick shadow, warm gradient, bright edge and a white glint.
  g.strokeStyle="#7c430f";g.lineWidth=9;g.beginPath();g.ellipse(1.5,2,10,13,0,0,Math.PI*2);g.stroke();
  const gold=g.createLinearGradient(-10,-13,10,14);gold.addColorStop(0,"#fff9aa");gold.addColorStop(.26,"#ffed57");gold.addColorStop(.63,"#ffb617");gold.addColorStop(1,"#d97810");
