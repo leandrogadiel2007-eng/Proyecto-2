@@ -832,7 +832,7 @@ function drawRing(r){
 // Hoja de sprites original de Blue Rush: 4 cuadros por tipo, celdas de 64x64.
 const enemySpriteSheet=new Image();
 enemySpriteSheet.decoding="async";
-enemySpriteSheet.src="./assets/enemies/blue-rush-enemies.png?v=1";
+enemySpriteSheet.src="./assets/enemies/blue-rush-enemies.svg?v=2";
 function drawEnemy(e){
  if(!e.alive)return;
  const type=((e.kind%3)+3)%3;
