@@ -1347,7 +1347,6 @@ function draw(){
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
   ["SONIC",drawPlayer],
-  ["CARGA SPIN DASH",drawSpinDashCharge],
   ["NOMBRE",drawPlayerName]
  ];
  let copied=false;
