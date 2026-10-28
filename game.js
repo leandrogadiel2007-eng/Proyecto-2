@@ -7,7 +7,7 @@ const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function'
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
 const remotePlayers=new Map();
 const NETWORK_SEND_INTERVAL=120;
-const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false};
+const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
 const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
 // Spritesheet Green Island (edición gratuita).
@@ -75,6 +75,14 @@ const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}
 function bridgeAt(x){return bridgeSpecs.find(bridge=>x>=bridge.x&&x<=bridge.x+bridge.w)||null}
 function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
+const undergroundZone={entryX:14350,exitX:18750,depth:128};
+let inUnderground=false;
+function undergroundPathY(x){
+ const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+ const entering=smooth((x-(undergroundZone.entryX-28))/235);
+ const leaving=smooth((undergroundZone.exitX+28-x)/235);
+ return groundSurfaceAt(x)+undergroundZone.depth*Math.min(entering,leaving);
+}
 // Ruta aérea elevada: los valores y bajos colocan las plataformas muy por encima del terreno.
 const aerialPlatforms=[
  {id:11,x:6700,lift:215,w:700}, // Plataforma amplia justo encima del trampolín
@@ -123,7 +131,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,platformId:null};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,platformId:null};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -217,7 +225,7 @@ function drawRemotePlayers(){
  }
 }
 function resetGame(){
- leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function finishRunAfterDeath(){
@@ -271,10 +279,10 @@ function applyPlayerDamage(){
  player.onGround=false;
  player.vx=-player.facing*180;
 }
-function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
-function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
-window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
-window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=false});
+function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
+function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(key==='ArrowDown'||k==='s')keys.down=down;if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
+window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=keys.down=false});
 startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});onlineButton.addEventListener('click',startOnlineGame);resetButton.addEventListener('click',resetGame);window.addEventListener('beforeunload',leaveOnlineRoom);
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump'){keys.jump=true;jump()}else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c==='jump')keys.jump=false;else keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
@@ -292,7 +300,7 @@ function update(dt){
    if(Math.abs(player.vx)<8)player.vx=0;
   }
   const wasGrounded=player.onGround,oldBottom=player.y+player.h,oldX=player.x,oldY=player.y,oldPlatformId=player.platformId,oldGround=groundSurfaceAt(oldX+player.w/2);
-  if(wasGrounded&&oldPlatformId===null){
+  if(wasGrounded&&oldPlatformId===null&&!inUnderground){
    const slope=(terrainHeight(player.x+42)-terrainHeight(player.x-42))/84;
    player.vx+=Math.max(-230,Math.min(230,slope*720))*dt;
   }
@@ -322,12 +330,38 @@ function update(dt){
    }
   }
   // El trampolín impulsa a Sonic a la primera plataforma de la ruta aérea.
-  if(player.onGround&&player.platformId===null&&player.vx>80&&elapsed>=aerialSpring.cooldownUntil&&player.x+player.w>aerialSpring.x&&player.x<aerialSpring.x+aerialSpring.w){
+  if(!inUnderground&&player.onGround&&player.platformId===null&&player.vx>80&&elapsed>=aerialSpring.cooldownUntil&&player.x+player.w>aerialSpring.x&&player.x<aerialSpring.x+aerialSpring.w){
    player.vy=-1050;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;
    player.speedCharge=Math.max(player.speedCharge,.78);player.vx=Math.max(player.vx,430);
    aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;score+=25;
   }
- for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
+ const tunnelCenter=player.x+player.w/2;
+  if(!inUnderground&&keys.down&&player.onGround&&player.platformId===null&&
+     tunnelCenter>=undergroundZone.entryX-78&&tunnelCenter<=undergroundZone.entryX+72){
+   inUnderground=true;keys.down=false;
+   player.x=undergroundZone.entryX+40-player.w/2;
+   player.y=undergroundPathY(player.x+player.w/2)-player.h;
+   player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+  }
+  if(inUnderground){
+   const center=player.x+player.w/2;
+   if(center<=undergroundZone.entryX+3){
+    inUnderground=false;
+    player.x=undergroundZone.entryX-30-player.w/2;
+    player.y=groundSurfaceAt(undergroundZone.entryX-30)-player.h;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+   }else if(center>=undergroundZone.exitX){
+    inUnderground=false;
+    player.x=undergroundZone.exitX-player.w/2;
+    player.y=groundSurfaceAt(undergroundZone.exitX)-player.h;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+    player.vx=Math.max(170,player.vx);
+   }else{
+    player.y=undergroundPathY(center)-player.h;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+   }
+  }
+  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(player.onGround){player.fallPhase=0;if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
@@ -408,7 +442,7 @@ function update(dt){
   }
  }
  beeProjectiles=beeProjectiles.filter(shot=>shot.alive&&shot.life>0);
- if(player.y>VIEW_H+100){
+ if(!inUnderground&&player.y>VIEW_H+100){
   player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
   if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
  }
@@ -436,7 +470,7 @@ function update(dt){
  if(onlineMode){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
- }else status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
+ }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -845,6 +879,50 @@ function drawFinish(){
  for(let row=0;row<3;row++)for(let col=0;col<5;col++){g.fillStyle=(row+col)%2===0?"#fff":"#18324d";g.fillRect(x+7+col*10,base-102+row*10,10,10)}
  g.fillStyle="#ffe45c";g.fillRect(x-6,base-109,19,7);g.fillStyle="#47c85b";g.fillRect(x-12,base-4,30,4);g.restore();
 }
+function drawUndergroundZone(){
+ const left=undergroundZone.entryX-42,right=undergroundZone.exitX+42;
+ if(right-camera< -120||left-camera>scene.width+120)return;
+ const strokePath=(offset)=>{
+  g.beginPath();
+  let first=true;
+  for(let wx=left;wx<=right;wx+=12){
+   const sx=wx-camera,sy=undergroundPathY(wx)+offset;
+   if(first){g.moveTo(sx,sy);first=false}else g.lineTo(sx,sy);
+  }
+  g.lineTo(right-camera,undergroundPathY(right)+offset);
+ };
+ g.save();g.lineCap="round";g.lineJoin="round";
+ strokePath(0);g.strokeStyle="#403027";g.lineWidth=112;g.stroke();
+ strokePath(0);g.strokeStyle="#76503a";g.lineWidth=101;g.stroke();
+ strokePath(0);g.strokeStyle="#211f24";g.lineWidth=84;g.stroke();
+ strokePath(-37);g.strokeStyle="#98734d";g.lineWidth=5;g.stroke();
+ strokePath(-32);g.strokeStyle="#574234";g.lineWidth=3;g.stroke();
+ strokePath(38);g.strokeStyle="#8a6748";g.lineWidth=7;g.stroke();
+ strokePath(35);g.strokeStyle="#c08a52";g.lineWidth=2;g.stroke();
+ for(let wx=undergroundZone.entryX+310;wx<undergroundZone.exitX-180;wx+=280){
+  const sx=wx-camera,sy=undergroundPathY(wx);
+  if(sx< -30||sx>scene.width+30)continue;
+  g.fillStyle="#574638";g.beginPath();g.moveTo(sx-10,sy-39);g.lineTo(sx-4,sy-53);g.lineTo(sx+3,sy-41);g.lineTo(sx+12,sy-49);g.lineTo(sx+15,sy-37);g.closePath();g.fill();
+  if(Math.floor(wx/280)%3===0){
+   g.fillStyle="#61e8de";g.beginPath();g.moveTo(sx+25,sy+12);g.lineTo(sx+32,sy+27);g.lineTo(sx+25,sy+37);g.lineTo(sx+19,sy+26);g.closePath();g.fill();
+   g.fillStyle="#d1ffff";g.fillRect(sx+23,sy+20,3,8);
+  }
+ }
+ for(const wx of [undergroundZone.entryX,undergroundZone.exitX]){
+  const sx=wx-camera,top=groundSurfaceAt(wx);
+  if(sx< -100||sx>scene.width+100)continue;
+  g.fillStyle="#211b20";g.beginPath();g.ellipse(sx,top+6,42,18,-.05,0,Math.PI*2);g.fill();
+  g.strokeStyle="#725039";g.lineWidth=8;g.beginPath();g.ellipse(sx,top+6,43,19,-.05,0,Math.PI*2);g.stroke();
+  g.strokeStyle="#a0e75b";g.lineWidth=4;g.beginPath();g.ellipse(sx,top-1,42,10,0,Math.PI,Math.PI*2);g.stroke();
+ }
+ const entryScreen=undergroundZone.entryX-camera,entryTop=groundSurfaceAt(undergroundZone.entryX);
+ if(entryScreen>-120&&entryScreen<scene.width+120){
+  g.font="bold 11px Arial";g.textAlign="center";g.textBaseline="bottom";
+  g.lineWidth=3;g.strokeStyle="#17452a";g.strokeText("↓ / S  ENTRAR",entryScreen,entryTop-10);
+  g.fillStyle="#eaffae";g.fillText("↓ / S  ENTRAR",entryScreen,entryTop-10);
+ }
+ g.restore();
+}
 function drawDecorations(){
  drawAerialRoute();
  for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
@@ -856,7 +934,7 @@ function drawDecorations(){
  for(let wx=33100;wx<35800;wx+=740)drawPalm(wx,Math.floor(wx/740)%3);
  for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/980)%3);else drawRuin(wx,1)}
  for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
- checkpoints.forEach(drawCheckpoint);drawFinish();
+ drawUndergroundZone();checkpoints.forEach(drawCheckpoint);drawFinish();
 }
 function drawAerialRoute(){
  // El trampolín se dibuja solo cuando está en cámara, pero NO oculta las plataformas cuando queda lejos.

@@ -226,3 +226,5 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
  .play-layout .player-name-input{font-size:14px;padding:10px 12px}
  .play-layout .multiplayer-note{font-size:10px!important}
 }
+
+.touch-controls .down-button{font-size:10px;background:linear-gradient(180deg,#7d6549,#473729);border-color:#c7a878;color:#fff3d6}
