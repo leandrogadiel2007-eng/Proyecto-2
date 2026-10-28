@@ -1,8 +1,12 @@
 (() => {
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
-const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
+const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),onlineButton=document.getElementById('onlineButton'),roomCodeInput=document.getElementById('roomCode'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
 let playerName='';
+const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():('br-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
+const remotePlayers=new Map();
+const NETWORK_SEND_INTERVAL=120;
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
 const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
@@ -97,13 +101,98 @@ function buildLevel(){
 }
 
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
-function startGame(){if(!running){if(levelCompleted)resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';lastTime=performance.now()}}
-function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
+function showLobbyMessage(title,message){
+ startScreen.querySelector('h2').textContent=title;
+ startScreen.querySelector('p:not(.start-kicker)').textContent=message;
+ startScreen.classList.remove('hidden');
+}
+function startGame(){
+ if(!running){
+  if(levelCompleted)resetPlayer();
+  startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';
+  startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+  startButton.textContent='JUGAR SOLO';
+  playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;
+  running=true;startScreen.classList.add('hidden');
+  status.textContent=onlineMode?'ONLINE · SALA '+multiplayerRoom:'¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';
+  lastTime=performance.now();
+ }
+}
+async function startOnlineGame(){
+ const config=window.BLUE_RUSH_SUPABASE||{},url=String(config.url||'').trim(),key=String(config.publishableKey||config.key||'').trim();
+ if(!url||!key){showLobbyMessage('Configura Supabase','Añade la URL del proyecto y la publishable key en supabase-config.js y vuelve a cargar la página.');status.textContent='FALTA CONFIGURAR SUPABASE';return}
+ if(!window.supabase||typeof window.supabase.createClient!=='function'){showLobbyMessage('No se cargó Supabase','No se pudo cargar la librería online. Revisa tu conexión a internet y recarga la página.');status.textContent='SUPABASE NO DISPONIBLE';return}
+ playerName=(playerNameInput.value||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;
+ multiplayerRoom=String(roomCodeInput.value||'GREEN-ISLAND').toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24)||'GREEN-ISLAND';roomCodeInput.value=multiplayerRoom;
+ onlineButton.disabled=true;startButton.disabled=true;onlineButton.textContent='CONECTANDO…';
+ showLobbyMessage('Conectando online…','Conectando a Supabase Realtime para entrar en la sala '+multiplayerRoom+'.');status.textContent='CONECTANDO A SUPABASE…';
+ try{
+  leaveOnlineRoom();
+  multiplayerRoom=String(roomCodeInput.value||'GREEN-ISLAND').toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,24)||'GREEN-ISLAND';
+  multiplayerClient=window.supabase.createClient(url,key,{realtime:{params:{eventsPerSecond:10}}});const client=multiplayerClient;
+  const roomChannel=client.channel('blue-rush:'+multiplayerRoom.toLowerCase(),{config:{broadcast:{self:false},presence:{key:multiplayerId},private:false}});
+  roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
+   if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
+   if(!Number.isFinite(x)||!Number.isFinite(y)||x< -200||x>worldWidth+200||y< -1000||y>5000)return;
+   const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
+   if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
+   other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.facing=Number(payload.facing)<0?-1:1;
+   const animations=['idle','run','dash','speeddash','jump','spin','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
+   other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
+  });
+  roomChannel.on('presence',{event:'sync'},()=>{
+   const presence=roomChannel.presenceState(),seen=new Set();
+   for(const entries of Object.values(presence))for(const person of entries||[]){
+    if(!person||!person.id||person.id===multiplayerId)continue;const id=String(person.id);seen.add(id);let other=remotePlayers.get(id);
+    if(!other){const x=Number.isFinite(Number(person.x))?Number(person.x):90,y=Number.isFinite(Number(person.y))?Number(person.y):terrainHeight(x)-43;other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}
+    if(person.name)other.name=String(person.name).replace(/[<>]/g,'').slice(0,16)||'Jugador';
+   }
+   for(const id of remotePlayers.keys())if(!seen.has(id))remotePlayers.delete(id);
+   if(onlineMode)status.textContent='ONLINE · SALA '+multiplayerRoom+' · '+(remotePlayers.size+1)+' JUGADOR(ES)';
+  });
+  multiplayerChannel=roomChannel;
+  await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Se agotó el tiempo de conexión.')),12000);roomChannel.subscribe(state=>{if(state==='SUBSCRIBED'){clearTimeout(timeout);resolve()}else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){clearTimeout(timeout);reject(new Error('Supabase respondió: '+state))}})});
+  await roomChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now()});
+  onlineMode=true;lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
+ }catch(error){
+  console.error('[Blue Rush] Error de multijugador online:',error);onlineMode=false;const oldChannel=multiplayerChannel,oldClient=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;remotePlayers.clear();
+  if(oldChannel&&oldClient){try{await oldClient.removeChannel(oldChannel)}catch(_){}}
+  showLobbyMessage('No se pudo conectar','Revisa la URL, la publishable key y que Realtime esté habilitado en Supabase. Detalle: '+String(error&&error.message||error).slice(0,100));status.textContent='ERROR DE CONEXIÓN ONLINE';
+ }finally{onlineButton.disabled=false;startButton.disabled=false;onlineButton.innerHTML='JUGAR ONLINE <span aria-hidden="true">↗</span>'}
+}
+function leaveOnlineRoom(){
+ onlineMode=false;remotePlayers.clear();const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
+ if(channel&&client)client.removeChannel(channel).catch(error=>console.warn('[Blue Rush] No se pudo cerrar la sala:',error));
+}
+function sendOnlineState(now){
+ if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
+ if(running){if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.78)animation='speeddash';else if(speedRatio>=0.47)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
+ const phase=animation==='spin'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+ const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,playing:running,sentAt:Date.now()};
+ const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
+}
+function drawRemotePlayers(){
+ if(!onlineMode)return;const now=performance.now();
+ for(const [id,other] of remotePlayers){
+  if(now-other.lastSeen>9000){remotePlayers.delete(id);continue}other.x+=(other.targetX-other.x)*0.32;other.y+=(other.targetY-other.y)*0.32;
+  const animation=other.animation||'idle',frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;if(!frames||!frames.length)continue;
+  const frame=frames[Math.floor(Math.max(0,other.phase)*Math.max(1,frames.length))%frames.length];if(!frame||!frame.img||!frame.img.naturalWidth)continue;
+  const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
+  const targetW=falling?66:(rolling?46:(fast?76:56)),targetH=falling?66:(rolling?46:(fast?72:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
+  const sx=other.x-camera+player.w/2,sy=other.y+player.h/2;g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
+  g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
+  g.save();g.font='900 12px Arial, sans-serif';g.textAlign='center';g.textBaseline='bottom';g.lineJoin='round';g.lineWidth=3;g.strokeStyle='#082b53';g.strokeText(other.name,Math.round(sx),Math.round(other.y-7));g.fillStyle='#fff3a2';g.fillText(other.name,Math.round(sx),Math.round(other.y-7));g.restore();
+ }
+}
+function resetGame(){
+ leaveOnlineRoom();running=false;keys.left=keys.right=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
+}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
 function setKey(key,down){const k=key.toLowerCase();if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(down&&(key===' '||key==='ArrowUp'||k==='w'))jump();if(down&&key==='Enter'&&!running)startGame()}
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
 window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=false});
-startButton.addEventListener('click',startGame);resetButton.addEventListener('click',resetGame);
+startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});onlineButton.addEventListener('click',startOnlineGame);resetButton.addEventListener('click',resetGame);window.addEventListener('beforeunload',leaveOnlineRoom);
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump')jump();else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c!=='jump')keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 function update(dt){
  if(!running)return;elapsed+=dt;
@@ -851,6 +940,7 @@ function draw(){
   ["DECORACIÓN",drawDecorations],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
+  ["OTROS JUGADORES",drawRemotePlayers],
   ["SONIC",drawPlayer],
   ["NOMBRE",drawPlayerName]
  ];
@@ -896,6 +986,7 @@ function draw(){
 function loop(now){
  const dt=Math.min((now-(lastTime||now))/1000,.032);lastTime=now;
  try{update(dt)}catch(error){console.error("[Blue Rush] Error de actualización",error)}
+ try{sendOnlineState(now)}catch(error){console.error("[Blue Rush] Error de red",error)}
  try{draw()}catch(error){
   console.error("[Blue Rush] Error fatal de renderizado",error);
   if(status)status.textContent="ERROR DEL JUEGO · RECARGA LA PÁGINA";
