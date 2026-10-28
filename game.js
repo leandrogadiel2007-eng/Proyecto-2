@@ -77,7 +77,8 @@ function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 // Ruta aérea elevada: los valores y bajos colocan las plataformas muy por encima del terreno.
 const aerialPlatforms=[
- {id:0,x:7420,lift:145,w:360},{id:1,x:7840,lift:158,w:280},
+ {id:11,x:6700,lift:150,w:700}, // Plataforma amplia justo encima del trampolín
+  {id:0,x:7420,lift:145,w:360},{id:1,x:7840,lift:158,w:280},
  {id:2,x:8170,lift:172,w:270},{id:3,x:8490,lift:150,w:280},
  {id:4,x:8820,lift:142,w:290},{id:5,x:9160,lift:154,w:270},
  {id:6,x:9480,lift:170,w:280},{id:7,x:9810,lift:160,w:300},
