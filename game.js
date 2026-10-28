@@ -312,7 +312,7 @@ function update(dt){
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
  enemies.forEach(e=>{
   if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;
-  const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-25&&player.x<e.x+25&&player.y+player.h>enemyY-25&&player.y<enemyY+22;
+  const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   if(hit){
    if(player.vy>100&&player.y+player.h<enemyY+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
    else if(player.invincible<=0){
@@ -829,7 +829,33 @@ function drawRing(r){
  g.strokeStyle="#fffbd4";g.lineWidth=2.2;g.beginPath();g.ellipse(-1.8,-2,5.4,7.5,0,Math.PI*1.12,Math.PI*1.82);g.stroke();
  g.restore();
 }
+// Hoja de sprites original de Blue Rush: 4 cuadros por tipo, celdas de 64x64.
+const enemySpriteSheet=new Image();
+enemySpriteSheet.decoding="async";
+enemySpriteSheet.src="./assets/enemies/blue-rush-enemies.png?v=1";
 function drawEnemy(e){
+ if(!e.alive)return;
+ const type=((e.kind%3)+3)%3;
+ if(enemySpriteSheet.complete&&enemySpriteSheet.naturalWidth>=256&&enemySpriteSheet.naturalHeight>=192){
+  const frame=((Math.floor(elapsed*8+e.base*.013)%4)+4)%4;
+  const screenX=e.x-camera;
+  const screenY=e.y+Math.sin(elapsed*(type===2?5.5:4)+e.base)*1.7+(type===2?-7:0);
+  const facing=player.x+player.w/2<e.x?-1:1;
+  const drawOffsetY=type===2?-39:-33;
+  g.save();
+  g.translate(screenX,screenY);
+  g.scale(facing,1);
+  const smoothing=g.imageSmoothingEnabled;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(enemySpriteSheet,frame*64,type*64,64,64,-32,drawOffsetY,64,64);
+  g.imageSmoothingEnabled=smoothing;
+  g.restore();
+  return;
+ }
+ // Si la hoja aún no termina de cargar, dibuja la versión de respaldo.
+ drawEnemyFallback(e);
+}
+function drawEnemyFallback(e){
   if(!e.alive)return;
   const type=((e.kind%3)+3)%3,x=e.x-camera,hover=type===2?-7:0;
   const y=e.y+Math.sin(elapsed*(type===2?5.5:4)+e.base)*1.7+hover;
