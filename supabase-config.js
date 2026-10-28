@@ -3,6 +3,6 @@
 // Usa la Project URL y la Publishable key (o la antigua anon key).
 // NUNCA pongas aquí una secret key ni service_role.
 window.BLUE_RUSH_SUPABASE = {
-  url: "",
+  url: "https://kakmmynajggihmmsfsfo.supabase.co",
   publishableKey: ""
 };
