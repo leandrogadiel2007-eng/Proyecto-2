@@ -75,6 +75,15 @@ const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}
 function bridgeAt(x){return bridgeSpecs.find(bridge=>x>=bridge.x&&x<=bridge.x+bridge.w)||null}
 function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
+// Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
+const LOOP_START_ANGLE=154*Math.PI/180,LOOP_SWEEP=232*Math.PI/180;
+const loopTrack={x:3200,r:94,minSpeed:400,active:false,progress:0,entrySpeed:0,warningUntil:0};
+function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
+function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
+function loopCenterY(){
+ const entry=loopEntryCenterX(),exit=loopExitCenterX();
+ return (groundSurfaceAt(entry)+groundSurfaceAt(exit))/2-player.h/2-loopTrack.r*Math.sin(LOOP_START_ANGLE);
+}
 let rings=[],enemies=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
 let raceFinished=false,raceWinner=null;
@@ -101,7 +110,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;loopTrack.active=false;loopTrack.progress=0;loopTrack.entrySpeed=0;loopTrack.warningUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -206,40 +215,56 @@ startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});online
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump')jump();else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c!=='jump')keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 function update(dt){
  if(!running)return;elapsed+=dt;
- const dir=Number(keys.right)-Number(keys.left);
- if(dir){
-  if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
-  else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
-  player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
-  player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
+ if(loopTrack.active){
+  loopTrack.progress=Math.min(1,loopTrack.progress+(Math.max(loopTrack.minSpeed,loopTrack.entrySpeed)*dt)/(loopTrack.r*LOOP_SWEEP));
+  const p=loopTrack.progress,angle=LOOP_START_ANGLE+LOOP_SWEEP*p,exit=loopExitCenterX();
+  player.x=loopTrack.x+loopTrack.r*Math.cos(angle)-player.w/2;
+  player.y=loopCenterY()+loopTrack.r*Math.sin(angle)-player.h/2;
+  player.vx=loopTrack.entrySpeed;player.vy=0;player.onGround=false;player.spin=1;player.facing=1;player.spinAngle=p*Math.PI*2;
+  if(p>=1){
+   player.x=exit-player.w/2;player.y=groundSurfaceAt(exit)-player.h;
+   player.vx=Math.min(player.speed,Math.max(loopTrack.minSpeed,loopTrack.entrySpeed*1.08));
+   player.speedCharge=Math.max(player.speedCharge,.82);player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+   loopTrack.active=false;score+=150;
+  }
  }else{
-  player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.12,dt);
-  if(Math.abs(player.vx)<8)player.vx=0;
- }
- // Las pendientes alteran la velocidad: bajadas impulsan y subidas frenan.
- const wasGrounded=player.onGround;
- const oldBottom=player.y+player.h,oldX=player.x,oldGround=groundSurfaceAt(oldX+player.w/2);
- if(wasGrounded){
-  const slope=(terrainHeight(player.x+42)-terrainHeight(player.x-42))/84;
-  player.vx+=Math.max(-230,Math.min(230,slope*720))*dt;
- }
- const speedLimit=player.speed;
- player.vx=Math.max(-speedLimit,Math.min(speedLimit,player.vx));
- player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
- if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
- const worldCenter=player.x+player.w/2;
- const groundNow=groundSurfaceAt(worldCenter);
- if(wasGrounded){
-  player.y=groundNow-player.h;player.vy=0;player.onGround=true;
-  player.spin=0;player.spinAngle=0;
- }else{
-  player.vy+=1550*dt;
-  player.y+=player.vy*dt;
-  player.onGround=false;
-  const descending=player.vy>=0;
-  if(descending&&player.y+player.h>=groundNow&&oldBottom<=oldGround+Math.max(28,Math.abs(player.vx)*dt*1.4)){
-   player.y=groundNow-player.h;player.vy=0;player.onGround=true;
-   player.spin=0;player.spinAngle=0;
+  const dir=Number(keys.right)-Number(keys.left);
+  if(dir){
+   if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
+   else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
+   player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
+   player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
+  }else{
+   player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);player.vx*=Math.pow(0.12,dt);
+   if(Math.abs(player.vx)<8)player.vx=0;
+  }
+  const wasGrounded=player.onGround,oldBottom=player.y+player.h,oldX=player.x,oldGround=groundSurfaceAt(oldX+player.w/2);
+  if(wasGrounded){
+   const slope=(terrainHeight(player.x+42)-terrainHeight(player.x-42))/84;
+   player.vx+=Math.max(-230,Math.min(230,slope*720))*dt;
+  }
+  player.vx=Math.max(-player.speed,Math.min(player.speed,player.vx));
+  player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
+  if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
+  const worldCenter=player.x+player.w/2,groundNow=groundSurfaceAt(worldCenter);
+  if(wasGrounded){
+   player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+  }else{
+   player.vy+=1550*dt;player.y+=player.vy*dt;player.onGround=false;
+   const descending=player.vy>=0;
+   if(descending&&player.y+player.h>=groundNow&&oldBottom<=oldGround+Math.max(28,Math.abs(player.vx)*dt*1.4)){
+    player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+   }
+  }
+  const entry=loopEntryCenterX(),oldCenter=oldX+player.w/2,newCenter=player.x+player.w/2;
+  if(wasGrounded&&player.vx>0&&oldCenter<entry&&newCenter>=entry){
+   if(player.vx>=loopTrack.minSpeed){
+    loopTrack.active=true;loopTrack.progress=0;loopTrack.entrySpeed=player.vx;
+    player.x=entry-player.w/2;player.y=groundSurfaceAt(entry)-player.h;
+    player.vy=0;player.onGround=false;player.spin=1;player.spinAngle=0;
+   }else{
+    player.x=entry-player.w/2-1;player.vx=Math.max(0,player.vx*.65);loopTrack.warningUntil=elapsed+1.35;
+   }
   }
  }
  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
@@ -290,6 +315,7 @@ function update(dt){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
+ if(!loopTrack.active&&loopTrack.warningUntil>elapsed&&!levelCompleted)status.textContent='¡NECESITAS MÁS VELOCIDAD PARA EL ARO!';
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -699,6 +725,7 @@ function drawFinish(){
  g.fillStyle="#ffe45c";g.fillRect(x-6,base-109,19,7);g.fillStyle="#47c85b";g.fillRect(x-12,base-4,30,4);g.restore();
 }
 function drawDecorations(){
+ drawLoopTrack();
  for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
  for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
  bridgeSpecs.forEach(drawWoodBridge);
@@ -709,6 +736,20 @@ function drawDecorations(){
  for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/980)%3);else drawRuin(wx,1)}
  for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
  checkpoints.forEach(drawCheckpoint);drawFinish();
+}
+function drawLoopBack(){
+ const x=loopTrack.x-camera;if(x< -loopTrack.r-30||x>scene.width+loopTrack.r+30)return;
+ const cy=loopCenterY();g.save();g.lineCap="round";
+ g.beginPath();g.arc(x,cy,loopTrack.r,0,Math.PI*2);
+ g.strokeStyle="#563729";g.lineWidth=26;g.stroke();g.strokeStyle="#c27a39";g.lineWidth=18;g.stroke();g.strokeStyle="#6e472e";g.lineWidth=3;g.stroke();g.restore();
+}
+function drawLoopTrack(){
+ const x=loopTrack.x-camera,cy=loopCenterY();if(x< -loopTrack.r-30||x>scene.width+loopTrack.r+30)return;
+ g.save();g.lineCap="round";g.beginPath();g.arc(x,cy,loopTrack.r,LOOP_START_ANGLE,LOOP_START_ANGLE+LOOP_SWEEP);
+ g.strokeStyle="#523522";g.lineWidth=24;g.stroke();g.strokeStyle="#d58a45";g.lineWidth=17;g.stroke();
+ g.strokeStyle="#4ebc42";g.lineWidth=10;g.stroke();g.strokeStyle="#b8f56b";g.lineWidth=3;g.stroke();
+ const signY=cy-loopTrack.r-35;g.fillStyle="#563729";g.fillRect(x-40,signY,80,20);g.fillStyle="#9df05a";g.fillRect(x-36,signY+3,72,14);
+ g.fillStyle="#1b5637";g.font="bold 11px Arial";g.textAlign="center";g.textBaseline="middle";g.fillText("SPEED LOOP",x,signY+10);g.restore();
 }
 function drawRing(r){
  if(r.got)return;
@@ -957,6 +998,7 @@ function draw(){
  lastRenderError="";
  const stages=[
   ["FONDO",drawBackground],
+  ["ARO ESTRUCTURAL",drawLoopBack],
   ["SUELO",drawGround],
   ["CUMBRES ROCOSAS",drawMountainDetails],
   ["DECORACIÓN",drawDecorations],
