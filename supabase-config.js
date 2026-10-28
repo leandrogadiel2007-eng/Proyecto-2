@@ -4,5 +4,5 @@
 // NUNCA pongas aquí una secret key ni service_role.
 window.BLUE_RUSH_SUPABASE = {
   url: "https://kakmmynajggihmmsfsfo.supabase.co",
-  publishableKey: ""
+  publishableKey: "sb_publishable_ztgxcS9O03uGO8agR2869Q_Z1WKPXkI"
 };
