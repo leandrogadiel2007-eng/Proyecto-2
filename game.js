@@ -337,9 +337,9 @@ function update(dt){
   const dir=Number(keys.right)-Number(keys.left);
   if(dir){
    if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
-   else player.speedCharge=Math.min(1,player.speedCharge+0.28*dt);
-   player.facing=dir;const targetSpeed=dir*(145+415*player.speedCharge);
-   player.vx+=(targetSpeed-player.vx)*Math.min(1,5.2*dt);
+   else player.speedCharge=Math.min(1,player.speedCharge+0.4*dt);
+   player.facing=dir;const targetSpeed=dir*(215+515*player.speedCharge);
+   player.vx+=(targetSpeed-player.vx)*Math.min(1,6.4*dt);
   }else{
    player.speedCharge=Math.max(0,player.speedCharge-(player.spinDashRolling ? 0.22 : 2.4)*dt);player.vx*=Math.pow(player.spinDashRolling ? 0.78 : 0.12,dt);
    if(Math.abs(player.vx)<8)player.vx=0;
@@ -409,7 +409,7 @@ function update(dt){
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
   }
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
+ if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
@@ -1112,10 +1112,10 @@ const sonicSpriteFiles={
   "172146abbfa4348e9f0a63ada310f3fc.svg"
  ],
  run:[
-  "07c7cc8d51f6e0a3feef7e40bc98d62e.svg",
-  "593317731819fb43d31d97d7fcff9c14.svg",
   "c71e608d77556b1e6a484888bb70ec4a.svg",
   "f5d47bb333339f157b9fd8567188ad19.svg",
+  "07c7cc8d51f6e0a3feef7e40bc98d62e.svg",
+  "593317731819fb43d31d97d7fcff9c14.svg",
   "f2542218ee731bfcc4911b9e90120b24.svg",
   "e977afdd8469ddd252b2654da0f30ad2.svg",
   "7b538cdee48eb69c53c9169f3cc07941.svg",
