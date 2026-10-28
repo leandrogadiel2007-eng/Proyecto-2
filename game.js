@@ -312,9 +312,9 @@ function update(dt){
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
  enemies.forEach(e=>{
   if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;
-  const hit=player.x+player.w>e.x-19&&player.x<e.x+19&&player.y+player.h>e.y-24&&player.y<e.y+20;
+  const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-25&&player.x<e.x+25&&player.y+player.h>enemyY-25&&player.y<enemyY+22;
   if(hit){
-   if(player.vy>100&&player.y+player.h<e.y+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
+   if(player.vy>100&&player.y+player.h<enemyY+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
    else if(player.invincible<=0){
     if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}
     else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()}}
@@ -830,29 +830,38 @@ function drawRing(r){
  g.restore();
 }
 function drawEnemy(e){
- if(!e.alive)return;
- const x=e.x-camera,y=e.y+Math.sin(elapsed*4+e.base)*1.7;
- g.save();g.translate(x,y);
- // Distinct shadow and little metal feet anchor the badnik to the grass.
- g.fillStyle="rgba(13,49,76,.23)";g.beginPath();g.ellipse(0,23,25,6,0,0,Math.PI*2);g.fill();
- g.strokeStyle="#213d58";g.lineWidth=5;g.lineCap="round";
- g.beginPath();g.moveTo(-11,8);g.lineTo(-17,18);g.moveTo(11,8);g.lineTo(17,18);g.stroke();
- g.fillStyle="#ffcf42";g.strokeStyle="#8b541b";g.lineWidth=1.5;
- g.beginPath();g.ellipse(-18,19,6,3.4,0,0,Math.PI*2);g.ellipse(18,19,6,3.4,0,0,Math.PI*2);g.fill();g.stroke();
- const shell=g.createLinearGradient(0,-19,0,14);shell.addColorStop(0,"#ff8064");shell.addColorStop(.45,"#f3403e");shell.addColorStop(1,"#bb1e38");
- g.fillStyle="#203b58";g.strokeStyle="#122a47";g.lineWidth=2.5;g.beginPath();g.ellipse(0,4,22,15,0,0,Math.PI*2);g.fill();g.stroke();
- g.fillStyle=shell;g.strokeStyle="#87213a";g.lineWidth=2.2;g.beginPath();g.moveTo(-20,2);g.quadraticCurveTo(-19,-16,0,-18);g.quadraticCurveTo(19,-16,20,2);g.quadraticCurveTo(0,15,-20,2);g.closePath();g.fill();g.stroke();
- // Cream eye patches and dark pupils give the custom enemy the same outlined style.
- g.fillStyle="#ffc2a7";g.strokeStyle="#9b3540";g.lineWidth=1;g.beginPath();g.ellipse(-7,-5,6,7,0,0,Math.PI*2);g.ellipse(7,-5,6,7,0,0,Math.PI*2);g.fill();g.stroke();
- g.fillStyle="#fff";g.beginPath();g.ellipse(-7,-5,4,5.2,0,0,Math.PI*2);g.ellipse(7,-5,4,5.2,0,0,Math.PI*2);g.fill();
- g.fillStyle="#152943";g.beginPath();g.ellipse(-6,-4,1.8,3.3,0,0,Math.PI*2);g.ellipse(8,-4,1.8,3.3,0,0,Math.PI*2);g.fill();
- g.strokeStyle="#ffe070";g.lineWidth=2;g.beginPath();g.moveTo(0,-17);g.quadraticCurveTo(6,-25,12,-20);g.stroke();
- g.fillStyle="#fff3a0";g.strokeStyle="#a55c18";g.lineWidth=1;g.beginPath();g.arc(13,-20,3.6,0,Math.PI*2);g.fill();g.stroke();
- g.fillStyle="#85e5ff";g.beginPath();g.arc(-14,4,2.2,0,Math.PI*2);g.arc(14,4,2.2,0,Math.PI*2);g.fill();
- g.restore();
-}
-
-/* Carga directamente los SVG que sí están en assets/sonic.
+  if(!e.alive)return;
+  const type=((e.kind%3)+3)%3,x=e.x-camera,hover=type===2?-7:0;
+  const y=e.y+Math.sin(elapsed*(type===2?5.5:4)+e.base)*1.7+hover;
+  // Tres diseños originales de robots retro, inspirados en los enemigos de plataformas clásicos.
+  g.save();g.translate(x,y);
+  if(type!==2)g.scale(player.x+player.w/2<e.x?-1:1,1);
+  g.fillStyle="rgba(13,49,76,.24)";g.beginPath();g.ellipse(0,type===2?31:23,type===2?18:24,5,0,0,Math.PI*2);g.fill();
+  if(type===0){
+   // Robot rodante de caparazón rojo.
+   g.fillStyle="#182b43";g.strokeStyle="#07192d";g.lineWidth=2.5;g.beginPath();g.roundRect(-20,-8,40,23,8);g.fill();g.stroke();
+   for(const wx of [-14,14]){g.fillStyle="#101b2b";g.beginPath();g.arc(wx,13,8,0,Math.PI*2);g.fill();g.strokeStyle="#617184";g.lineWidth=2;g.stroke();g.fillStyle="#f6a83a";g.beginPath();g.arc(wx,13,3.5,0,Math.PI*2);g.fill();g.fillStyle="#fff0ac";g.fillRect(wx-1,10,2,2)}
+   g.fillStyle="#667d91";g.fillRect(-13,-18,8,12);g.fillStyle="#d7e6ed";g.fillRect(-12,-17,3,8);g.fillStyle="#203950";g.fillRect(-16,-9,31,7);
+   const red=g.createLinearGradient(0,-17,0,9);red.addColorStop(0,"#ff8168");red.addColorStop(.35,"#f43e3d");red.addColorStop(1,"#a91932");
+   g.fillStyle=red;g.strokeStyle="#651b32";g.lineWidth=2.3;g.beginPath();g.moveTo(-20,1);g.lineTo(-18,-9);g.quadraticCurveTo(-14,-17,0,-17);g.quadraticCurveTo(16,-16,19,-7);g.lineTo(20,2);g.quadraticCurveTo(0,11,-20,2);g.closePath();g.fill();g.stroke();
+   g.fillStyle="#ffd5b9";g.beginPath();g.ellipse(8,-5,6,7,0,0,Math.PI*2);g.fill();g.fillStyle="#f8ffff";g.beginPath();g.ellipse(10,-5,3.4,4.5,0,0,Math.PI*2);g.fill();g.fillStyle="#172943";g.beginPath();g.ellipse(11,-4,1.7,3.1,0,0,Math.PI*2);g.fill();g.fillStyle="#ffdf78";g.fillRect(15,2,5,3);g.fillStyle="#82e8ff";g.fillRect(-13,-3,4,3);g.fillStyle="#ffb25b";g.fillRect(-8,-13,9,2);
+  }else if(type===1){
+   // Cangrejo mecánico con pinzas, patas articuladas y ojos elevados.
+   g.strokeStyle="#273c55";g.lineWidth=3.5;g.lineCap="round";
+   for(const leg of [-15,-5,6,16]){g.beginPath();g.moveTo(leg*.72,8);g.lineTo(leg+(leg<0?-3:3),16);g.lineTo(leg+(leg<0?-5:5),19);g.stroke()}
+   g.strokeStyle="#8c2735";g.lineWidth=5;g.beginPath();g.moveTo(-13,-1);g.lineTo(-20,-8);g.lineTo(-23,-5);g.moveTo(13,-1);g.lineTo(20,-8);g.lineTo(23,-5);g.stroke();
+   g.fillStyle="#ef5146";g.strokeStyle="#6e1b35";g.lineWidth=2.4;g.beginPath();g.ellipse(-23,-5,5.5,7,-.45,0,Math.PI*2);g.ellipse(23,-5,5.5,7,.45,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffd16b";g.beginPath();g.arc(-24,-7,2,0,Math.PI*2);g.arc(24,-7,2,0,Math.PI*2);g.fill();
+   g.fillStyle="#b9233d";g.strokeStyle="#641b33";g.lineWidth=2.5;g.beginPath();g.moveTo(-17,2);g.quadraticCurveTo(-19,-12,-10,-16);g.quadraticCurveTo(0,-21,10,-16);g.quadraticCurveTo(19,-11,17,2);g.quadraticCurveTo(0,15,-17,2);g.closePath();g.fill();g.stroke();g.fillStyle="#ff7960";g.beginPath();g.ellipse(-2,-12,11,4,-.08,0,Math.PI*2);g.fill();
+   g.strokeStyle="#d8e5ec";g.lineWidth=2.5;g.beginPath();g.moveTo(-7,-13);g.lineTo(-8,-21);g.moveTo(6,-13);g.lineTo(8,-21);g.stroke();g.fillStyle="#f9f5de";g.strokeStyle="#69263b";g.lineWidth=1.5;g.beginPath();g.ellipse(-8,-22,4.5,5.5,0,0,Math.PI*2);g.ellipse(8,-22,4.5,5.5,0,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#192b43";g.beginPath();g.ellipse(-6.5,-21,1.8,3,0,0,Math.PI*2);g.ellipse(9.5,-21,1.8,3,0,0,Math.PI*2);g.fill();g.fillStyle="#ffdc77";g.fillRect(-7,4,14,3);g.fillStyle="#8defff";g.fillRect(-3,-2,6,3);
+  }else{
+   // Robot volador con alas, abdomen rayado y pequeño aguijón.
+   const flap=Math.sin(elapsed*17+e.base)*3;g.fillStyle="rgba(93,207,255,.72)";g.strokeStyle="#214b70";g.lineWidth=1.8;g.beginPath();g.ellipse(-10,-13,8,12,-.55+flap*.025,0,Math.PI*2);g.ellipse(7,-14,8,12,.55-flap*.025,0,Math.PI*2);g.fill();g.stroke();g.strokeStyle="#b6f5ff";g.lineWidth=1.2;g.beginPath();g.moveTo(-14,-20);g.lineTo(-10,-14);g.moveTo(4,-21);g.lineTo(7,-14);g.stroke();
+   g.fillStyle="#26374b";g.strokeStyle="#0b1d35";g.lineWidth=2.5;g.beginPath();g.ellipse(-1,3,12,15,-.08,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#f7c737";g.strokeStyle="#80521b";g.lineWidth=1.6;g.beginPath();g.ellipse(1,4,10,13,-.08,0,Math.PI*2);g.fill();g.stroke();
+   g.save();g.beginPath();g.ellipse(1,4,9,12,-.08,0,Math.PI*2);g.clip();g.fillStyle="#26374b";g.beginPath();g.moveTo(-9,-8);g.lineTo(-3,-8);g.lineTo(8,14);g.lineTo(2,16);g.closePath();g.fill();g.beginPath();g.moveTo(1,-9);g.lineTo(7,-8);g.lineTo(12,1);g.lineTo(7,3);g.closePath();g.fill();g.restore();
+   g.fillStyle="#d6e1e9";g.strokeStyle="#26374b";g.lineWidth=2;g.beginPath();g.ellipse(7,-8,10,8,-.15,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffdf4d";g.beginPath();g.ellipse(8,-8,7,5,0,0,Math.PI*2);g.fill();g.fillStyle="#fff";g.beginPath();g.ellipse(10,-9,3.1,3.8,0,0,Math.PI*2);g.fill();g.fillStyle="#162944";g.beginPath();g.arc(11,-8,1.7,0,Math.PI*2);g.fill();g.fillStyle="#e83c4a";g.strokeStyle="#791f37";g.lineWidth=1.5;g.beginPath();g.moveTo(-10,7);g.lineTo(-22,11);g.lineTo(-12,1);g.closePath();g.fill();g.stroke();g.fillStyle="#172a43";g.fillRect(-5,14,6,5);g.fillRect(7,13,6,5);g.fillStyle="#79eaff";g.fillRect(12,-4,4,3);g.fillStyle="#fff3a1";g.fillRect(4,-14,5,2);
+  }
+  g.restore();
+}/* Carga directamente los SVG que sí están en assets/sonic.
    No dependemos de project.json, porque ese archivo no está en la raíz del repositorio. */
 let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],fall:[],ready:false};
 const sonicSpriteFiles={
