@@ -100,7 +100,7 @@ function loopCenterY(){
  const entry=loopEntryCenterX(),exit=loopExitCenterX();
  return (groundSurfaceAt(entry)+groundSurfaceAt(exit))/2-player.h/2-loopTrack.r*Math.sin(LOOP_START_ANGLE);
 }
-let rings=[],enemies=[],collected=new Set(),checkpoints=[];
+let rings=[],enemies=[],beeProjectiles=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
 let raceFinished=false,raceWinner=null;
 function buildLevel(){
@@ -121,7 +121,13 @@ function buildLevel(){
   }
  }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
- enemies=enemyPositions.map((x,index)=>({x,y:terrainHeight(x)-28,alive:true,base:x,kind:index%3}));
+ beeProjectiles=[];
+ enemies=enemyPositions.map((x,index)=>({
+  x,
+  y:index%3===2?terrainHeight(x)-112:terrainHeight(x)-28,
+  alive:true,base:x,kind:index%3,
+  nextShot:1.35+(index%5)*0.28
+ }));
 
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
@@ -311,7 +317,24 @@ function update(dt){
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
  enemies.forEach(e=>{
-  if(!e.alive)return;e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;e.y=terrainHeight(e.x)-28;
+  if(!e.alive)return;
+  e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;
+  // Las abejas vuelan sobre el terreno con una oscilación suave.
+  e.y=e.kind===2
+   ? terrainHeight(e.x)-112+Math.sin(elapsed*2.3+e.base*.014)*11
+   : terrainHeight(e.x)-28;
+  if(e.kind===2){
+   const targetX=player.x+player.w/2-e.x,targetY=player.y+player.h/2-(e.y-9);
+   const distance=Math.hypot(targetX,targetY);
+   // Disparan cuando Sonic está cerca y dejan un intervalo entre bolitas.
+   if(Math.abs(targetX)<560&&Math.abs(targetX)>58&&elapsed>=e.nextShot&&distance>0){
+    const shotSpeed=285;
+    beeProjectiles.push({x:e.x+(targetX>0?17:-17),y:e.y-9,
+     vx:targetX/distance*shotSpeed,vy:targetY/distance*shotSpeed,
+     radius:7,life:3.0,alive:true});
+    e.nextShot=elapsed+1.7+(Math.abs(e.base)%3)*0.12;
+   }
+  }
   const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   if(hit){
    if(player.vy>100&&player.y+player.h<enemyY+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
@@ -322,6 +345,34 @@ function update(dt){
    }
   }
  });
+ // Mover las bolitas y comprobar sus colisiones con Sonic.
+ for(const shot of beeProjectiles){
+  if(!shot.alive)continue;
+  shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.life-=dt;
+  if(shot.life<=0||shot.x<0||shot.x>worldWidth||shot.y>VIEW_H+Math.max(0,cameraY)+900||shot.y< -900){
+   shot.alive=false;continue;
+  }
+  const shotHitsPlayer=shot.x+shot.radius>player.x&&shot.x-shot.radius<player.x+player.w&&
+   shot.y+shot.radius>player.y&&shot.y-shot.radius<player.y+player.h;
+  if(shotHitsPlayer){
+   shot.alive=false;
+   if(player.invincible<=0){
+    if(rings.some(r=>r.got)){
+     let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}});
+    }else{
+     lives--;
+     if(lives<=0){
+      running=false;startScreen.classList.remove('hidden');
+      startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';
+      startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';
+      resetPlayer();
+     }
+    }
+    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.onGround=false;player.vx=-player.facing*180;
+   }
+  }
+ }
+ beeProjectiles=beeProjectiles.filter(shot=>shot.alive&&shot.life>0);
  if(player.y>VIEW_H+100){
   player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
   if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
@@ -817,6 +868,18 @@ function drawAerialRoute(){
   g.strokeStyle="#102f49";g.lineWidth=2;g.strokeRect(x+1,y+2,w-2,24);g.restore();
  }
 }
+function drawBeeProjectile(shot){
+ if(!shot.alive)return;
+ const x=shot.x-camera,y=shot.y,angle=Math.atan2(shot.vy,shot.vx);
+ g.save();g.translate(x,y);g.rotate(angle);
+ g.fillStyle="rgba(255,72,34,.25)";g.beginPath();g.ellipse(-5,0,12,6,0,0,Math.PI*2);g.fill();
+ g.fillStyle="#6f2036";g.beginPath();g.arc(0,0,8.2,0,Math.PI*2);g.fill();
+ const fire=g.createRadialGradient(-2,-2,1,0,0,8);
+ fire.addColorStop(0,"#fff7b1");fire.addColorStop(.28,"#ffd34c");fire.addColorStop(.68,"#ff713b");fire.addColorStop(1,"#e63242");
+ g.fillStyle=fire;g.beginPath();g.arc(0,0,6.6,0,Math.PI*2);g.fill();
+ g.strokeStyle="#fff2a8";g.lineWidth=1.2;g.beginPath();g.arc(-.5,-.5,4.5,Math.PI*1.1,Math.PI*1.75);g.stroke();
+ g.fillStyle="#fff";g.beginPath();g.arc(-2.2,-2.2,1.7,0,Math.PI*2);g.fill();g.restore();
+}
 function drawRing(r){
  if(r.got)return;
  const x=r.x-camera,y=r.y+Math.sin(elapsed*5+r.x)*2.3;
@@ -1105,6 +1168,7 @@ function draw(){
   ["DECORACIÓN",drawDecorations],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
+  ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
   ["SONIC",drawPlayer],
   ["NOMBRE",drawPlayerName]
