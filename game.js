@@ -167,37 +167,12 @@ function update(dt){
   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
   startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
  }
- // Seguimiento muy cerrado: Sonic se mantiene prácticamente en el centro de la imagen.
+ // Cámara fija sobre el centro de Sonic: no intenta encuadrar el terreno ni las cimas.
+ // Se calcula desde la posición actual del personaje en cada frame, sin límites
+ // de borde ni suavizado, para que Sonic permanezca exactamente centrado en pantalla.
  const playerCenter=player.x+player.w/2;
- const screenX=playerCenter-camera;
- let targetCamera=camera;
- if(player.vx>=-25){
-  const rightBoundary=VIEW_W*.51;
-  if(screenX>rightBoundary){
-   const lookAhead=Math.min(10,Math.max(0,player.vx)*.02);
-   targetCamera=playerCenter-rightBoundary+lookAhead;
-  }
- }else{
-  const leftBoundary=VIEW_W*.49;
-  if(screenX<leftBoundary){
-   const lookBack=Math.min(8,Math.abs(player.vx)*.018);
-   targetCamera=playerCenter-leftBoundary-lookBack;
-  }
- }
- targetCamera=Math.max(0,Math.min(worldWidth-VIEW_W,targetCamera));
- // Recentrado rápido para que Sonic nunca quede lejos del foco durante el recorrido.
- if(screenX<VIEW_W*.22||screenX>VIEW_W*.76){
-  camera=Math.max(0,Math.min(worldWidth-VIEW_W,playerCenter-VIEW_W*.50));
- }else{
-  const cameraEase=1-Math.exp(-14*dt);
-  camera+=(targetCamera-camera)*cameraEase;
- }
- camera=Math.max(0,Math.min(worldWidth-VIEW_W,camera));
- // La cámara sigue la altura de Sonic: al subir una colina, desplaza el escenario
- // hacia abajo; al descender, acompaña suavemente sin saltos bruscos.
- const targetCameraY=Math.max(-160,Math.min(230,player.y+player.h/2-VIEW_H*.53));
- const verticalEase=1-Math.exp(-8*dt);
- cameraY+=(targetCameraY-cameraY)*verticalEase;
+ camera=playerCenter-VIEW_W/2;
+ cameraY=player.y+player.h/2-VIEW_H/2;
  const zone=sectionAt(player.x);
  status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
