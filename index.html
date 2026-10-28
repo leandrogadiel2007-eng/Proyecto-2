@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1688ef">
   <title>Blue Rush — Green Island Act 1</title>
-  <link rel="stylesheet" href="style.css?v=bridges-water-rocks-75">
-  <script src="game.js?v=bridges-water-rocks-75" defer></script>
+  <link rel="stylesheet" href="style.css?v=online-multiplayer-1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=online-multiplayer-1"></script>
+  <script src="game.js?v=online-multiplayer-1" defer></script>
 </head>
 <body>
   <main class="page">
@@ -28,7 +30,11 @@
           <p>Escribe tu nombre para comenzar la aventura.</p>
           <label class="player-name-label" for="playerName">TU NOMBRE</label>
           <input id="playerName" class="player-name-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Escribe tu nombre" aria-label="Tu nombre de jugador">
-          <button id="startButton" class="primary-button" type="button">JUGAR <span aria-hidden="true">→</span></button>
+          <label class="player-name-label room-label" for="roomCode">CÓDIGO DE SALA</label>
+          <input id="roomCode" class="player-name-input room-code-input" type="text" maxlength="24" autocomplete="off" spellcheck="false" value="GREEN-ISLAND" placeholder="Ej. GREEN-ISLAND" aria-label="Código de la sala online">
+          <p class="multiplayer-note">Comparte este código con tus amigos para jugar por internet en la misma sala.</p>
+          <button id="onlineButton" class="primary-button online-button" type="button">JUGAR ONLINE <span aria-hidden="true">↗</span></button>
+          <button id="startButton" class="secondary-button" type="button">JUGAR SOLO</button>
         </div>
       </div>
       <div class="game-footer">
