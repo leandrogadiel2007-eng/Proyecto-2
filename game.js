@@ -93,7 +93,7 @@ function platformById(id){return id===null||id===undefined?null:aerialPlatforms.
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
 // Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
 const LOOP_START_ANGLE=90*Math.PI/180,LOOP_SWEEP=-360*Math.PI/180;
-const loopTrack={x:5500,r:150,minSpeed:400,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
+const loopTrack={x:5500,r:150,minSpeed:260,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
 function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
 function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
 function loopCenterY(){
@@ -350,17 +350,21 @@ function update(dt){
    aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;score+=25;
   }
   const entry=loopEntryCenterX(),newCenter=player.x+player.w/2;
-  // El loop es obligatorio: bloquea el avance por tierra o por el aire
-  // hasta completar la vuelta con velocidad suficiente.
-  if(!loopTrack.completed&&newCenter>=entry){
-   if(wasGrounded&&player.platformId===null&&player.vx>0&&player.vx>=loopTrack.minSpeed){
+  // Entrada permisiva como en un juego de plataformas: basta con correr hacia el aro,
+  // estar cerca del suelo y superar la velocidad mínima; no exige cruzar un píxel exacto.
+  const nearLoopEntry=newCenter>=entry-4;
+  if(!loopTrack.completed&&nearLoopEntry){
+   const entrySurface=groundSurfaceAt(entry);
+   const onLoopApproach=player.onGround&&player.platformId===null&&
+    Math.abs((player.y+player.h)-entrySurface)<34;
+   if(onLoopApproach&&player.vx>=loopTrack.minSpeed){
     loopTrack.active=true;loopTrack.progress=0;loopTrack.entrySpeed=player.vx;
     player.x=entry-player.w/2;
     player.y=loopCenterY()+loopTrack.r*Math.sin(LOOP_START_ANGLE)-player.h/2;
     player.vy=0;player.onGround=false;player.spin=1;player.spinAngle=0;
    }else{
-    // No reducimos la velocidad aquí: se puede seguir acelerando contra la entrada.
-    player.x=entry-player.w/2-1;
+    // Si llega andando despacio, espera en la entrada mientras sigue acelerando.
+    player.x=entry-player.w/2-4;
     if(player.vx>0)loopTrack.warningUntil=elapsed+1.35;
    }
   }
