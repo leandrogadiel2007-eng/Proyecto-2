@@ -77,7 +77,7 @@ function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 // Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
 const LOOP_START_ANGLE=154*Math.PI/180,LOOP_SWEEP=232*Math.PI/180;
-const loopTrack={x:3200,r:94,minSpeed:400,active:false,progress:0,entrySpeed:0,warningUntil:0};
+const loopTrack={x:5500,r:94,minSpeed:400,active:false,progress:0,entrySpeed:0,warningUntil:0};
 function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
 function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
 function loopCenterY(){
