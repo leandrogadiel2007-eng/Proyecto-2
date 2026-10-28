@@ -95,10 +95,14 @@ function buildLevel(){
  function addRouteLane(start,end,offset,lane,delay){
   let previousY=null,index=0;
   for(let x=start+delay;x+300<=end;x+=312,index++){
-   const width=300,center=x+width/2,ground=terrainHeight(center);
+   const width=300;
+   // Revisa toda la anchura, no solo el centro, para que la plataforma no atraviese una colina.
+   let ground=Infinity;
+   for(let sampleX=x;sampleX<x+width;sampleX+=24)ground=Math.min(ground,terrainHeight(sampleX));
+   ground=Math.min(ground,terrainHeight(x+width));
    const desired=Math.max(168,ground-offset);
    let y=previousY===null?desired:previousY+Math.max(-26,Math.min(26,desired-previousY));
-   // Nunca pongas una plataforma debajo de la superficie real del terreno.
+   // Toda la cara superior queda al menos 24 px por encima del punto más alto bajo ella.
    y=Math.round(Math.max(150,Math.min(y,ground-24)));
    const platform={x,y,w:width,h:18,lane,index,sectionStart:start};
    platforms.push(platform);
