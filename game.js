@@ -218,7 +218,7 @@ function drawRemotePlayers(){
   const animation=other.animation||'idle',frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;if(!frames||!frames.length)continue;
   const frame=frames[Math.floor(Math.max(0,other.phase)*Math.max(1,frames.length))%frames.length];if(!frame||!frame.img||!frame.img.naturalWidth)continue;
   const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
-  const targetW=falling?66:(rolling?46:(fast?82:56)),targetH=falling?66:(rolling?46:(fast?65:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
+  const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
   const sx=other.x-camera+player.w/2,sy=other.y+player.h/2;g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
   g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
   g.save();g.font='900 12px Arial, sans-serif';g.textAlign='center';g.textBaseline='bottom';g.lineJoin='round';g.lineWidth=3;g.strokeStyle='#082b53';g.strokeText(other.name,Math.round(sx),Math.round(other.y-7));g.fillStyle='#fff3a2';g.fillText(other.name,Math.round(sx),Math.round(other.y-7));g.restore();
@@ -1273,8 +1273,8 @@ function drawFallbackPlayer(){
  const airbornePose=rolling||falling;
  // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
  const maxSpeedPose=moving&&speedRatio>=0.58;
- const targetW=falling?66:(rolling?46:(maxSpeedPose?82:56));
- const targetH=falling?66:(rolling?46:(maxSpeedPose?65:54));
+ const targetW=falling?66:(rolling?46:(maxSpeedPose?74:56));
+ const targetH=falling?66:(rolling?46:(maxSpeedPose?59:54));
  const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
