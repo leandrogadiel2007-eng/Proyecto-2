@@ -167,9 +167,9 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
 
 
 /* Panel lateral de inicio: el formulario queda separado del canvas. */
-.play-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:18px;align-items:stretch;width:100%}
-.play-layout .game-shell{width:100%;max-width:none;margin:0}
-.start-panel{min-width:0;display:flex}
+.play-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:18px;align-items:start;width:100%}
+.play-layout .game-shell{width:100%;max-width:none;margin:0;align-self:start;justify-self:stretch}
+.start-panel{min-width:0;display:flex;width:100%;align-self:start}
 .play-layout .start-screen{
  position:relative;inset:auto;width:100%;min-height:100%;padding:22px 18px;
  display:flex;flex-direction:column;align-items:stretch;justify-content:center;text-align:left;
