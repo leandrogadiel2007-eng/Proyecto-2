@@ -91,15 +91,6 @@ function aerialPlatformY(platform){return terrainHeight(platform.x+platform.w/2)
 function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.x+p.w-5)||null}
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
-// Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
-const LOOP_START_ANGLE=90*Math.PI/180,LOOP_SWEEP=-360*Math.PI/180;
-const loopTrack={x:5500,r:150,minSpeed:260,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
-function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
-function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
-function loopCenterY(){
- // Alinea el punto inferior del loop con el terreno y la altura de Sonic.
- return groundSurfaceAt(loopTrack.x)-loopTrack.r-player.h/2;
-}
 let rings=[],enemies=[],beeProjectiles=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
 let raceFinished=false,raceWinner=null;
@@ -132,7 +123,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,platformId:null};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;loopTrack.active=false;loopTrack.completed=false;loopTrack.progress=0;loopTrack.entrySpeed=0;loopTrack.warningUntil=0;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,platformId:null};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -290,19 +281,6 @@ document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.contro
 function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  if(!running)return;elapsed+=dt;
- if(loopTrack.active){
-  loopTrack.progress=Math.min(1,loopTrack.progress+(Math.max(loopTrack.minSpeed,loopTrack.entrySpeed)*dt)/(loopTrack.r*Math.abs(LOOP_SWEEP)));
-  const p=loopTrack.progress,angle=LOOP_START_ANGLE+LOOP_SWEEP*p,exit=loopExitCenterX();
-  player.x=loopTrack.x+loopTrack.r*Math.cos(angle)-player.w/2;
-  player.y=loopCenterY()+loopTrack.r*Math.sin(angle)-player.h/2;
-  player.vx=loopTrack.entrySpeed;player.vy=0;player.onGround=false;player.spin=1;player.facing=1;player.spinAngle=p*Math.PI*2;
-  if(p>=1){
-   player.x=exit-player.w/2;player.y=groundSurfaceAt(exit)-player.h;
-   player.vx=Math.min(player.speed,Math.max(loopTrack.minSpeed,loopTrack.entrySpeed*1.08));
-   player.speedCharge=Math.max(player.speedCharge,.82);player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
-   loopTrack.active=false;loopTrack.completed=true;score+=150;
-  }
- }else{
   const dir=Number(keys.right)-Number(keys.left);
   if(dir){
    if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
@@ -349,26 +327,6 @@ function update(dt){
    player.speedCharge=Math.max(player.speedCharge,.78);player.vx=Math.max(player.vx,430);
    aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;score+=25;
   }
-  const entry=loopEntryCenterX(),newCenter=player.x+player.w/2;
-  // Entrada permisiva como en un juego de plataformas: basta con correr hacia el aro,
-  // estar cerca del suelo y superar la velocidad mínima; no exige cruzar un píxel exacto.
-  const nearLoopEntry=newCenter>=entry-4;
-  if(!loopTrack.completed&&nearLoopEntry){
-   const entrySurface=groundSurfaceAt(entry);
-   const onLoopApproach=player.onGround&&player.platformId===null&&
-    Math.abs((player.y+player.h)-entrySurface)<34;
-   if(onLoopApproach&&player.vx>=loopTrack.minSpeed){
-    loopTrack.active=true;loopTrack.progress=0;loopTrack.entrySpeed=player.vx;
-    player.x=entry-player.w/2;
-    player.y=loopCenterY()+loopTrack.r*Math.sin(LOOP_START_ANGLE)-player.h/2;
-    player.vy=0;player.onGround=false;player.spin=1;player.spinAngle=0;
-   }else{
-    // Si llega andando despacio, espera en la entrada mientras sigue acelerando.
-    player.x=entry-player.w/2-4;
-    if(player.vx>0)loopTrack.warningUntil=elapsed+1.35;
-   }
-  }
- }
  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(player.onGround){player.fallPhase=0;if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
@@ -473,16 +431,13 @@ function update(dt){
  // de borde ni suavizado, para que Sonic permanezca exactamente centrado en pantalla.
  const playerCenter=player.x+player.w/2;
  camera=playerCenter-VIEW_W/2;
- // Centra verticalmente el loop gigante al acercarse y durante la vuelta completa.
- const nearLoop=Math.abs(playerCenter-loopTrack.x)<=loopTrack.r+105;
- cameraY=(loopTrack.active||nearLoop)?loopCenterY()-VIEW_H/2:player.y+player.h/2-VIEW_H/2-35;
+ cameraY=player.y+player.h/2-VIEW_H/2-35;
  const zone=sectionAt(player.x);
  if(onlineMode){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
- if(!loopTrack.active&&!loopTrack.completed&&loopTrack.warningUntil>elapsed&&!levelCompleted)status.textContent='¡ACELERA PARA COMPLETAR EL LOOP Y AVANZAR!';
-}
+ }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
 // Render retro: baja resolución virtual ampliada sin suavizado.
@@ -491,28 +446,6 @@ const scene=document.createElement('canvas');
 scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);
 const g=scene.getContext('2d');
 g.imageSmoothingEnabled=true;
-// Baldosa que reproduce la misma tierra rojiza, bordes y pequeñas vetas
-// que se usan en drawGround(); así el loop comparte la textura del piso.
-function makeLoopFloorPattern(){
- const tile=document.createElement("canvas");tile.width=64;tile.height=64;
- const t=tile.getContext("2d");
- for(let row=0;row<2;row++){
-  const shift=row%2?16:0;
-  for(let x=-shift,col=-1;x<64;x+=32,col++){
-   const dark=((col+row)%2===0),y=row*32;
-   t.fillStyle=dark?"#9b4b2d":"#c8753e";t.fillRect(x,y,32,32);
-   t.fillStyle=dark?"#b45d35":"#e18b4b";t.fillRect(x,y,32,3);t.fillRect(x,y,3,32);
-   t.fillStyle=dark?"#713b2a":"#a75832";t.fillRect(x,y+29,32,3);t.fillRect(x+29,y,3,32);
-   if(Math.abs(col*7+row*11)%4===0){
-    t.fillStyle="rgba(245,169,95,.34)";t.fillRect(x+7,y+9,8,2);t.fillRect(x+10,y+11,5,2);
-   }else if(Math.abs(col*5-row*3)%5===0){
-    t.fillStyle="rgba(72,35,27,.22)";t.fillRect(x+8,y+18,11,2);t.fillRect(x+17,y+20,5,2);
-   }
-  }
- }
- return g.createPattern(tile,"repeat");
-}
-const loopFloorPattern=makeLoopFloorPattern();
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
 
@@ -913,7 +846,7 @@ function drawFinish(){
  g.fillStyle="#ffe45c";g.fillRect(x-6,base-109,19,7);g.fillStyle="#47c85b";g.fillRect(x-12,base-4,30,4);g.restore();
 }
 function drawDecorations(){
- drawLoopTrack();drawAerialRoute();
+ drawAerialRoute();
  for(let wx=260;wx<6800;wx+=610)drawPalm(wx,Math.floor(wx/610)%3);
  for(let wx=7050;wx<11900;wx+=1120)drawPalm(wx,Math.floor(wx/1120)%3);
  bridgeSpecs.forEach(drawWoodBridge);
@@ -924,50 +857,6 @@ function drawDecorations(){
  for(let wx=36100;wx<48100;wx+=980){if(terrainHeight(wx)>340)drawPalm(wx,Math.floor(wx/980)%3);else drawRuin(wx,1)}
  for(let wx=48100;wx<59800;wx+=940){if(Math.floor(wx/940)%3===1)drawRuin(wx,Math.floor(wx/940)%3);else drawPalm(wx,Math.floor(wx/940)%3)}
  checkpoints.forEach(drawCheckpoint);drawFinish();
-}
-function drawLoopBack(){
- const x=loopTrack.x-camera;
- if(x< -loopTrack.r-48||x>scene.width+loopTrack.r+48)return;
- const cy=loopCenterY();g.save();g.lineCap="round";g.lineJoin="round";
- // Base completa de tierra texturizada, detrás del terreno principal.
- g.beginPath();g.arc(x,cy,loopTrack.r,0,Math.PI*2);
- g.strokeStyle="#34271f";g.lineWidth=54;g.stroke();
- g.strokeStyle=loopFloorPattern||"#9b4b2d";g.lineWidth=47;g.stroke();
- // Borde verde exterior visible por encima del suelo; la mitad inferior queda enterrada.
- g.beginPath();g.arc(x,cy,loopTrack.r+22,0,Math.PI*2);
- g.strokeStyle="#165b32";g.lineWidth=8;g.stroke();
- g.strokeStyle="#43c844";g.lineWidth=4;g.stroke();
- g.restore();
-}
-function drawLoopTrack(){
- const x=loopTrack.x-camera,cy=loopCenterY();
- if(x< -loopTrack.r-48||x>scene.width+loopTrack.r+48)return;
- const start=LOOP_START_ANGLE,end=LOOP_START_ANGLE+LOOP_SWEEP;
- g.save();g.lineCap="round";g.lineJoin="round";
- // Perfil ancho de tierra con borde oscuro y la misma baldosa del piso.
- g.beginPath();g.arc(x,cy,loopTrack.r,start,end,true);
- g.strokeStyle="#34271f";g.lineWidth=48;g.stroke();
- g.strokeStyle=loopFloorPattern||"#9b4b2d";g.lineWidth=40;g.stroke();
- // Sombra del borde interior para darle volumen al camino.
- g.beginPath();g.arc(x,cy,loopTrack.r-19,start,end);
- g.strokeStyle="#713b2a";g.lineWidth=3;g.stroke();
- // Césped alrededor del borde exterior, como en los loops clásicos de Sonic.
- g.beginPath();g.arc(x,cy,loopTrack.r+19,start,end);
- g.strokeStyle="#165b32";g.lineWidth=9;g.stroke();
- g.beginPath();g.arc(x,cy,loopTrack.r+18,start,end);
- g.strokeStyle="#249b43";g.lineWidth=5;g.stroke();
- g.beginPath();g.arc(x,cy,loopTrack.r+17,start,end);
- g.strokeStyle="#8be957";g.lineWidth=2;g.stroke();
- // Pequeños mechones pixelados siguen la curva, en lugar de una línea verde lisa.
- for(let a=start+.035;a<end;a+=.075){
-  const gx=x+Math.cos(a)*(loopTrack.r+20),gy=cy+Math.sin(a)*(loopTrack.r+20);
-  g.save();g.translate(gx,gy);g.rotate(a);
-  g.fillStyle="#176333";g.fillRect(0,-4,10,8);
-  g.fillStyle="#35b844";g.fillRect(1,-5,8,5);g.fillRect(5,0,5,4);
-  g.fillStyle="#8be957";g.fillRect(2,-4,3,2);g.fillRect(8,-2,2,2);
-  g.restore();
- }
- g.restore();
 }
 function drawAerialRoute(){
  // El trampolín se dibuja solo cuando está en cámara, pero NO oculta las plataformas cuando queda lejos.
@@ -1295,7 +1184,6 @@ function draw(){
  lastRenderError="";
  const stages=[
   ["FONDO",drawBackground],
-  ["ARO ESTRUCTURAL",drawLoopBack],
   ["SUELO",drawGround],
   ["CUMBRES ROCOSAS",drawMountainDetails],
   ["DECORACIÓN",drawDecorations],
