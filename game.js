@@ -77,14 +77,15 @@ function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 // Ruta aérea elevada: los valores y bajos colocan las plataformas muy por encima del terreno.
 const aerialPlatforms=[
- {id:0,x:7420,y:128,w:360},{id:1,x:7840,y:104,w:280},
- {id:2,x:8170,y:78,w:270},{id:3,x:8490,y:98,w:280},
- {id:4,x:8820,y:125,w:290},{id:5,x:9160,y:96,w:270},
- {id:6,x:9480,y:72,w:280},{id:7,x:9810,y:101,w:300},
- {id:8,x:10160,y:126,w:300},{id:9,x:10520,y:108,w:300},
- {id:10,x:10870,y:86,w:300}
+ {id:0,x:7420,lift:145,w:360},{id:1,x:7840,lift:158,w:280},
+ {id:2,x:8170,lift:172,w:270},{id:3,x:8490,lift:150,w:280},
+ {id:4,x:8820,lift:142,w:290},{id:5,x:9160,lift:154,w:270},
+ {id:6,x:9480,lift:170,w:280},{id:7,x:9810,lift:160,w:300},
+ {id:8,x:10160,lift:145,w:300},{id:9,x:10520,lift:155,w:300},
+ {id:10,x:10870,lift:165,w:300}
 ];
 const aerialSpring={x:6800,w:72,cooldownUntil:0,flashUntil:0};
+function aerialPlatformY(platform){return Math.max(24,terrainHeight(platform.x+platform.w/2)-platform.lift)}
 function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.x+p.w-5)||null}
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
@@ -265,7 +266,7 @@ function update(dt){
   if(wasGrounded&&oldPlatformId!==null){
    const oldPlatform=platformById(oldPlatformId);
    if(oldPlatform&&player.x+player.w>oldPlatform.x&&player.x<oldPlatform.x+oldPlatform.w){
-    player.y=oldPlatform.y-player.h;player.vy=0;player.onGround=true;player.platformId=oldPlatform.id;
+    player.y=aerialPlatformY(oldPlatform)-player.h;player.vy=0;player.onGround=true;player.platformId=oldPlatform.id;
    }else{
     // Al salir del borde aéreo, Sonic cae en lugar de teletransportarse al suelo inferior.
     player.platformId=null;applyAirMotion(dt);player.onGround=false;
@@ -276,8 +277,9 @@ function update(dt){
    applyAirMotion(dt);player.onGround=false;
    const descending=player.vy>=0;
    const landingPlatform=descending&&oldBottom<=player.y+player.h&&platformUnderPlayer(player.x,player.w);
-   if(landingPlatform&&oldBottom<=landingPlatform.y+Math.max(28,Math.abs(player.vx)*dt*1.4)&&player.y+player.h>=landingPlatform.y){
-    player.y=landingPlatform.y-player.h;player.vy=0;player.onGround=true;player.platformId=landingPlatform.id;player.spin=0;player.spinAngle=0;
+   const landingY=landingPlatform?aerialPlatformY(landingPlatform):Infinity;
+   if(landingPlatform&&oldBottom<=landingY+Math.max(28,Math.abs(player.vx)*dt*1.4)&&player.y+player.h>=landingY){
+    player.y=landingY-player.h;player.vy=0;player.onGround=true;player.platformId=landingPlatform.id;player.spin=0;player.spinAngle=0;
    }else if(descending&&player.y+player.h>=groundNow&&oldBottom<=oldGround+Math.max(28,Math.abs(player.vx)*dt*1.4)){
     player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
    }
@@ -784,43 +786,33 @@ function drawLoopTrack(){
  g.fillStyle="#1b5637";g.font="bold 11px Arial";g.textAlign="center";g.textBaseline="middle";g.fillText("SPEED LOOP",x,signY+10);g.restore();
 }
 function drawAerialRoute(){
- // Trampolín colocado sobre el terreno: base metálica, muelle zigzagueante y plataforma elástica.
+ // El trampolín se dibuja solo cuando está en cámara, pero NO oculta las plataformas cuando queda lejos.
  const sx=aerialSpring.x-camera,sy=springTopY(),sw=aerialSpring.w;
- if(sx< -sw-20||sx>scene.width+20)return;
- g.save();
- g.fillStyle="rgba(13,43,63,.24)";g.beginPath();g.ellipse(sx+sw/2,sy+10,sw*.72,6,0,0,Math.PI*2);g.fill();
- g.fillStyle="#344e69";g.fillRect(sx+5,sy+5,sw-10,8);
- g.fillStyle="#8bbed5";g.fillRect(sx+9,sy+7,sw-18,3);
- const compression=elapsed<aerialSpring.flashUntil?7:0,coilBottom=sy+3;
- g.strokeStyle="#e7f4ff";g.lineWidth=4;g.beginPath();
- g.moveTo(sx+sw/2,coilBottom);
- for(let i=0;i<5;i++)g.lineTo(sx+(i%2===0?sw*.29:sw*.71),coilBottom+4+i*1.2+compression*.18);
- g.stroke();
- g.fillStyle=elapsed<aerialSpring.flashUntil?"#fff27a":"#ffcb42";g.fillRect(sx,sy-7-compression,sw,9);
- g.fillStyle="#fff4b0";g.fillRect(sx+5,sy-6-compression,sw-10,2);
- g.fillStyle="#d85831";g.fillRect(sx+4,sy-1-compression,sw-8,3);
- g.fillStyle="#153d65";g.font="bold 10px Arial";g.textAlign="center";g.textBaseline="bottom";g.fillText("¡SALTA!",sx+sw/2,sy-12-compression);
- g.restore();
- // Plataformas altas de césped y piedra: los huecos cortos obligan a saltar con ritmo.
+ if(sx>=-sw-20&&sx<=scene.width+20){
+  g.save();
+  g.fillStyle="rgba(13,43,63,.24)";g.beginPath();g.ellipse(sx+sw/2,sy+10,sw*.72,6,0,0,Math.PI*2);g.fill();
+  g.fillStyle="#344e69";g.fillRect(sx+5,sy+5,sw-10,8);g.fillStyle="#8bbed5";g.fillRect(sx+9,sy+7,sw-18,3);
+  const compression=elapsed<aerialSpring.flashUntil?7:0,coilBottom=sy+3;
+  g.strokeStyle="#e7f4ff";g.lineWidth=4;g.beginPath();g.moveTo(sx+sw/2,coilBottom);
+  for(let i=0;i<5;i++)g.lineTo(sx+(i%2===0?sw*.29:sw*.71),coilBottom+4+i*1.2+compression*.18);
+  g.stroke();g.fillStyle=elapsed<aerialSpring.flashUntil?"#fff27a":"#ffcb42";g.fillRect(sx,sy-7-compression,sw,9);
+  g.fillStyle="#fff4b0";g.fillRect(sx+5,sy-6-compression,sw-10,2);g.fillStyle="#d85831";g.fillRect(sx+4,sy-1-compression,sw-8,3);
+  g.fillStyle="#153d65";g.font="bold 10px Arial";g.textAlign="center";g.textBaseline="bottom";g.fillText("¡SALTA!",sx+sw/2,sy-12-compression);g.restore();
+ }
+ // Plataformas elevadas sobre el relieve y con contornos contrastantes para que se vean contra el cielo.
  for(const p of aerialPlatforms){
-  const x=p.x-camera,y=p.y,w=p.w;
+  const x=p.x-camera,y=aerialPlatformY(p),w=p.w;
   if(x>scene.width+30||x+w< -30)continue;
   g.save();
-  g.fillStyle="rgba(7,42,67,.24)";g.fillRect(x+8,y+17,w-16,6);
-  g.fillStyle="#75452e";g.fillRect(x+5,y+8,w-10,12);
-  g.fillStyle="#a9693e";g.fillRect(x+9,y+10,w-18,4);
-  for(let bx=18;bx<w-14;bx+=38){
-   g.fillStyle="#6c412d";g.fillRect(x+bx,y+13,19,5);
-   g.fillStyle="#d18a50";g.fillRect(x+bx+2,y+14,10,2);
-  }
-  g.fillStyle="#187a42";g.fillRect(x,y+3,w,8);
-  g.fillStyle="#36bd4c";g.fillRect(x+3,y,w-6,6);
-  g.fillStyle="#a1ec5d";
-  for(let gx=10;gx<w-8;gx+=28){g.fillRect(x+gx,y-3,7,4);g.fillRect(x+gx+5,y-1,5,2)}
-  g.fillStyle="#eafc92";g.fillRect(x+12,y+1,Math.min(40,w-24),2);
-  // Small downward stone chips make the platform read as a floating ledge.
-  g.fillStyle="#905735";g.fillRect(x+w*.25,y+20,10,5);g.fillRect(x+w*.68,y+20,12,4);
-  g.restore();
+  g.fillStyle="rgba(7,42,67,.28)";g.fillRect(x+8,y+22,w-16,7);
+  g.fillStyle="#173b55";g.fillRect(x+2,y+6,w-4,21);
+  g.fillStyle="#75452e";g.fillRect(x+5,y+8,w-10,15);g.fillStyle="#b87948";g.fillRect(x+8,y+10,w-16,5);
+  for(let bx=18;bx<w-14;bx+=38){g.fillStyle="#6c412d";g.fillRect(x+bx,y+15,19,6);g.fillStyle="#d18a50";g.fillRect(x+bx+2,y+16,10,2)}
+  g.fillStyle="#115c36";g.fillRect(x,y+3,w,8);g.fillStyle="#24a943";g.fillRect(x+2,y,w-4,6);
+  g.fillStyle="#76e64e";for(let gx=10;gx<w-8;gx+=28){g.fillRect(x+gx,y-3,7,5);g.fillRect(x+gx+5,y-1,5,3)}
+  g.fillStyle="#eaff91";g.fillRect(x+12,y+1,Math.min(48,w-24),2);
+  g.fillStyle="#905735";g.fillRect(x+w*.25,y+27,10,5);g.fillRect(x+w*.68,y+27,12,4);
+  g.strokeStyle="#102f49";g.lineWidth=2;g.strokeRect(x+1,y+2,w-2,24);g.restore();
  }
 }
 function drawRing(r){
