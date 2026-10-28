@@ -921,12 +921,6 @@ function drawLoopTrack(){
   g.strokeStyle="#c27c3f";g.lineWidth=21;g.stroke();
   g.strokeStyle="#2e9c43";g.lineWidth=13;g.stroke();
   g.strokeStyle="#b5f16a";g.lineWidth=3;g.stroke();
-  // Placa dentro del hueco del loop: mantiene visible la parte superior de la pista.
-  const signW=136,signH=24,signY=cy-loopTrack.r*.64;
-  g.fillStyle="#392a22";g.fillRect(x-signW/2,signY,signW,signH);
-  g.fillStyle="#8c5a33";g.fillRect(x-signW/2+3,signY+3,signW-6,signH-6);
-  g.fillStyle="#d9ff9a";g.font="bold 9px Arial";g.textAlign="center";g.textBaseline="middle";
-  g.fillText("LOOP OBLIGATORIO",x,signY+signH/2);
   g.restore();
 }
 function drawAerialRoute(){
