@@ -77,13 +77,13 @@ function bridgeSurfaceY(bridge){return terrainHeight(bridge.x+bridge.w/2)-6}
 function groundSurfaceAt(x){const bridge=bridgeAt(x);return bridge?bridgeSurfaceY(bridge):terrainHeight(x)}
 // Ruta aérea elevada: los valores y bajos colocan las plataformas muy por encima del terreno.
 const aerialPlatforms=[
- {id:11,x:6700,lift:150,w:700}, // Plataforma amplia justo encima del trampolín
-  {id:0,x:7420,lift:145,w:360},{id:1,x:7840,lift:158,w:280},
- {id:2,x:8170,lift:172,w:270},{id:3,x:8490,lift:150,w:280},
- {id:4,x:8820,lift:142,w:290},{id:5,x:9160,lift:154,w:270},
- {id:6,x:9480,lift:170,w:280},{id:7,x:9810,lift:160,w:300},
- {id:8,x:10160,lift:145,w:300},{id:9,x:10520,lift:155,w:300},
- {id:10,x:10870,lift:165,w:300}
+ {id:11,x:6700,lift:215,w:700}, // Plataforma amplia justo encima del trampolín
+  {id:0,x:7420,lift:210,w:360},{id:1,x:7840,lift:223,w:280},
+ {id:2,x:8170,lift:237,w:270},{id:3,x:8490,lift:215,w:280},
+ {id:4,x:8820,lift:207,w:290},{id:5,x:9160,lift:219,w:270},
+ {id:6,x:9480,lift:235,w:280},{id:7,x:9810,lift:225,w:300},
+ {id:8,x:10160,lift:210,w:300},{id:9,x:10520,lift:220,w:300},
+ {id:10,x:10870,lift:230,w:300}
 ];
 const aerialSpring={x:6800,w:72,cooldownUntil:0,flashUntil:0};
 function aerialPlatformY(platform){return Math.max(24,terrainHeight(platform.x+platform.w/2)-platform.lift)}
@@ -344,7 +344,7 @@ function update(dt){
  // de borde ni suavizado, para que Sonic permanezca exactamente centrado en pantalla.
  const playerCenter=player.x+player.w/2;
  camera=playerCenter-VIEW_W/2;
- cameraY=player.y+player.h/2-VIEW_H/2;
+ cameraY=player.y+player.h/2-VIEW_H/2-35; // Muestra más cielo para mantener visible la ruta aérea
  const zone=sectionAt(player.x);
  if(onlineMode){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
