@@ -92,13 +92,13 @@ function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
 // Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
-const LOOP_START_ANGLE=135*Math.PI/180,LOOP_SWEEP=270*Math.PI/180;
-const loopTrack={x:5500,r:170,minSpeed:400,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
+const LOOP_START_ANGLE=90*Math.PI/180,LOOP_SWEEP=-360*Math.PI/180;
+const loopTrack={x:5500,r:150,minSpeed:400,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
 function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
 function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
 function loopCenterY(){
- const entry=loopEntryCenterX(),exit=loopExitCenterX();
- return (groundSurfaceAt(entry)+groundSurfaceAt(exit))/2-player.h/2-loopTrack.r*Math.sin(LOOP_START_ANGLE);
+ // Alinea el punto inferior del loop con el terreno y la altura de Sonic.
+ return groundSurfaceAt(loopTrack.x)-loopTrack.r-player.h/2;
 }
 let rings=[],enemies=[],beeProjectiles=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
@@ -291,7 +291,7 @@ function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  if(!running)return;elapsed+=dt;
  if(loopTrack.active){
-  loopTrack.progress=Math.min(1,loopTrack.progress+(Math.max(loopTrack.minSpeed,loopTrack.entrySpeed)*dt)/(loopTrack.r*LOOP_SWEEP));
+  loopTrack.progress=Math.min(1,loopTrack.progress+(Math.max(loopTrack.minSpeed,loopTrack.entrySpeed)*dt)/(loopTrack.r*Math.abs(LOOP_SWEEP)));
   const p=loopTrack.progress,angle=LOOP_START_ANGLE+LOOP_SWEEP*p,exit=loopExitCenterX();
   player.x=loopTrack.x+loopTrack.r*Math.cos(angle)-player.w/2;
   player.y=loopCenterY()+loopTrack.r*Math.sin(angle)-player.h/2;
@@ -471,7 +471,7 @@ function update(dt){
  camera=playerCenter-VIEW_W/2;
  // Centra verticalmente el loop gigante al acercarse y durante la vuelta completa.
  const nearLoop=Math.abs(playerCenter-loopTrack.x)<=loopTrack.r+105;
- cameraY=(loopTrack.active||nearLoop)?loopCenterY()-VIEW_H/2-12:player.y+player.h/2-VIEW_H/2-35;
+ cameraY=(loopTrack.active||nearLoop)?loopCenterY()-VIEW_H/2:player.y+player.h/2-VIEW_H/2-35;
  const zone=sectionAt(player.x);
  if(onlineMode){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
@@ -941,7 +941,7 @@ function drawLoopTrack(){
  const start=LOOP_START_ANGLE,end=LOOP_START_ANGLE+LOOP_SWEEP;
  g.save();g.lineCap="round";g.lineJoin="round";
  // Perfil ancho de tierra con borde oscuro y la misma baldosa del piso.
- g.beginPath();g.arc(x,cy,loopTrack.r,start,end);
+ g.beginPath();g.arc(x,cy,loopTrack.r,start,end,true);
  g.strokeStyle="#34271f";g.lineWidth=48;g.stroke();
  g.strokeStyle=loopFloorPattern||"#9b4b2d";g.lineWidth=40;g.stroke();
  // Sombra del borde interior para darle volumen al camino.
