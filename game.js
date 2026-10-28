@@ -5,7 +5,7 @@ const startScreen=document.getElementById('startScreen'),startButton=document.ge
 let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
-const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),VIEW_CROP_Y=Math.max(0,Math.min(H-VIEW_H,65));
+const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
@@ -65,7 +65,7 @@ const levelSections=[
 ];
 function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<section.end)||levelSections[levelSections.length-1]}
 
-let running=false,lastTime=0,elapsed=0,camera=0,score=0,lives=3,player;
+let running=false,lastTime=0,elapsed=0,camera=0,cameraY=0,score=0,lives=3,player;
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
 let rings=[],enemies=[],collected=new Set(),checkpoints=[];
 let checkpointX=90,levelCompleted=false;
@@ -92,7 +92,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;buildLevel()}
 function startGame(){if(!running){if(levelCompleted)resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;running=true;startScreen.classList.add('hidden');status.textContent='¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';lastTime=performance.now()}}
 function resetGame(){running=false;keys.left=keys.right=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';startButton.innerHTML='JUGAR <span aria-hidden="true">→</span>';startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw()}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.spin=1;player.spinAngle=0}}
@@ -193,6 +193,11 @@ function update(dt){
   camera+=(targetCamera-camera)*cameraEase;
  }
  camera=Math.max(0,Math.min(worldWidth-VIEW_W,camera));
+ // La cámara sigue la altura de Sonic: al subir una colina, desplaza el escenario
+ // hacia abajo; al descender, acompaña suavemente sin saltos bruscos.
+ const targetCameraY=Math.max(-160,Math.min(230,player.y+player.h/2-VIEW_H*.53));
+ const verticalEase=1-Math.exp(-8*dt);
+ cameraY+=(targetCameraY-cameraY)*verticalEase;
  const zone=sectionAt(player.x);
  status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
 }
@@ -389,7 +394,8 @@ function traceTerrain(){
  for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
 }
 function drawGround(){
- const w=scene.width,h=scene.height+VIEW_CROP_Y,tile=32;
+ // Extiende el suelo según la posición vertical de cámara para no revelar huecos vacíos.
+ const w=scene.width,h=scene.height+CAMERA_FILL_MARGIN+Math.max(0,cameraY),tile=32;
  g.save();
  // Recorta el suelo siguiendo exactamente la curva del terreno.
  g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
@@ -813,13 +819,10 @@ function draw(){
  let copied=false;
  for(const [name,render] of stages){
   try{
-   // Acercamiento anclado al suelo: muestra a Sonic más grande sin cortar el terreno.
+   // El fondo celeste queda estable; el terreno, los objetos y Sonic siguen la cámara vertical.
    g.save();
    try{
-    if(VIEW_CROP_Y>0){
-     if(name==="FONDO"){g.fillStyle="#0878dc";g.fillRect(0,0,scene.width,scene.height);}
-     g.translate(0,-VIEW_CROP_Y);
-    }
+    if(name!=="FONDO")g.translate(0,-cameraY);
     render();
    }finally{g.restore()}
    copyScene();
