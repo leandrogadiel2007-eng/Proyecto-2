@@ -229,6 +229,50 @@ function resetGame(){
  leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
+function finishRunAfterDeath(){
+ running=false;
+ keys.left=keys.right=keys.jump=false;
+ if(onlineMode){
+  // En online Sonic vuelve al inicio del nivel, pero sigue en la misma sala.
+  resetPlayer();
+  running=true;
+  lastTime=performance.now();
+  startScreen.classList.add('hidden');
+  status.textContent='ONLINE · '+multiplayerRoom+' · VOLVISTE AL INICIO';
+  return;
+ }
+ resetPlayer();
+ startScreen.querySelector('h2').textContent='GAME OVER';
+ startScreen.querySelector('p:not(.start-kicker)').textContent='Sonic recibió daño sin anillos. Pulsa VOLVER A JUGAR para intentarlo de nuevo.';
+ startButton.textContent='VOLVER A JUGAR';
+ onlineButton.disabled=false;
+ startButton.disabled=false;
+ startScreen.classList.remove('hidden');
+ status.textContent='GAME OVER · SIN ANILLOS';
+ draw();
+}
+function applyPlayerDamage(){
+ if(player.invincible>0)return;
+ const hasRings=rings.some(r=>r.got);
+ if(!hasRings){
+  finishRunAfterDeath();
+  return;
+ }
+ let dropped=0;
+ rings.forEach(r=>{
+  if(r.got&&dropped<8){
+   r.got=false;
+   r.x=player.x+player.w+dropped*12;
+   r.y=player.y+Math.sin(dropped)*-22;
+   dropped++;
+  }
+ });
+ player.invincible=1.5;
+ player.speedCharge=0;
+ player.vy=-300;
+ player.onGround=false;
+ player.vx=-player.facing*180;
+}
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
 function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
@@ -345,13 +389,12 @@ function update(dt){
   if(hit){
    if(player.vy>100&&player.y+player.h<enemyY+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
    else if(player.invincible<=0){
-    if(rings.some(r=>r.got)){let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}})}
-    else{lives--;if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';resetPlayer()}}
-    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.onGround=false;player.vx=-player.facing*180;
+    applyPlayerDamage();
    }
   }
  });
- // Mover las bolitas y comprobar sus colisiones con Sonic.
+ if(!running)return;
+  // Mover las bolitas y comprobar sus colisiones con Sonic.
  for(const shot of beeProjectiles){
   if(!shot.alive)continue;
   shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.life-=dt;
@@ -362,20 +405,8 @@ function update(dt){
    shot.y+shot.radius>player.y&&shot.y-shot.radius<player.y+player.h;
   if(shotHitsPlayer){
    shot.alive=false;
-   if(player.invincible<=0){
-    if(rings.some(r=>r.got)){
-     let drop=0;rings.forEach(r=>{if(r.got&&drop<8){r.got=false;r.x=player.x+player.w+drop*12;r.y=player.y+Math.sin(drop)*-22;drop++}});
-    }else{
-     lives--;
-     if(lives<=0){
-      running=false;startScreen.classList.remove('hidden');
-      startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';
-      startScreen.querySelector('p:not(.start-kicker)').textContent='Te has quedado sin vidas. Pulsa jugar para volver a empezar.';
-      resetPlayer();
-     }
-    }
-    player.invincible=1.5;player.speedCharge=0;player.vy=-300;player.onGround=false;player.vx=-player.facing*180;
-   }
+   applyPlayerDamage();
+   if(!running)return;
   }
  }
  beeProjectiles=beeProjectiles.filter(shot=>shot.alive&&shot.life>0);
