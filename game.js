@@ -5,7 +5,7 @@ const startScreen=document.getElementById('startScreen'),startButton=document.ge
 let playerName='';
 const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false};
 // Zoom-out estilo clásico: el mundo se dibuja en una vista virtual más amplia y luego se adapta a pantalla.
-const GAME_ZOOM=1.15,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),VIEW_CROP_Y=Math.max(0,H-VIEW_H);
+const GAME_ZOOM=1.35,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),VIEW_CROP_Y=Math.max(0,Math.min(H-VIEW_H,GROUND-520/GAME_ZOOM));
 // Spritesheet Green Island (edición gratuita).
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
@@ -220,29 +220,29 @@ function update(dt){
   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
   startButton.innerHTML='JUGAR OTRA VEZ <span aria-hidden="true">↻</span>';
  }
- // Cámara clásica con zoom alejado: VIEW_W representa toda la zona visible del mundo.
+ // Cámara cercana: Sonic ocupa el centro y se ve menos terreno a ambos lados.
  const playerCenter=player.x+player.w/2;
  const screenX=playerCenter-camera;
  let targetCamera=camera;
  if(player.vx>=-25){
-  const rightBoundary=VIEW_W*.40;
+  const rightBoundary=VIEW_W*.53;
   if(screenX>rightBoundary){
-   const lookAhead=Math.min(90,Math.max(0,player.vx)*.13);
+   const lookAhead=Math.min(22,Math.max(0,player.vx)*.04);
    targetCamera=playerCenter-rightBoundary+lookAhead;
   }
  }else{
-  const leftBoundary=VIEW_W*.28;
+  const leftBoundary=VIEW_W*.45;
   if(screenX<leftBoundary){
-   const lookBack=Math.min(55,Math.abs(player.vx)*.09);
+   const lookBack=Math.min(18,Math.abs(player.vx)*.032);
    targetCamera=playerCenter-leftBoundary-lookBack;
   }
  }
  targetCamera=Math.max(0,Math.min(worldWidth-VIEW_W,targetCamera));
- // Al reaparecer muy lejos de la cámara, centrar a Sonic sin dejarlo fuera del encuadre.
- if(screenX<VIEW_W*.12||screenX>VIEW_W*.82){
-  camera=Math.max(0,Math.min(worldWidth-VIEW_W,playerCenter-VIEW_W*.36));
+ // Si reaparece lejos del encuadre, vuelve a centrar al personaje rápidamente.
+ if(screenX<VIEW_W*.22||screenX>VIEW_W*.76){
+  camera=Math.max(0,Math.min(worldWidth-VIEW_W,playerCenter-VIEW_W*.49));
  }else{
-  const cameraEase=1-Math.exp(-9*dt);
+  const cameraEase=1-Math.exp(-12*dt);
   camera+=(targetCamera-camera)*cameraEase;
  }
  camera=Math.max(0,Math.min(worldWidth-VIEW_W,camera));
