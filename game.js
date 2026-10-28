@@ -261,9 +261,13 @@ function applyPlayerDamage(){
  let dropped=0;
  rings.forEach(r=>{
   if(r.got&&dropped<8){
+   const scatterIndex=dropped;
    r.got=false;
-   r.x=player.x+player.w+dropped*12;
-   r.y=player.y+Math.sin(dropped)*-22;
+   // Lanza los anillos hacia delante; Sonic recibe el empujón en sentido contrario.
+   r.x=player.x+player.w/2+(player.facing||1)*(42+(scatterIndex%4)*24);
+   r.y=player.y-18-Math.floor(scatterIndex/4)*20;
+   // Evita que Sonic vuelva a recoger el anillo en el mismo lugar inmediatamente.
+   r.dropSafeUntil=elapsed+0.9;
    dropped++;
   }
  });
@@ -359,7 +363,7 @@ function update(dt){
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
- rings.forEach(r=>{if(!r.got&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;score+=10}});
+ rings.forEach(r=>{if(!r.got&&elapsed>=(r.dropSafeUntil||0)&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){r.got=true;r.dropSafeUntil=0;score+=10}});
  enemies.forEach(e=>{
   if(!e.alive)return;
   e.x=e.base+Math.sin(elapsed*1.6+e.base)*32;
