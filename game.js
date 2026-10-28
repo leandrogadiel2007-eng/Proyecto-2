@@ -886,7 +886,7 @@ function drawUndergroundZone(){
   g.beginPath();
   let first=true;
   for(let wx=left;wx<=right;wx+=12){
-   const sx=wx-camera,sy=undergroundPathY(wx)+offset;
+   const sx=wx-camera,sy=undergroundPathY(wx)-40+offset;
    if(first){g.moveTo(sx,sy);first=false}else g.lineTo(sx,sy);
   }
   g.lineTo(right-camera,undergroundPathY(right)+offset);
@@ -900,7 +900,7 @@ function drawUndergroundZone(){
  strokePath(38);g.strokeStyle="#8a6748";g.lineWidth=7;g.stroke();
  strokePath(35);g.strokeStyle="#c08a52";g.lineWidth=2;g.stroke();
  for(let wx=undergroundZone.entryX+310;wx<undergroundZone.exitX-180;wx+=280){
-  const sx=wx-camera,sy=undergroundPathY(wx);
+  const sx=wx-camera,sy=undergroundPathY(wx)-40;
   if(sx< -30||sx>scene.width+30)continue;
   g.fillStyle="#574638";g.beginPath();g.moveTo(sx-10,sy-39);g.lineTo(sx-4,sy-53);g.lineTo(sx+3,sy-41);g.lineTo(sx+12,sy-49);g.lineTo(sx+15,sy-37);g.closePath();g.fill();
   if(Math.floor(wx/280)%3===0){
@@ -920,6 +920,12 @@ function drawUndergroundZone(){
   g.font="bold 11px Arial";g.textAlign="center";g.textBaseline="bottom";
   g.lineWidth=3;g.strokeStyle="#17452a";g.strokeText("↓ / S  ENTRAR",entryScreen,entryTop-10);
   g.fillStyle="#eaffae";g.fillText("↓ / S  ENTRAR",entryScreen,entryTop-10);
+ }
+ const exitScreen=undergroundZone.exitX-camera,exitTop=groundSurfaceAt(undergroundZone.exitX);
+ if(exitScreen>-120&&exitScreen<scene.width+120){
+  g.font="bold 11px Arial";g.textAlign="center";g.textBaseline="bottom";
+  g.lineWidth=3;g.strokeStyle="#17452a";g.strokeText("↑  SALIDA",exitScreen,exitTop-10);
+  g.fillStyle="#eaffae";g.fillText("↑  SALIDA",exitScreen,exitTop-10);
  }
  g.restore();
 }
