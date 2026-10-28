@@ -221,13 +221,13 @@ function resetGame(){
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function jump(){if(!running)startGame();if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
-function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(isJump){keys.jump=down;if(down)jump()}if(down&&key==='Enter'&&!running)startGame()}
+function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
 window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=false});
 startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});onlineButton.addEventListener('click',startOnlineGame);resetButton.addEventListener('click',resetGame);window.addEventListener('beforeunload',leaveOnlineRoom);
 document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump'){keys.jump=true;jump()}else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c==='jump')keys.jump=false;else keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
-function applyAirMotion(dt){player.vy+=1550*dt;if(keys.jump){player.vy-=2250*dt;player.vy=Math.max(-640,player.vy)}player.y+=player.vy*dt}
+function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  if(!running)return;elapsed+=dt;
  if(loopTrack.active){
@@ -348,7 +348,6 @@ function update(dt){
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=zone.name+' · ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
  if(!loopTrack.active&&loopTrack.warningUntil>elapsed&&!levelCompleted)status.textContent='¡NECESITAS MÁS VELOCIDAD PARA EL ARO!';
-  if(keys.jump&&!player.onGround&&!loopTrack.active&&!levelCompleted)status.textContent=onlineMode?'SALA '+multiplayerRoom+' · VUELO ACTIVO':'VUELO ACTIVO · SUELTA SALTO PARA CAER';
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
