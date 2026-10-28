@@ -92,8 +92,8 @@ function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
 // Aro de velocidad: la entrada requiere impulso y la ruta recorre la parte superior del aro.
-const LOOP_START_ANGLE=154*Math.PI/180,LOOP_SWEEP=232*Math.PI/180;
-const loopTrack={x:5500,r:150,minSpeed:400,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
+const LOOP_START_ANGLE=135*Math.PI/180,LOOP_SWEEP=270*Math.PI/180;
+const loopTrack={x:5500,r:170,minSpeed:400,active:false,completed:false,progress:0,entrySpeed:0,warningUntil:0};
 function loopEntryCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE)}
 function loopExitCenterX(){return loopTrack.x+loopTrack.r*Math.cos(LOOP_START_ANGLE+LOOP_SWEEP)}
 function loopCenterY(){
@@ -471,7 +471,7 @@ function update(dt){
  camera=playerCenter-VIEW_W/2;
  // Centra verticalmente el loop gigante al acercarse y durante la vuelta completa.
  const nearLoop=Math.abs(playerCenter-loopTrack.x)<=loopTrack.r+105;
- cameraY=(loopTrack.active||nearLoop)?loopCenterY()-VIEW_H/2:player.y+player.h/2-VIEW_H/2-35;
+ cameraY=(loopTrack.active||nearLoop)?loopCenterY()-VIEW_H/2-12:player.y+player.h/2-VIEW_H/2-35;
  const zone=sectionAt(player.x);
  if(onlineMode){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
@@ -487,6 +487,28 @@ const scene=document.createElement('canvas');
 scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);
 const g=scene.getContext('2d');
 g.imageSmoothingEnabled=true;
+// Baldosa que reproduce la misma tierra rojiza, bordes y pequeñas vetas
+// que se usan en drawGround(); así el loop comparte la textura del piso.
+function makeLoopFloorPattern(){
+ const tile=document.createElement("canvas");tile.width=64;tile.height=64;
+ const t=tile.getContext("2d");
+ for(let row=0;row<2;row++){
+  const shift=row%2?16:0;
+  for(let x=-shift,col=-1;x<64;x+=32,col++){
+   const dark=((col+row)%2===0),y=row*32;
+   t.fillStyle=dark?"#9b4b2d":"#c8753e";t.fillRect(x,y,32,32);
+   t.fillStyle=dark?"#b45d35":"#e18b4b";t.fillRect(x,y,32,3);t.fillRect(x,y,3,32);
+   t.fillStyle=dark?"#713b2a":"#a75832";t.fillRect(x,y+29,32,3);t.fillRect(x+29,y,3,32);
+   if(Math.abs(col*7+row*11)%4===0){
+    t.fillStyle="rgba(245,169,95,.34)";t.fillRect(x+7,y+9,8,2);t.fillRect(x+10,y+11,5,2);
+   }else if(Math.abs(col*5-row*3)%5===0){
+    t.fillStyle="rgba(72,35,27,.22)";t.fillRect(x+8,y+18,11,2);t.fillRect(x+17,y+20,5,2);
+   }
+  }
+ }
+ return g.createPattern(tile,"repeat");
+}
+const loopFloorPattern=makeLoopFloorPattern();
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
 
@@ -900,28 +922,48 @@ function drawDecorations(){
  checkpoints.forEach(drawCheckpoint);drawFinish();
 }
 function drawLoopBack(){
-  const x=loopTrack.x-camera;if(x< -loopTrack.r-42||x>scene.width+loopTrack.r+42)return;
-  const cy=loopCenterY();g.save();g.lineCap="round";
-  // Masa de tierra y roca detrás de la hierba; el suelo cubre la parte inferior
-  // para que la estructura parezca nacer directamente del relieve.
-  g.beginPath();g.arc(x,cy,loopTrack.r,0,Math.PI*2);
-  g.strokeStyle="#342b25";g.lineWidth=38;g.stroke();
-  g.strokeStyle="#61442d";g.lineWidth=31;g.stroke();
-  g.strokeStyle="#93603a";g.lineWidth=23;g.stroke();
-  g.strokeStyle="#3b8c3d";g.lineWidth=15;g.stroke();
-  g.restore();
+ const x=loopTrack.x-camera;
+ if(x< -loopTrack.r-48||x>scene.width+loopTrack.r+48)return;
+ const cy=loopCenterY();g.save();g.lineCap="round";g.lineJoin="round";
+ // Base completa de tierra texturizada, detrás del terreno principal.
+ g.beginPath();g.arc(x,cy,loopTrack.r,0,Math.PI*2);
+ g.strokeStyle="#34271f";g.lineWidth=54;g.stroke();
+ g.strokeStyle=loopFloorPattern||"#9b4b2d";g.lineWidth=47;g.stroke();
+ // Borde verde exterior visible por encima del suelo; la mitad inferior queda enterrada.
+ g.beginPath();g.arc(x,cy,loopTrack.r+22,0,Math.PI*2);
+ g.strokeStyle="#165b32";g.lineWidth=8;g.stroke();
+ g.strokeStyle="#43c844";g.lineWidth=4;g.stroke();
+ g.restore();
 }
 function drawLoopTrack(){
-  const x=loopTrack.x-camera,cy=loopCenterY();if(x< -loopTrack.r-42||x>scene.width+loopTrack.r+42)return;
-  g.save();g.lineCap="round";g.lineJoin="round";
-  g.beginPath();g.arc(x,cy,loopTrack.r,LOOP_START_ANGLE,LOOP_START_ANGLE+LOOP_SWEEP);
-  // Pavimento de tierra con césped en la parte transitable: se integra con el suelo.
-  g.strokeStyle="#34271f";g.lineWidth=36;g.stroke();
-  g.strokeStyle="#82502f";g.lineWidth=29;g.stroke();
-  g.strokeStyle="#c27c3f";g.lineWidth=21;g.stroke();
-  g.strokeStyle="#2e9c43";g.lineWidth=13;g.stroke();
-  g.strokeStyle="#b5f16a";g.lineWidth=3;g.stroke();
+ const x=loopTrack.x-camera,cy=loopCenterY();
+ if(x< -loopTrack.r-48||x>scene.width+loopTrack.r+48)return;
+ const start=LOOP_START_ANGLE,end=LOOP_START_ANGLE+LOOP_SWEEP;
+ g.save();g.lineCap="round";g.lineJoin="round";
+ // Perfil ancho de tierra con borde oscuro y la misma baldosa del piso.
+ g.beginPath();g.arc(x,cy,loopTrack.r,start,end);
+ g.strokeStyle="#34271f";g.lineWidth=48;g.stroke();
+ g.strokeStyle=loopFloorPattern||"#9b4b2d";g.lineWidth=40;g.stroke();
+ // Sombra del borde interior para darle volumen al camino.
+ g.beginPath();g.arc(x,cy,loopTrack.r-19,start,end);
+ g.strokeStyle="#713b2a";g.lineWidth=3;g.stroke();
+ // Césped alrededor del borde exterior, como en los loops clásicos de Sonic.
+ g.beginPath();g.arc(x,cy,loopTrack.r+19,start,end);
+ g.strokeStyle="#165b32";g.lineWidth=9;g.stroke();
+ g.beginPath();g.arc(x,cy,loopTrack.r+18,start,end);
+ g.strokeStyle="#249b43";g.lineWidth=5;g.stroke();
+ g.beginPath();g.arc(x,cy,loopTrack.r+17,start,end);
+ g.strokeStyle="#8be957";g.lineWidth=2;g.stroke();
+ // Pequeños mechones pixelados siguen la curva, en lugar de una línea verde lisa.
+ for(let a=start+.035;a<end;a+=.075){
+  const gx=x+Math.cos(a)*(loopTrack.r+20),gy=cy+Math.sin(a)*(loopTrack.r+20);
+  g.save();g.translate(gx,gy);g.rotate(a);
+  g.fillStyle="#176333";g.fillRect(0,-4,10,8);
+  g.fillStyle="#35b844";g.fillRect(1,-5,8,5);g.fillRect(5,0,5,4);
+  g.fillStyle="#8be957";g.fillRect(2,-4,3,2);g.fillRect(8,-2,2,2);
   g.restore();
+ }
+ g.restore();
 }
 function drawAerialRoute(){
  // El trampolín se dibuja solo cuando está en cámara, pero NO oculta las plataformas cuando queda lejos.
