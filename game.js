@@ -7,7 +7,7 @@ const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function'
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
 const remotePlayers=new Map();
 const NETWORK_SEND_INTERVAL=120;
-const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false};
+const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false,spindash:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
 const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
 // Spritesheet Green Island (edición gratuita).
@@ -131,7 +131,7 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,platformId:null};camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:560,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,platformId:null};keys.spindash=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -252,6 +252,7 @@ function finishRunAfterDeath(){
 }
 function applyPlayerDamage(){
  if(player.invincible>0)return;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;
  const hasRings=rings.some(r=>r.got);
  if(!hasRings){
   finishRunAfterDeath();
@@ -280,15 +281,59 @@ function applyPlayerDamage(){
  player.vx=-player.facing*180;
 }
 function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
-function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(key==='ArrowDown'||k==='s')keys.down=down;if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
+
+function beginSpinDash(){
+ if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging)return;
+ player.spinDashCharging=true;player.spinDashCharge=0;player.spinDashRolling=false;
+ player.vx=0;player.vy=0;player.onGround=true;player.spin=1;player.spinAngle=0;
+}
+function releaseSpinDash(){
+ if(!player||!player.spinDashCharging)return;
+ const charge=Math.max(.12,Math.min(1,player.spinDashCharge||0));
+ const direction=keys.left&&!keys.right?-1:(keys.right&&!keys.left?1:(player.facing||1));
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=true;
+ player.spinDashRollTime=1.8+charge*1.1;player.facing=direction;
+ player.vx=direction*(300+260*charge);player.vy=0;player.onGround=true;
+ player.platformId=null;player.spin=1;player.spinAngle=0;
+ player.speedCharge=Math.max(player.speedCharge,.25+.75*charge);
+}
+
+function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w',isSpinDash=key==='Shift'||k==='x';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(key==='ArrowDown'||k==='s')keys.down=down;if(isSpinDash){const wasHeld=keys.spindash;keys.spindash=down;if(down&&!wasHeld)beginSpinDash();if(!down&&wasHeld)releaseSpinDash()}if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
 window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
-window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=keys.down=false});
+window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;if(player&&player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}});
 startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});onlineButton.addEventListener('click',startOnlineGame);resetButton.addEventListener('click',resetGame);window.addEventListener('beforeunload',leaveOnlineRoom);
-document.querySelectorAll('[data-control]').forEach(b=>{const c=b.dataset.control;const press=e=>{e.preventDefault();if(c==='jump'){keys.jump=true;jump()}else{if(!running)startGame();keys[c]=true}};const release=e=>{e.preventDefault();if(c==='jump')keys.jump=false;else keys[c]=false};b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release)});
+document.querySelectorAll('[data-control]').forEach(b=>{
+ const c=b.dataset.control;
+ const press=e=>{
+  e.preventDefault();
+  if(c==='jump'){keys.jump=true;jump()}
+  else if(c==='spindash'){if(!running)startGame();keys.spindash=true;beginSpinDash()}
+  else{if(!running)startGame();keys[c]=true}
+ };
+ const release=e=>{
+  e.preventDefault();
+  if(c==='jump')keys.jump=false;
+  else if(c==='spindash'){keys.spindash=false;releaseSpinDash()}
+  else keys[c]=false;
+ };
+ b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);
+ b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release);
+});
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
 function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  if(!running)return;elapsed+=dt;
+  if(player.spinDashRolling){
+   player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
+   if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
+  }
+  if(player.spinDashCharging){
+   player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
+   player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;
+   player.y=groundSurfaceAt(player.x+player.w/2)-player.h;
+   if(keys.left&&!keys.right)player.facing=-1;else if(keys.right&&!keys.left)player.facing=1;
+   player.spin=1;player.spinAngle=(player.spinAngle||0)+dt*(8+player.spinDashCharge*12);
+  }else{
   const dir=Number(keys.right)-Number(keys.left);
   if(dir){
    if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
@@ -317,7 +362,7 @@ function update(dt){
     player.platformId=null;applyAirMotion(dt);player.onGround=false;
    }
   }else if(wasGrounded){
-   player.platformId=null;player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+   player.platformId=null;player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=player.spinDashRolling?1:0;if(!player.spin)player.spinAngle=0;
   }else{
    applyAirMotion(dt);player.onGround=false;
    const descending=player.vy>=0;
@@ -362,8 +407,9 @@ function update(dt){
    }
   }
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
+  }
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){player.fallPhase=0;if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
+ if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.8+speedRatio*2.25)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
@@ -471,6 +517,7 @@ function update(dt){
   const rival=[...remotePlayers.values()].sort((a,b)=>(b.progress||0)-(a.progress||0))[0];
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
+  if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -1185,7 +1232,7 @@ function drawFallbackPlayer(){
  // Cerca del suelo, conserva el sprite de carrera; el salto mantiene su animación aérea.
  const slopeRunning=!player.onGround&&!player.spin&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
  const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
- const rolling=Boolean(player.spin)&&!player.onGround;
+ const rolling=Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling);
  const falling=!player.onGround&&!rolling&&!slopeRunning;
  let frames,index;
  if(rolling){
@@ -1224,7 +1271,16 @@ function drawFallbackPlayer(){
  g.imageSmoothingEnabled=true;
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
-}function drawPlayerName(){
+}function drawSpinDashCharge(){
+ if(!player||!player.spinDashCharging)return;
+ const x=player.x-camera+player.w/2,y=player.y-48;
+ g.save();g.fillStyle="rgba(5,22,42,.9)";g.fillRect(x-29,y-5,58,9);
+ g.strokeStyle="#ffe78a";g.lineWidth=1.5;g.strokeRect(x-29,y-5,58,9);
+ g.fillStyle="#ffcf35";g.fillRect(x-27,y-3,54*(player.spinDashCharge||0),5);
+ g.fillStyle="#fff8c9";g.font="bold 8px Arial";g.textAlign="center";g.textBaseline="bottom";g.fillText("SPIN DASH",x,y-7);
+ g.restore();
+}
+function drawPlayerName(){
  if(!running||!playerName||!player)return;
  const x=Math.round(player.x-camera+player.w/2);
  const y=Math.max(18,Math.round(player.y-8));
@@ -1276,6 +1332,7 @@ function draw(){
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
   ["SONIC",drawPlayer],
+  ["CARGA SPIN DASH",drawSpinDashCharge],
   ["NOMBRE",drawPlayerName]
  ];
  let copied=false;

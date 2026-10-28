@@ -228,3 +228,9 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
 }
 
 .touch-controls .down-button{font-size:10px;background:linear-gradient(180deg,#7d6549,#473729);border-color:#c7a878;color:#fff3d6}
+
+.touch-controls{flex-wrap:wrap}
+.touch-controls .spindash-button{flex:1.25;font:900 9px 'Press Start 2P',monospace;background:linear-gradient(180deg,#59c9e8,#1678b7);border-color:#a5f2ff;color:#062d4b}
+.play-layout:has(.start-screen.hidden) .start-panel::before{
+ content:"PARTIDA EN CURSO\\A\\A← / A  MOVER A LA IZQUIERDA\\A→ / D  MOVER A LA DERECHA\\A SPACE  SALTAR\\A SHIFT / X  MANTENER Y SOLTAR: SPIN DASH\\A ↓  ENTRAR A LA CUEVA\\A\\ARecoge anillos para protegerte.\\AEsquiva los enemigos y sus ataques.";
+}
