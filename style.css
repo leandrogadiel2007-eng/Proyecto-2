@@ -164,3 +164,47 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
   .online-button{min-width:195px;padding:10px 17px}
   .secondary-button{font-size:7px;padding:9px 14px}
 }
+
+
+/* Panel lateral de inicio: el formulario queda separado del canvas. */
+.play-layout{display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:18px;align-items:stretch;width:100%}
+.play-layout .game-shell{width:100%;max-width:none;margin:0}
+.start-panel{min-width:0;display:flex}
+.play-layout .start-screen{
+ position:relative;inset:auto;width:100%;min-height:100%;padding:22px 18px;
+ display:flex;flex-direction:column;align-items:stretch;justify-content:center;text-align:left;
+ border:2px solid #65d5fa;border-radius:17px;overflow:hidden;
+ background:radial-gradient(ellipse at 50% 0%,rgba(43,168,255,.30),transparent 58%),linear-gradient(160deg,rgba(5,31,66,.97),rgba(7,66,105,.97) 55%,rgba(6,37,75,.98));
+ box-shadow:0 22px 60px #0005,0 0 0 5px #1a75ad29,0 0 35px #36bdff18;backdrop-filter:blur(4px)
+}
+.play-layout .start-orb{width:76px;height:76px;flex:none;align-self:center;margin:0 0 16px}
+.play-layout .start-orb img{width:54px;height:54px}
+.play-layout .start-kicker{text-align:center;font-size:6px;line-height:1.8;letter-spacing:.3px;overflow-wrap:anywhere}
+.play-layout .start-screen h2{text-align:center;font-size:clamp(25px,2.5vw,34px);line-height:1.12;letter-spacing:-.8px;margin:0 0 3px}
+.play-layout .start-screen p:not(.start-kicker){font-size:13px;line-height:1.5;margin:8px 0 16px}
+.play-layout .player-name-label{display:block;margin:4px 0 6px;font-size:7px;letter-spacing:.5px}
+.play-layout .player-name-input{width:100%;max-width:100%;min-width:0;font-size:14px;padding:11px 10px;margin:0 0 13px;border-radius:9px}
+.play-layout .multiplayer-note{max-width:none;font-size:11px!important;line-height:1.45!important;margin:0 0 12px!important}
+.play-layout .online-button,.play-layout .secondary-button{display:block;width:100%;min-width:0;white-space:normal;padding:12px 8px}
+.play-layout .primary-button,.play-layout .secondary-button{font-size:8px;letter-spacing:0}
+.play-layout .online-button{margin:0 0 10px}
+.play-layout:has(.start-screen.hidden){grid-template-columns:minmax(0,1fr)}
+.play-layout:has(.start-screen.hidden) .start-panel{display:none}
+.play-layout:has(.start-screen.hidden) .game-shell{max-width:960px;margin:0 auto}
+@media(max-width:900px){
+ .topbar{margin-bottom:31px}
+ .play-layout{grid-template-columns:minmax(0,1fr);gap:14px}
+ .play-layout .start-screen{min-height:0;padding:22px}
+ .play-layout .start-orb{width:70px;height:70px;margin-bottom:12px}
+ .play-layout .start-orb img{width:50px;height:50px}
+ .play-layout .start-screen h2{font-size:clamp(26px,5vw,36px)}
+ .play-layout .player-name-input{max-width:460px}
+ .play-layout .online-button,.play-layout .secondary-button{max-width:460px;margin-left:auto;margin-right:auto}
+ .play-layout .start-screen p:not(.start-kicker){text-align:center}
+}
+@media(max-width:700px){
+ .play-layout .start-screen{padding:18px 15px;border-radius:12px}
+ .play-layout .start-kicker,.play-layout .player-name-label{font-size:6px}
+ .play-layout .player-name-input{font-size:14px;padding:10px 12px}
+ .play-layout .multiplayer-note{font-size:10px!important}
+}
