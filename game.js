@@ -39,9 +39,9 @@ function terrainHeight(x){
  const [x0,y0]=terrainSections[i],[x1,y1]=terrainSections[i+1];
  const t=(x-x0)/(x1-x0),smooth=t*t*(3-2*t);
  const rawY=y0+(y1-y0)*smooth;
- // Agranda la altura de las colinas hacia arriba, anclando el terreno llano
- // cerca de su altura original y dejando las cimas dentro de la pantalla.
- return Math.max(80,530+(rawY-530)*1.4);
+ // Duplica hacia arriba las elevaciones tomando y=530 como referencia.
+ // Los valles no bajan más y las cimas quedan dentro de la pantalla.
+ return rawY>=530 ? rawY : Math.max(145,530-(530-rawY)*2);
 }
 const levelSections=[
  {start:0,end:3000,name:"COSTA VERDE",kind:"coast"},
