@@ -206,7 +206,7 @@ function leaveOnlineRoom(){
 }
 function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
- if(running){if(player.spinDashCharging)animation='spindash';else if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.78)animation='speeddash';else if(speedRatio>=0.47)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
+ if(running){if(player.spinDashCharging)animation='spindash';else if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.58)animation='speeddash';else if(speedRatio>=0.38)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
  const phase=animation==='spin'||animation==='spindash'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
  const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
@@ -218,7 +218,7 @@ function drawRemotePlayers(){
   const animation=other.animation||'idle',frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;if(!frames||!frames.length)continue;
   const frame=frames[Math.floor(Math.max(0,other.phase)*Math.max(1,frames.length))%frames.length];if(!frame||!frame.img||!frame.img.naturalWidth)continue;
   const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
-  const targetW=falling?66:(rolling?46:(fast?76:56)),targetH=falling?66:(rolling?46:(fast?72:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
+  const targetW=falling?66:(rolling?46:(fast?104:56)),targetH=falling?66:(rolling?46:(fast?82:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
   const sx=other.x-camera+player.w/2,sy=other.y+player.h/2;g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
   g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
   g.save();g.font='900 12px Arial, sans-serif';g.textAlign='center';g.textBaseline='bottom';g.lineJoin='round';g.lineWidth=3;g.strokeStyle='#082b53';g.strokeText(other.name,Math.round(sx),Math.round(other.y-7));g.fillStyle='#fff3a2';g.fillText(other.name,Math.round(sx),Math.round(other.y-7));g.restore();
@@ -1257,7 +1257,7 @@ function drawFallbackPlayer(){
   frames=sonicAnimations.fall;
   index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
  }else if(moving){
-  frames=speedRatio>=0.78?sonicAnimations.speeddash:(speedRatio>=0.47?sonicAnimations.dash:sonicAnimations.run);
+  frames=speedRatio>=0.58?sonicAnimations.speeddash:(speedRatio>=0.38?sonicAnimations.dash:sonicAnimations.run);
   index=Math.floor(player.runPhase*frames.length)%Math.max(1,frames.length);
  }else{
   frames=sonicAnimations.idle;
@@ -1272,9 +1272,9 @@ function drawFallbackPlayer(){
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
  const airbornePose=rolling||falling;
  // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
- const maxSpeedPose=moving&&speedRatio>=0.78;
- const targetW=falling?66:(rolling?46:(maxSpeedPose?76:56));
- const targetH=falling?66:(rolling?46:(maxSpeedPose?72:54));
+ const maxSpeedPose=moving&&speedRatio>=0.58;
+ const targetW=falling?66:(rolling?46:(maxSpeedPose?104:56));
+ const targetH=falling?66:(rolling?46:(maxSpeedPose?82:54));
  const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
