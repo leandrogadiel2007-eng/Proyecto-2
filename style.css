@@ -188,9 +188,27 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff0a6;outline-offset:4p
 .play-layout .online-button,.play-layout .secondary-button{display:block;width:100%;min-width:0;white-space:normal;padding:12px 8px}
 .play-layout .primary-button,.play-layout .secondary-button{font-size:8px;letter-spacing:0}
 .play-layout .online-button{margin:0 0 10px}
-.play-layout:has(.start-screen.hidden){grid-template-columns:minmax(0,1fr)}
-.play-layout:has(.start-screen.hidden) .start-panel{display:none}
-.play-layout:has(.start-screen.hidden) .game-shell{max-width:960px;margin:0 auto}
+/* Mantén las mismas columnas al iniciar: el canvas no se ensancha al ocultar el formulario. */
+.play-layout:has(.start-screen.hidden) .start-panel{
+  display:flex;
+  align-items:stretch;
+  border:2px solid #2c78a8;
+  border-radius:17px;
+  background:linear-gradient(160deg,rgba(5,31,66,.97),rgba(7,66,105,.97) 55%,rgba(6,37,75,.98));
+  box-shadow:0 18px 38px #0003;
+  overflow:hidden;
+}
+.play-layout:has(.start-screen.hidden) .start-panel::before{
+  content:"PARTIDA EN CURSO\\A\\A← / A  MOVER A LA IZQUIERDA\\A→ / D  MOVER A LA DERECHA\\ASPACE  SALTAR\\A\\ARecoge anillos para protegerte.\\AEsquiva los enemigos y sus ataques.";
+  display:block;
+  width:100%;
+  padding:24px 20px;
+  color:#dff6ff;
+  white-space:pre-line;
+  font:700 10px/2 'Press Start 2P',monospace;
+  overflow-wrap:anywhere;
+  align-self:start;
+}
 @media(max-width:900px){
  .topbar{margin-bottom:31px}
  .play-layout{grid-template-columns:minmax(0,1fr);gap:14px}
