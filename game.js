@@ -268,7 +268,7 @@ async function startOnlineGame(){
   multiplayerChannel=roomChannel;
   await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Se agotó el tiempo de conexión.')),12000);roomChannel.subscribe(state=>{if(state==='SUBSCRIBED'){clearTimeout(timeout);resolve()}else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){clearTimeout(timeout);reject(new Error('Supabase respondió: '+state))}})});
   await roomChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)});
-  onlineMode=true;lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
+  onlineMode=true;trackOnlineEnemyPresence();lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
  }catch(error){
   console.error('[Blue Rush] Error de multijugador online:',error);onlineMode=false;const oldChannel=multiplayerChannel,oldClient=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;remotePlayers.clear();
   if(oldChannel&&oldClient){try{await oldClient.removeChannel(oldChannel)}catch(_){}}
