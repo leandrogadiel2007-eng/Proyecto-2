@@ -99,11 +99,13 @@ function aerialPlatformY(platform){return terrainHeight(platform.x+platform.w/2)
 function platformUnderPlayer(x,w){return aerialPlatforms.find(p=>x+w>p.x+5&&x<p.x+p.w-5)||null}
 function platformById(id){return id===null||id===undefined?null:aerialPlatforms.find(p=>p.id===id)||null}
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
-let rings=[],enemies=[],beeProjectiles=[],collected=new Set(),checkpoints=[];
+let rings=[],enemies=[],beeProjectiles=[],enemyExplosions=[],collected=new Set(),checkpoints=[];
+const destroyedEnemyIds=new Set();
 let checkpointX=90,levelCompleted=false;
 let raceFinished=false,raceWinner=null;
 function buildLevel(){
- rings=[];collected=new Set();
+ rings=[];collected=new Set();enemyExplosions=[];
+ if(!onlineMode)destroyedEnemyIds.clear();
  let group=0;
  // Anillos repartidos por el recorrido principal.
  for(let x=220;x<worldWidth-280;x+=820,group++){
@@ -122,14 +124,78 @@ function buildLevel(){
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
  beeProjectiles=[];
  enemies=enemyPositions.map((x,index)=>({
+  id:'enemy-'+index,
   x,
   y:index%3===2?terrainHeight(x)-190:terrainHeight(x)-28,
-  alive:true,base:x,kind:index%3,
+  alive:!destroyedEnemyIds.has('enemy-'+index),base:x,kind:index%3,
   hasFiredFirst:false,nextShot:0
  }));
 
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
+
+function spawnEnemyExplosion(x,y,kind=0){
+ const colors=kind===2?["#fff09a","#8feeff","#ffd35c","#ffffff"]:["#fff09a","#ff9858","#8feeff","#ffffff"];
+ const particles=Array.from({length:14},(_,i)=>{
+  const angle=(Math.PI*2*i/14)+(Math.random()-.5)*.22;
+  const speed=95+Math.random()*155;
+  return {x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-35,size:2+Math.random()*2.8,color:colors[i%colors.length]};
+ });
+ enemyExplosions.push({x,y,kind,age:0,duration:.68,particles});
+}
+function updateEnemyExplosions(dt){
+ for(const effect of enemyExplosions){
+  effect.age+=dt;
+  for(const p of effect.particles){
+   p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.22,dt);p.vy+=430*dt;
+  }
+ }
+ enemyExplosions=enemyExplosions.filter(effect=>effect.age<effect.duration);
+}
+function drawEnemyExplosions(){
+ for(const effect of enemyExplosions){
+  const progress=Math.min(1,effect.age/effect.duration),alpha=1-progress;
+  const x=effect.x-camera,y=effect.y-10;
+  g.save();g.globalAlpha=alpha;g.lineWidth=3;
+  g.strokeStyle=effect.kind===2?"#8feeff":"#ffd35c";
+  g.beginPath();g.arc(x,y,7+progress*27,0,Math.PI*2);g.stroke();
+  g.strokeStyle="#ffffff";g.lineWidth=1.6;g.beginPath();
+  for(let i=0;i<8;i++){
+   const angle=i*Math.PI/4,r1=9+progress*10,r2=16+progress*27;
+   g.moveTo(x+Math.cos(angle)*r1,y+Math.sin(angle)*r1);
+   g.lineTo(x+Math.cos(angle)*r2,y+Math.sin(angle)*r2);
+  }
+  g.stroke();
+  for(const p of effect.particles){g.fillStyle=p.color;g.beginPath();g.arc(p.x-camera,p.y,p.size*(1-progress*.35),0,Math.PI*2);g.fill()}
+  g.restore();
+ }
+}
+function markEnemyDestroyed(enemyId,x,y,kind,showEffect=true){
+ const id=String(enemyId||'');
+ if(!/^enemy-[0-9]+$/.test(id)||destroyedEnemyIds.has(id))return false;
+ const enemy=enemies.find(item=>item.id===id);
+ if(!enemy)return false;
+ destroyedEnemyIds.add(id);enemy.alive=false;
+ const effectX=Number.isFinite(x)?x:enemy.x,effectY=Number.isFinite(y)?y:enemy.y;
+ if(showEffect)spawnEnemyExplosion(effectX,effectY,Number.isFinite(kind)?kind:enemy.kind);
+ return true;
+}
+function trackOnlineEnemyPresence(){
+ if(!onlineMode||!multiplayerChannel||!player)return;
+ multiplayerChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)})
+  .catch(error=>console.warn('[Blue Rush] No se pudo actualizar el estado de enemigos:',error));
+}
+function destroyEnemy(enemy){
+ if(!enemy||!markEnemyDestroyed(enemy.id,enemy.x,enemy.y,enemy.kind,true))return false;
+ if(onlineMode&&multiplayerChannel){
+  const payload={enemyId:enemy.id,x:enemy.x,y:enemy.y,kind:enemy.kind,by:multiplayerId,at:Date.now()};
+  multiplayerChannel.send({type:'broadcast',event:'enemy-destroyed',payload})
+   .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar la destrucción del enemigo:',error));
+  trackOnlineEnemyPresence();
+ }
+ return true;
+}
+
 
 function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,platformId:null};keys.spindash=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
@@ -171,6 +237,11 @@ async function startOnlineGame(){
     startButton.textContent='CORRER OTRA VEZ';startScreen.classList.remove('hidden');
     status.textContent='CARRERA TERMINADA · GANADOR: '+name;
    });
+   roomChannel.on('broadcast',{event:'enemy-destroyed'},({payload})=>{
+    if(!payload||payload.by===multiplayerId)return;
+    const enemyId=String(payload.enemyId||'');
+    if(markEnemyDestroyed(enemyId,payload.x,payload.y,payload.kind,true))trackOnlineEnemyPresence();
+   });
    roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
    if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
    if(!Number.isFinite(x)||!Number.isFinite(y)||x< -200||x>worldWidth+200||y< -1000||y>5000)return;
@@ -182,17 +253,21 @@ async function startOnlineGame(){
   });
   roomChannel.on('presence',{event:'sync'},()=>{
    const presence=roomChannel.presenceState(),seen=new Set();
+   let mergedEnemyState=false;
    for(const entries of Object.values(presence))for(const person of entries||[]){
-    if(!person||!person.id||person.id===multiplayerId)continue;const id=String(person.id);seen.add(id);let other=remotePlayers.get(id);
+    if(!person||!person.id||person.id===multiplayerId)continue;
+    if(Array.isArray(person.destroyedEnemies))for(const enemyId of person.destroyedEnemies){if(markEnemyDestroyed(enemyId,NaN,NaN,NaN,true))mergedEnemyState=true;}
+    const id=String(person.id);seen.add(id);let other=remotePlayers.get(id);
     if(!other){const x=Number.isFinite(Number(person.x))?Number(person.x):90,y=Number.isFinite(Number(person.y))?Number(person.y):terrainHeight(x)-43;other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}
     if(person.name)other.name=String(person.name).replace(/[<>]/g,'').slice(0,16)||'Jugador';
    }
    for(const id of remotePlayers.keys())if(!seen.has(id))remotePlayers.delete(id);
+   if(mergedEnemyState)trackOnlineEnemyPresence();
    if(onlineMode)status.textContent='ONLINE · SALA '+multiplayerRoom+' · '+(remotePlayers.size+1)+' JUGADOR(ES)';
   });
   multiplayerChannel=roomChannel;
   await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Se agotó el tiempo de conexión.')),12000);roomChannel.subscribe(state=>{if(state==='SUBSCRIBED'){clearTimeout(timeout);resolve()}else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){clearTimeout(timeout);reject(new Error('Supabase respondió: '+state))}})});
-  await roomChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now()});
+  await roomChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)});
   onlineMode=true;lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
  }catch(error){
   console.error('[Blue Rush] Error de multijugador online:',error);onlineMode=false;const oldChannel=multiplayerChannel,oldClient=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;remotePlayers.clear();
@@ -201,7 +276,7 @@ async function startOnlineGame(){
  }finally{onlineButton.disabled=false;startButton.disabled=false;onlineButton.innerHTML='JUGAR ONLINE <span aria-hidden="true">↗</span>'}
 }
 function leaveOnlineRoom(){
- onlineMode=false;remotePlayers.clear();const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
+ onlineMode=false;remotePlayers.clear();destroyedEnemyIds.clear();enemyExplosions=[];enemies.forEach(enemy=>enemy.alive=true);const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
  if(channel&&client)client.removeChannel(channel).catch(error=>console.warn('[Blue Rush] No se pudo cerrar la sala:',error));
 }
 function sendOnlineState(now){
@@ -322,6 +397,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
 function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
+ updateEnemyExplosions(dt);
  if(!running)return;elapsed+=dt;
   if(player.spinDashRolling){
    player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
@@ -465,7 +541,7 @@ function update(dt){
   }
   const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   if(hit){
-   if(player.vy>100&&player.y+player.h<enemyY+12){e.alive=false;player.vy=-370;player.onGround=false;score+=100}
+   if(player.vy>100&&player.y+player.h<enemyY+12){destroyEnemy(e);player.vy=-370;player.onGround=false;score+=100}
    else if(player.invincible<=0){
     applyPlayerDamage();
    }
@@ -1344,6 +1420,7 @@ function draw(){
   ["DECORACIÓN",drawDecorations],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
+  ["EXPLOSIONES",drawEnemyExplosions],
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
   ["SONIC",drawPlayer],
