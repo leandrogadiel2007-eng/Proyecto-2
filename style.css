@@ -270,13 +270,13 @@ body.auth-locked{overflow:hidden}
 .demo-account strong{flex:none;color:#8ceaff;font:7px 'Press Start 2P',monospace}
 .auth-disclaimer{margin:14px 0 0;color:#90b2cc;text-align:center;font-size:10px;line-height:1.45}
 .topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
-.logout-button{border:1px solid #70bde7;border-radius:999px;background:#102f52;color:#dff6ff;padding:9px 12px;font:7px/1.6 'Press Start 2P',monospace;cursor:pointer}
-.logout-button:hover{border-color:#ffe17d;color:#ffe17d}
+.logout-button{border:2px solid #ffe17d;border-radius:999px;background:linear-gradient(180deg,#164d78,#102f52);color:#fff4bf;padding:10px 14px;font:700 8px/1.6 'Press Start 2P',monospace;cursor:pointer;box-shadow:0 3px 0 #07345b;white-space:nowrap}
+.logout-button:hover{border-color:#fff;color:#fff;filter:brightness(1.12);transform:translateY(-1px)}
 .logout-button[hidden]{display:none!important}
 @media(max-width:520px){
  .auth-gate{padding:12px}.auth-card{padding:23px 17px 18px;border-radius:18px}
  .auth-brand{font-size:11px}.auth-kicker,.demo-title,.demo-account b,.demo-account strong{font-size:6px}
- .topbar-actions{gap:6px}.topbar-actions .phase{font-size:6px;padding:7px 9px}.logout-button{font-size:6px;padding:7px 9px}
+ .topbar-actions{gap:6px}.topbar-actions .phase{font-size:6px;padding:7px 9px}.logout-button{font-size:6px;padding:8px 9px}
 }
 
 

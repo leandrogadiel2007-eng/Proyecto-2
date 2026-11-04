@@ -113,7 +113,7 @@ function setAuthenticatedUser(user,saveSession=true){
   playerName=authenticatedUser.name;
   playerNameInput.value=authenticatedUser.name;
   restoreSelectedCharacter();
-  logoutButton.textContent='SALIR · '+authenticatedUser.name.toUpperCase();
+  logoutButton.textContent='CAMBIAR USUARIO';
   status.textContent='SESIÓN ACTIVA · '+authenticatedUser.name.toUpperCase();
   if(saveSession){
    try{localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(authenticatedUser))}
@@ -153,16 +153,23 @@ document.querySelectorAll('[data-demo-account]').forEach(button=>{
   loginPasswordInput.focus();
  });
 });
-logoutButton.addEventListener('click',()=>{
+function switchDemoAccount(){
  if(onlineMode)leaveOnlineRoom();
- running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;
- resetPlayer();startScreen.classList.remove('hidden');draw();
- try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(_){}
+ running=false;
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;
+ resetPlayer();
+ startScreen.classList.remove('hidden');
+ try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(error){console.warn('[Blue Rush] No se pudo limpiar la sesión guardada:',error)}
  setAuthenticatedUser(null,false);
  loginEmailInput.value='';
- showAuthMessage('Sesión cerrada. Elige una cuenta para volver a entrar.');
+ loginPasswordInput.value='';
+ showAuthMessage('Sesión cerrada. Selecciona otra cuenta o introduce otros datos para iniciar sesión.');
+ status.textContent='ELIGE UNA CUENTA PARA CONTINUAR';
+ authGate.classList.remove('hidden');
+ document.body.classList.add('auth-locked');
  loginEmailInput.focus();
-});
+}
+logoutButton.addEventListener('click',switchDemoAccount);
 restoreDemoSession();
 const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():('br-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
