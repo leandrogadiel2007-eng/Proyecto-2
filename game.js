@@ -1910,7 +1910,7 @@ function loadTailsSprites(){
    fall:tailsSheetFrames(sheet,[27,28,33,34]),
    tired:tailsSheetFrames(sheet,[27,28,33,34]),
    fly:tailsSheetFrames(sheet,[45,46,47,48,49,50,51,52,53]),
-   swim:tailsSheetFrames(sheet,[38,39,40,41,42,43,44]),
+   swim:tailsSheetFrames(sheet,[38,39,40,41,42,43]),
    tailsAttack:tailsSheetFrames(sheet,[27,28,29,30,31,32,33,34,35]),
    spin:tailsSheetFrames(sheet,[5,6,7,8,9,10]),ready:true
   };
@@ -1937,7 +1937,7 @@ function loadTailsSprites(){
 function drawTailsCharacter(screenX,screenY,options={}){
  const animation=options.animation||"idle",phase=Number(options.phase)||0,frames=tailsAnimations[animation]&&tailsAnimations[animation].length?tailsAnimations[animation]:tailsAnimations.idle;
  if(!frames.length){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
- const frameRate=animation==="run"?3.5:(animation==="fly"||animation==="swim"?6:animation==="jump"||animation==="fall"||animation==="tired"?5:8);
+ const frameRate=animation==="run"?5.5:(animation==="fly"||animation==="swim"?6:animation==="jump"||animation==="fall"||animation==="tired"?5:8);
  const index=Math.floor(phase*frameRate)%frames.length,entry=frames[(index+frames.length)%frames.length],img=entry&&entry.img,b=entry&&entry.bounds;
  if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
  const targetW=animation==="fly"?70:animation==="swim"?61:animation==="tailsAttack"?64:58,targetH=animation==="fly"?66:animation==="swim"?54:animation==="tailsAttack"?60:56;
