@@ -368,7 +368,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutBurst:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -421,7 +421,7 @@ async function startOnlineGame(){
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
    if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:'sonic',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
    other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.characterId=normalizeCharacterId(payload.characterId);other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
-   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
+   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall','peeloutCharge','peeloutLoop','peeloutBurst'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
   roomChannel.on('presence',{event:'sync'},()=>{
@@ -454,9 +454,28 @@ function leaveOnlineRoom(){
  if(channel&&client)client.removeChannel(channel).catch(error=>console.warn('[Blue Rush] No se pudo cerrar la sala:',error));
 }
 function sendOnlineState(now){
- if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
- if(running){if(player.spinDashCharging||player.peelOutCharging)animation='spindash';else if(player.spin||player.rolling||player.homingActive)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.58)animation='speeddash';else if(speedRatio>=0.38)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
- const phase=animation==='spin'||animation==='spindash'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+ if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle',phase=0;
+ if(running){
+  if(player.peelOutCharging){
+   if(player.peelOutAnimTime<.5){
+    animation='peeloutCharge';phase=Math.min(1,player.peelOutAnimTime/.5);
+   }else{
+    animation='peeloutLoop';
+    phase=(((player.peelOutAnimTime-.5)*30)/Math.max(1,sonicAnimations.peelOutLoop.length))%1;
+   }
+  }else if(player.peelOutBurst>0&&player.peelOutBurstTime<SUPER_PEELOUT_LAUNCH_ANIM_DURATION){
+   animation='peeloutBurst';phase=Math.min(1,player.peelOutBurstTime/SUPER_PEELOUT_LAUNCH_ANIM_DURATION);
+  }else if(player.spinDashCharging)animation='spindash';
+  else if(player.spin||player.rolling||player.homingActive)animation='spin';
+  else if(!player.onGround)animation=player.vy<0?'jump':'fall';
+  else if(speedRatio>=0.58)animation='speeddash';
+  else if(speedRatio>=0.38)animation='dash';
+  else if(Math.abs(player.vx)>25)animation='run';
+ }
+ if(!animation.startsWith('peelout')){
+  phase=animation==='spin'||animation==='spindash'?player.spinPhase:
+   (animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+ }
  const payload={id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
 }
@@ -510,13 +529,24 @@ function drawRemotePlayers(){
   }else{
    const frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;
    if(frames&&frames.length){
-    const frame=frames[Math.floor(Math.max(0,other.phase)*frames.length)%frames.length];
+    let frameIndex;
+    if(animation==='peeloutCharge'||animation==='peeloutBurst'){
+     frameIndex=Math.min(frames.length-1,Math.floor(Math.max(0,other.phase)*frames.length));
+    }else if(animation==='peeloutLoop'){
+     frameIndex=Math.floor(Math.max(0,other.phase)*frames.length)%frames.length;
+    }else{
+     frameIndex=Math.floor(Math.max(0,other.phase)*frames.length)%frames.length;
+    }
+    const frame=frames[frameIndex];
     if(frame&&frame.img&&frame.img.naturalWidth){
      const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
-     const rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
+     const rolling=animation==='spin'||animation==='spindash';
+     const falling=animation==='fall'||animation==='jump';
+     const fast=animation==='speeddash'||animation==='peeloutBurst';
      const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54));
      const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
-     g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
+     g.save();g.translate(Math.round(sx),Math.round(sy));
+     if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
      g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
     }
    }
@@ -553,7 +583,7 @@ function finishRunAfterDeath(){
 }
 function applyPlayerDamage(){
  if(player.invincible>0)return;
- player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutBurst=0;player.speed=900;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutAnimTime=0;player.peelOutBurst=0;player.peelOutBurstTime=0;player.speed=900;
  const hasRings=rings.some(r=>r.got);
  if(!hasRings){
   finishRunAfterDeath();
@@ -606,14 +636,15 @@ function beginSuperPeelOut(){
  if(!running||selectedCharacterId!=='sonic'||inUnderground||!player.onGround||
     player.platformId!==null||player.spinDashCharging||player.spinDashRolling||player.peelOutCharging||player.homingActive||
     Math.abs(player.vx)>260)return;
- player.peelOutCharging=true;player.peelOutCharge=0;player.rolling=false;
- player.spinDashRolling=false;player.vx=0;player.vy=0;player.spin=1;player.spinAngle=0;
+ player.peelOutCharging=true;player.peelOutCharge=0;player.peelOutAnimTime=0;player.rolling=false;
+ player.spinDashRolling=false;player.vx=0;player.vy=0;player.spin=0;player.spinAngle=0;
 }
 function releaseSuperPeelOut(){
  if(!player||!player.peelOutCharging)return;
  const charge=Math.max(.12,Math.min(1,player.peelOutCharge||0));
  const direction=player.facing||1;
- player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutBurst=1.15;
+ player.peelOutCharging=false;player.peelOutCharge=0;
+ player.peelOutBurst=SUPER_PEELOUT_BURST_DURATION;player.peelOutBurstTime=0;
  player.speed=1050;player.speedCharge=1;player.facing=direction;
  player.vx=direction*(720+330*charge);player.vy=0;player.onGround=true;
  player.platformId=null;player.spin=0;player.rolling=false;player.spinAngle=0;
@@ -717,8 +748,12 @@ function update(dt){
   if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
  }
  if(player.peelOutBurst>0){
+  player.peelOutBurstTime=(player.peelOutBurstTime||0)+dt;
   player.peelOutBurst=Math.max(0,player.peelOutBurst-dt);
-  if(player.peelOutBurst===0)player.speed=900;
+  if(player.peelOutBurst===0){
+   player.speed=900;
+   player.peelOutBurstTime=0;
+  }
  }
  const tunnelCenterBeforeMove=player.x+player.w/2;
  const nearTunnelEntry=!inUnderground&&tunnelCenterBeforeMove>=undergroundZone.entryX-78&&tunnelCenterBeforeMove<=undergroundZone.entryX+72;
@@ -744,11 +779,20 @@ function update(dt){
  }
  if(player.spinDashCharging||player.peelOutCharging){
   if(player.spinDashCharging)player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
-  if(player.peelOutCharging)player.peelOutCharge=Math.min(1,(player.peelOutCharge||0)+dt*.78);
+  if(player.peelOutCharging){
+   player.peelOutCharge=Math.min(1,(player.peelOutCharge||0)+dt*.78);
+   player.peelOutAnimTime=(player.peelOutAnimTime||0)+dt;
+  }
   player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;
   player.y=groundSurfaceAt(player.x+player.w/2)-player.h;
   if(keys.left&&!keys.right)player.facing=-1;else if(keys.right&&!keys.left)player.facing=1;
-  player.spin=1;player.spinAngle=(player.spinAngle||0)+dt*(8+(player.spinDashCharge||player.peelOutCharge||0)*12);
+  if(player.spinDashCharging){
+   player.spin=1;
+   player.spinAngle=(player.spinAngle||0)+dt*(8+player.spinDashCharge*12);
+  }else{
+   // Super Peel-Out charge stays upright and never rotates the sprite.
+   player.spin=0;player.spinAngle=0;
+  }
  }else{
   const homingSteering=Boolean(homingTarget);
   const dir=Number(keys.right)-Number(keys.left);
@@ -1546,7 +1590,9 @@ function drawEnemyFallback(e){
 const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet-game-atlas.png";
 const SONIC_ATLAS_COLUMNS=10;
 const SONIC_ATLAS_ROWS=9;
-let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],ready:false};
+const SUPER_PEELOUT_LAUNCH_ANIM_DURATION=.3;
+const SUPER_PEELOUT_BURST_DURATION=1.15;
+let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],peelOutCharge:[],peelOutLoop:[],peelOutBurst:[],ready:false};
 
 function loadSonicSheetFrame(sheet,frameIndex){
  const totalFrames=SONIC_ATLAS_COLUMNS*SONIC_ATLAS_ROWS;
@@ -1594,7 +1640,12 @@ function loadSonicCostumes(){
    jump:sonicSheetFrames(sheet,[29,30,31,32]),
    spin:sonicSheetFrames(sheet,[7,8,9,10]),
    spindash:sonicSheetFrames(sheet,[7,8,9,10]),
-   fall:sonicSheetFrames(sheet,[80,81])
+   fall:sonicSheetFrames(sheet,[80,81]),
+   // Secuencias originales de Sonic Escape:
+   // Revpeelout = preparación, peel out = carga sostenida, Dash max = salida.
+   peelOutCharge:sonicSheetFrames(sheet,[82,83,84,85,86,87]),
+   peelOutLoop:sonicSheetFrames(sheet,[74,75,76,77]),
+   peelOutBurst:sonicSheetFrames(sheet,[48,49,50])
   };
   if(!result.idle.length&&result.run.length)result.idle=[result.run[0]];
   if(!result.run.length&&result.idle.length)result.run=result.idle;
@@ -1605,6 +1656,7 @@ function loadSonicCostumes(){
   sonicAnimations={
    idle:result.idle,run:result.run,dash:result.dash,speeddash:result.speeddash,
    jump:result.jump,spin:result.spin,spindash:result.spindash,fall:result.fall,
+   peelOutCharge:result.peelOutCharge,peelOutLoop:result.peelOutLoop,peelOutBurst:result.peelOutBurst,
    ready:Boolean(result.idle.length&&result.run.length&&result.spin.length)
   };
   console.info("Blue Rush: atlas de Sonic Escape cargado",{
@@ -1670,20 +1722,30 @@ function drawPlayer(){
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  const groundGap=terrainHeight(player.x+player.w/2)-(player.y+player.h);
- // En una bajada, la inclinación y la velocidad pueden crear una separación mínima.
- // Cerca del suelo, conserva el sprite de carrera; el salto mantiene su animación aérea.
- const slopeRunning=!player.onGround&&!player.spin&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
+ const slopeRunning=!player.onGround&&!player.spin&&!player.homingActive&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
  const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
- const rolling=player.rolling||player.homingActive||(Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling||player.peelOutCharging));
+ const rolling=player.rolling||player.homingActive||(Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling));
  const jumping=!player.onGround&&!rolling&&player.vy< -30;
  const falling=!player.onGround&&!rolling&&!slopeRunning&&!jumping;
+ const peelOutCharging=Boolean(player.peelOutCharging);
+ const peelOutLaunch=Boolean(player.peelOutBurst>0&&player.peelOutBurstTime<SUPER_PEELOUT_LAUNCH_ANIM_DURATION);
+ const peelOutPose=peelOutCharging||peelOutLaunch;
  let frames,index;
- if(player.peelOutCharging){
-   frames=sonicAnimations.idle;index=0;
+ if(peelOutCharging){
+  if(player.peelOutAnimTime<.5){
+   frames=sonicAnimations.peelOutCharge;
+   index=Math.min(frames.length-1,Math.floor((player.peelOutAnimTime/.5)*frames.length));
+  }else{
+   frames=sonicAnimations.peelOutLoop;
+   index=Math.floor((player.peelOutAnimTime-.5)*30)%Math.max(1,frames.length);
+  }
+ }else if(peelOutLaunch){
+  frames=sonicAnimations.peelOutBurst;
+  index=Math.min(frames.length-1,Math.floor(player.peelOutBurstTime/.1));
  }else if(player.spinDashCharging){
-   frames=sonicAnimations.spindash;
-   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
-  }else if(rolling){
+  frames=sonicAnimations.spindash;
+  index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
+ }else if(rolling){
   frames=sonicAnimations.spin;
   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
  }else if(jumping){
@@ -1701,13 +1763,11 @@ function drawPlayer(){
  }
  const usable=frames&&frames.length?frames:(sonicAnimations.idle.length?sonicAnimations.idle:[]);
  if(!usable.length){drawFallbackPlayer();return}
- const entry=usable[index%usable.length];
+ const entry=usable[Math.max(0,index)%usable.length];
  const img=entry&&entry.img;
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
- // Recorta transparencias del atlas para mantener a Sonic centrado y con una escala legible.
  const airbornePose=rolling||falling||jumping;
- // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
  const maxSpeedPose=moving&&speedRatio>=0.58;
  const targetW=(falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56));
  const targetH=(falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54));
@@ -1716,13 +1776,15 @@ function drawPlayer(){
  g.save();g.translate(Math.round(x),Math.round(y));
  if(rolling)g.rotate(player.spinAngle||0);
  else{
-  if(moving)g.rotate(player.facing*speedRatio*0.055);
+  // Peel-Out is an upright running/launch pose: do not tilt or spin it.
+  if(moving&&!peelOutPose)g.rotate(player.facing*speedRatio*0.055);
   if(player.facing<0)g.scale(-1,1);
  }
  g.imageSmoothingEnabled=false;
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
-}function drawSpinDashCharge(){
+}
+function drawSpinDashCharge(){
  if(!player||(!player.spinDashCharging&&!player.peelOutCharging))return;
  const peelOut=player.peelOutCharging;
  const charge=peelOut?(player.peelOutCharge||0):(player.spinDashCharge||0);
