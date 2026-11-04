@@ -116,8 +116,9 @@ function setAuthenticatedUser(user,saveSession=true){
   logoutButton.textContent='CAMBIAR USUARIO';
   status.textContent='SESIÓN ACTIVA · '+authenticatedUser.name.toUpperCase();
   if(saveSession){
-   try{localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(authenticatedUser))}
-   catch(_){showAuthMessage('Sesión iniciada, pero este navegador no permite guardarla. Deberás volver a entrar al recargar.',true)}
+   // La sesión solo vive en esta pestaña: desaparece al cerrarla.
+   try{sessionStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(authenticatedUser))}
+   catch(_){showAuthMessage('Sesión iniciada, pero no se pudo guardar en esta pestaña. No cierres la página.',true)}
   }
  }else{
   logoutButton.hidden=true;
@@ -127,11 +128,15 @@ function setAuthenticatedUser(user,saveSession=true){
  renderScoreboard();
 }
 function restoreDemoSession(){
+ // Recupera la sesión solo al recargar la misma pestaña.
+ // sessionStorage se limpia cuando el usuario cierra la pestaña o ventana.
  try{
-  const saved=JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)||'null');
+  const saved=JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY)||'null');
   const account=DEMO_ACCOUNTS.find(item=>item.email===String(saved&&saved.email||'').toLowerCase());
   if(account){setAuthenticatedUser(account,false);return}
  }catch(_){}
+ // Borra cualquier sesión antigua que hubiera quedado guardada de forma permanente.
+ try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(_){}
  setAuthenticatedUser(null,false);
 }
 function handleDemoLogin(event){
@@ -159,7 +164,7 @@ function switchDemoAccount(){
  keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
  resetPlayer();
  startScreen.classList.remove('hidden');
- try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(error){console.warn('[Blue Rush] No se pudo limpiar la sesión guardada:',error)}
+ try{sessionStorage.removeItem(AUTH_SESSION_KEY);localStorage.removeItem(AUTH_SESSION_KEY)}catch(error){console.warn('[Blue Rush] No se pudo limpiar la sesión guardada:',error)}
  setAuthenticatedUser(null,false);
  loginEmailInput.value='';
  loginPasswordInput.value='';
