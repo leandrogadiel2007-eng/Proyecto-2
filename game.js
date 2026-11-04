@@ -679,7 +679,7 @@ window.addEventListener('keyup',e=>setKey(e.key,false));
 window.addEventListener('blur',()=>{
  keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
  if(player){
-  if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}if(player&&player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
+  if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
   if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
  }
 });
@@ -761,8 +761,8 @@ function update(dt){
    player.vx+=(targetSpeed-player.vx)*Math.min(1,6.4*dt);
   }else{
    const rollingFriction=player.spinDashRolling||player.rolling;
-   player.speedCharge=Math.max(0,player.speedCharge-(rollingFriction?.22:2.4)*dt);
-   player.vx*=Math.pow(rollingFriction?.78:.12,dt);
+   player.speedCharge=Math.max(0,player.speedCharge-(rollingFriction ? .22 : 2.4)*dt);
+   player.vx*=Math.pow(rollingFriction ? .78 : .12,dt);
    if(Math.abs(player.vx)<8)player.vx=0;
   }
   const wasGrounded=player.onGround,oldBottom=player.y+player.h,oldX=player.x,oldY=player.y,oldPlatformId=player.platformId,oldGround=groundSurfaceAt(oldX+player.w/2);
@@ -807,7 +807,7 @@ function update(dt){
    inUnderground=true;keys.down=false;
    player.x=undergroundZone.entryX+40-player.w/2;
    player.y=undergroundPathY(player.x+player.w/2)-player.h;
-   player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
+   player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
   }
   if(inUnderground){
    const center=player.x+player.w/2;
@@ -815,16 +815,16 @@ function update(dt){
     inUnderground=false;
     player.x=undergroundZone.entryX-30-player.w/2;
     player.y=groundSurfaceAt(undergroundZone.entryX-30)-player.h;
-    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
    }else if(center>=undergroundZone.exitX){
     inUnderground=false;
     player.x=undergroundZone.exitX-player.w/2;
     player.y=groundSurfaceAt(undergroundZone.exitX)-player.h;
-    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
     player.vx=Math.max(170,player.vx);
    }else{
     player.y=undergroundPathY(center)-player.h;
-    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+    player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
    }
   }
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
@@ -1788,6 +1788,7 @@ function draw(){
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
   ["PERSONAJE",drawPlayer],
+  ["CARGA DE ACCIÓN",drawSpinDashCharge],
   ["NOMBRE",drawPlayerName]
  ];
  let copied=false;
