@@ -475,6 +475,7 @@ function sendOnlineState(now){
   else if(selectedCharacterId==='tails'&&player.tailsFlying)animation='fly';
   else if(selectedCharacterId==='tails'&&player.tailsTired&&!player.onGround)animation='tired';
   else if(selectedCharacterId==='tails'&&player.tailsAttackTimer>0)animation='tailsAttack';
+  else if(selectedCharacterId==='tails'&&speedRatio>=.85)animation='speeddash';
   else if(player.peelOutCharging){
    if(player.peelOutAnimTime<.5){
     animation='peeloutCharge';phase=Math.min(1,player.peelOutAnimTime/.5);
@@ -497,6 +498,13 @@ function sendOnlineState(now){
  }
  if(animation==='spindash'){
   phase=getSpinDashChargeFrameIndex()/Math.max(1,sonicAnimations.spindash.length);
+ }else if(!animation.startsWith('peelout')&&selectedCharacterId==='tails'){
+  if(animation==='idle')phase=elapsed;
+  else if(animation==='fly')phase=player.tailsFlightTime||0;
+  else if(animation==='tailsAttack')phase=Math.max(0,.34-(player.tailsAttackTimer||0));
+  else if(animation==='spin')phase=player.spinPhase;
+  else if(animation==='fall'||animation==='jump'||animation==='swim'||animation==='tired')phase=player.fallPhase;
+  else phase=player.runPhase;
  }else if(!animation.startsWith('peelout')){
   phase=animation==='spin'||animation==='tailsAttack'?player.spinPhase:
    (animation==='fall'||animation==='jump'||animation==='fly'||animation==='swim'||animation==='tired'?player.fallPhase:player.runPhase);
@@ -1120,9 +1128,18 @@ function update(dt){
   }
  if(selectedCharacterId==='tails'&&player.onGround){player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging||player.homingActive||player.tailsAttackTimer>0)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
- else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
- else player.fallPhase+=dt*(0.9+speedRatio*1.1);
+ if(selectedCharacterId==='tails'){
+  if(player.onGround){
+   player.fallPhase=0;
+   if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging)player.spinPhase+=dt;
+   else if(Math.abs(player.vx)>25)player.runPhase+=dt;
+  }else if(player.spin)player.spinPhase+=dt;
+  else player.fallPhase+=dt;
+ }else{
+  if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging||player.homingActive||player.tailsAttackTimer>0)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
+  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
+  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
+ }
  if(player.invincible>0)player.invincible-=dt;
  rings.forEach(r=>{
   if(!r.got&&r.bouncing){
@@ -1882,7 +1899,41 @@ function drawEnemyFallback(e){
 /* Atlas de Tails: hoja de sprites de 9 × 9 celdas, ya incluida en assets/Tails. */
 const TAILS_SHEET_PATH="./assets/Tails/tailssheet.png";
 const TAILS_ATLAS_COLUMNS=9,TAILS_ATLAS_ROWS=9;
-let tailsAnimations={idle:[],run:[],jump:[],fall:[],tired:[],fly:[],swim:[],tailsAttack:[],spin:[],ready:false};
+let tailsAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],fall:[],tired:[],fly:[],swim:[],tailsAttack:[],spin:[],spindash:[],spinDashCrouch:[],spinDashRevCharge:[],spinDashRevUp:[],spinDashRevDown:[],peeloutCharge:[],peeloutLoop:[],peeloutBurst:[],turn:[],airspin:[],airup:[],stomp:[],flick:[],wait:[],ready:false};
+const TAILS_ANIMATION_TIMINGS={
+ idle:{times:[0,.1,.2,.3,.4,.5],duration:.56,loop:true},
+ run:{times:[0,.142857,.285714,.428571,.571429,.714286],duration:.9,loop:true},
+ dash:{times:[0,.1,.2,.3,.4,.5,.6],duration:.7,loop:true},
+ speeddash:{times:[0,.1,.2],duration:.3,loop:true},
+ jump:{times:[0,.05,.1,.15],duration:.2,loop:false},
+ fall:{times:[0],duration:.15,loop:true},
+ tired:{times:[0],duration:.15,loop:true},
+ fly:{times:[0,.1,.2],duration:.3,loop:true},
+ swim:{times:[0,.1,.2],duration:.3,loop:true},
+ tailsAttack:{times:[0,.066667,.133333,.2,.233333],duration:.25,loop:false},
+ spin:{times:[0,.05,.1,.15],duration:.2,loop:true},
+ spinDashCrouch:{times:[0],duration:.11,loop:false},
+ spinDashRevCharge:{times:[0,.033333],duration:.0667,loop:false},
+ spinDashRevUp:{times:[0,.066667,.133333],duration:.2,loop:true},
+ spinDashRevDown:{times:[0,.1,.2],duration:.3,loop:true},
+ turn:{times:[0,.033333,.066667],duration:.3,loop:false},
+ airspin:{times:[0,.05,.1,.15],duration:.2,loop:true},
+ airup:{times:[0,.05,.1,.15,.2,.25,.3,.35,.4],duration:.45,loop:true},
+ stomp:{times:[0,.1],duration:.2,loop:false},
+ flick:{times:[0,.066667],duration:.15,loop:false},
+ wait:{times:[0,.1,.2,.5,.6],duration:.8,loop:true}
+};
+function tailsAnimationFrameIndex(animation,phase,frames){
+ const meta=TAILS_ANIMATION_TIMINGS[animation]||{step:.1,duration:frames.length*.1,loop:true};
+ const time=Math.max(0,Number(phase)||0);
+ if(animation==="spindash"||animation.startsWith("peelout"))
+  return Math.max(0,Math.min(frames.length-1,Math.floor(Math.min(.999999,time)*frames.length)));
+ const t=meta.loop&&meta.duration?time%meta.duration:Math.min(time,Math.max(0,(meta.duration||time)-.000001));
+ let index=0;
+ if(meta.times){for(let i=1;i<meta.times.length;i++){if(t>=meta.times[i])index=i;else break;}}
+ else index=Math.floor(t/(meta.step||.1));
+ return Math.max(0,Math.min(frames.length-1,index));
+}
 function loadTailsSheetFrame(sheet,frameIndex){
  const total=TAILS_ATLAS_COLUMNS*TAILS_ATLAS_ROWS;if(!Number.isInteger(frameIndex)||frameIndex<0||frameIndex>=total)return null;
  const cw=sheet.naturalWidth/TAILS_ATLAS_COLUMNS,ch=sheet.naturalHeight/TAILS_ATLAS_ROWS,col=frameIndex%TAILS_ATLAS_COLUMNS,row=Math.floor(frameIndex/TAILS_ATLAS_COLUMNS);
@@ -1902,32 +1953,39 @@ function loadTailsSheetFrame(sheet,frameIndex){
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
 function loadTailsSprites(){
  const sheet=new Image();sheet.onload=()=>{
+  // Mapeo de las animaciones del proyecto original Sonic Escape de SauceK.
+  // La escena Tails.tscn confirma una cuadrícula de 9 × 9 celdas.
   tailsAnimations={
-   idle:tailsSheetFrames(sheet,[0,1,2,3,4]),
-   // Carrera separada de las poses de salto y de giro.
-   run:tailsSheetFrames(sheet,[11,12,13,14,15,16,17]),
-   jump:tailsSheetFrames(sheet,[18,19,21,22,23,24,25,26]),
-   fall:tailsSheetFrames(sheet,[27,28,33,34]),
-   tired:tailsSheetFrames(sheet,[27,28,33,34]),
-   fly:tailsSheetFrames(sheet,[45,46,47,48,49,50,51,52,53]),
-   swim:tailsSheetFrames(sheet,[38,39,40,41,42,43]),
-   tailsAttack:tailsSheetFrames(sheet,[27,28,29,30,31,32,33,34,35]),
-   spin:tailsSheetFrames(sheet,[5,6,7,8,9,10]),ready:true
+   idle:tailsSheetFrames(sheet,[0,1,2,3,4,0]),             // stance
+   run:tailsSheetFrames(sheet,[11,12,13,14,15,16]),         // run
+   dash:tailsSheetFrames(sheet,[21,22,23,24,26,27,28]),     // Dash
+   speeddash:tailsSheetFrames(sheet,[47,48,49]),            // Dash max
+   jump:tailsSheetFrames(sheet,[29,30,31,32]),              // jump
+   fall:tailsSheetFrames(sheet,[80]),                       // falling (81 is outside 9 × 9)
+   tired:tailsSheetFrames(sheet,[80]),
+   fly:tailsSheetFrames(sheet,[76,77,78]),                  // fly
+   swim:tailsSheetFrames(sheet,[76,77,78]),                 // custom swim reuses tail-propeller frames
+   tailsAttack:tailsSheetFrames(sheet,[70,71,72,73,19]),    // swipe
+   spin:tailsSheetFrames(sheet,[7,8,9,10]),                  // ball
+   spindash:tailsSheetFrames(sheet,[35,56,57,38,39,40,53,54,55]),
+   spinDashCrouch:tailsSheetFrames(sheet,[35]),
+   spinDashRevCharge:tailsSheetFrames(sheet,[56,57]),
+   spinDashRevUp:tailsSheetFrames(sheet,[38,39,40]),
+   spinDashRevDown:tailsSheetFrames(sheet,[53,54,55]),
+   peeloutCharge:tailsSheetFrames(sheet,[74,75,76,77]),
+   peeloutLoop:tailsSheetFrames(sheet,[74,75,76,77]),
+   peeloutBurst:tailsSheetFrames(sheet,[47,48,49]),
+   turn:tailsSheetFrames(sheet,[17,18,19]),
+   airspin:tailsSheetFrames(sheet,[36,37,38,39]),
+   airup:tailsSheetFrames(sheet,[68,61,62,63,64,65,66,67,68]),
+   stomp:tailsSheetFrames(sheet,[59,60]),
+   flick:tailsSheetFrames(sheet,[33,34]),
+   wait:tailsSheetFrames(sheet,[50,51,52]),
+   ready:true
   };
-  for(const name of ["run","jump","fall","tired","fly","swim","tailsAttack","spin"])if(!tailsAnimations[name].length)tailsAnimations[name]=tailsAnimations.idle;
-  // Misma escala entre los fotogramas normales para evitar saltos de tamaño.
-  const bodyFrames=["idle","run","jump","fall","tired","tailsAttack","spin"].flatMap(name=>tailsAnimations[name]);
-  const bodyLayout={
-   width:Math.max(1,...bodyFrames.map(frame=>frame.bounds.width)),
-   height:Math.max(1,...bodyFrames.map(frame=>frame.bounds.height))
-  };
-  for(const name of ["idle","run","jump","fall","tired","tailsAttack","spin"])tailsAnimations[name].layout=bodyLayout;
-  for(const name of ["fly","swim"]){
-   const frames=tailsAnimations[name];
-   frames.layout={
-    width:Math.max(1,...frames.map(frame=>frame.bounds.width)),
-    height:Math.max(1,...frames.map(frame=>frame.bounds.height))
-   };
+  for(const name of Object.keys(tailsAnimations)){
+   if(name==="ready")continue;
+   if(!tailsAnimations[name].length)tailsAnimations[name]=tailsAnimations.idle;
   }
   console.info("[Blue Rush] Sprites de Tails cargados",{width:sheet.naturalWidth,height:sheet.naturalHeight,run:tailsAnimations.run.length,fly:tailsAnimations.fly.length,swim:tailsAnimations.swim.length,attack:tailsAnimations.tailsAttack.length});
  };
@@ -1935,23 +1993,21 @@ function loadTailsSprites(){
  sheet.src=TAILS_SHEET_PATH+"?v=tails-run-jump-animation-3";
 }
 function drawTailsCharacter(screenX,screenY,options={}){
- const animation=options.animation||"idle",phase=Number(options.phase)||0,frames=tailsAnimations[animation]&&tailsAnimations[animation].length?tailsAnimations[animation]:tailsAnimations.idle;
- if(!frames.length){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
- const frameRate=animation==="run"?5.5:(animation==="fly"||animation==="swim"?6:animation==="jump"||animation==="fall"||animation==="tired"?5:8);
- const index=Math.floor(phase*frameRate)%frames.length,entry=frames[(index+frames.length)%frames.length],img=entry&&entry.img,b=entry&&entry.bounds;
- if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
- const targetW=animation==="fly"?70:animation==="swim"?61:animation==="tailsAttack"?64:58,targetH=animation==="fly"?66:animation==="swim"?54:animation==="tailsAttack"?60:56;
- const layout=frames.layout||b;
- const scale=Math.min(targetW/layout.width,targetH/layout.height),dw=b.width*scale,dh=b.height*scale,smoothing=g.imageSmoothingEnabled;
+ const animation=options.animation||"idle",phase=Number(options.phase)||0;
+ const frames=tailsAnimations[animation]&&tailsAnimations[animation].length?tailsAnimations[animation]:tailsAnimations.idle;
+ if(!frames.length){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:["run","dash","speeddash"].includes(animation),falling:["jump","fall","tired","fly","swim"].includes(animation),phase});return}
+ const index=tailsAnimationFrameIndex(animation,phase,frames),entry=frames[index],img=entry&&entry.img,b=entry&&entry.bounds;
+ if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:["run","dash","speeddash"].includes(animation),falling:["jump","fall","tired","fly","swim"].includes(animation),phase});return}
  const cell=entry.cell||{x:b.x,y:b.y,width:b.width,height:b.height};
- const groundPose=animation==="idle"||animation==="run"||animation==="tailsAttack";
- // Se mantiene un punto de apoyo común y la misma escala entre fotogramas.
- const anchorX=-cell.width*scale/2;
- const anchorY=groundPose?player.h/2-cell.height*scale-1:-cell.height*scale/2;
- const drawX=anchorX+(b.x-cell.x)*scale;
- const drawY=anchorY+(b.y-cell.y)*scale;
- g.save();g.translate(Math.round(screenX),Math.round(screenY));if(animation==="spin")g.rotate(Number(options.spinAngle)||phase*8);else if(Number(options.facing)<0)g.scale(-1,1);
- g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,drawX,drawY,dw,dh);g.imageSmoothingEnabled=smoothing;g.restore();
+ // Igual que Sprite2D en Tails.tscn: centro de la celda y escala constante.
+ const scale=Math.min(58/cell.width,56/cell.height),dw=b.width*scale,dh=b.height*scale;
+ const drawX=(b.x-cell.x-cell.width/2)*scale;
+ const drawY=(b.y-cell.y-cell.height/2)*scale;
+ const smoothing=g.imageSmoothingEnabled;
+ g.save();g.translate(Math.round(screenX),Math.round(screenY));
+ if(Number(options.facing)<0)g.scale(-1,1);
+ g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,drawX,drawY,dw,dh);
+ g.imageSmoothingEnabled=smoothing;g.restore();
 }
 loadTailsSprites();
 
@@ -2096,11 +2152,27 @@ function drawPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
  if(selectedCharacterId==='tails'){
-  let animation='idle';
-  if(player.tailsSwimming)animation='swim';else if(player.tailsFlying)animation='fly';else if(player.tailsTired&&!player.onGround)animation='tired';else if(player.tailsAttackTimer>0)animation='tailsAttack';
-  else if(player.spinDashCharging||player.spinDashRolling||player.rolling)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(Math.abs(player.vx)>25)animation='run';
-  const phase=animation==='tailsAttack'||animation==='spin'?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
-  drawTailsCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
+  const speedRatio=Math.min(1,Math.abs(player.vx)/Math.max(1,player.speed));
+  let animation='idle',phase=elapsed;
+  if(player.tailsSwimming){animation='swim';phase=player.fallPhase;}
+  else if(player.tailsFlying){animation='fly';phase=player.tailsFlightTime||0;}
+  else if(player.tailsTired&&!player.onGround){animation='tired';phase=player.fallPhase;}
+  else if(player.tailsAttackTimer>0){animation='tailsAttack';phase=Math.max(0,.34-player.tailsAttackTimer);}
+  else if(player.peelOutCharging){animation='peeloutCharge';phase=Math.max(0,Math.min(1,(player.peelOutAnimTime||0)/.5));}
+  else if(player.peelOutBurst>0&&player.peelOutBurstTime<SUPER_PEELOUT_LAUNCH_ANIM_DURATION){animation='peeloutBurst';phase=Math.max(0,Math.min(1,player.peelOutBurstTime/SUPER_PEELOUT_LAUNCH_ANIM_DURATION));}
+  else if(player.spinDashCharging){
+   const chargeTime=player.spinDashAnimTime||0,charge=player.spinDashCharge||0;
+   if(chargeTime<.1){animation='spinDashCrouch';phase=chargeTime;}
+   else if(chargeTime<.22){animation='spinDashRevCharge';phase=chargeTime-.1;}
+   else if(charge<.76){animation='spinDashRevUp';phase=chargeTime-.22;}
+   else{animation='spinDashRevDown';phase=chargeTime-.22;}
+  }
+  else if(player.spinDashRolling||player.rolling){animation='spin';phase=player.spinPhase;}
+  else if(!player.onGround){animation=player.vy<0?'jump':'fall';phase=player.fallPhase;}
+  else if(Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){animation='speeddash';phase=player.runPhase;}
+  else if(speedRatio>=.58){animation='dash';phase=player.runPhase;}
+  else if(Math.abs(player.vx)>25){animation='run';phase=player.runPhase;}
+  drawTailsCharacter(x,y,{facing:player.facing,animation,phase});return;
  }
  if(selectedCharacterId!=='sonic'){
   const phase=player.spinDashCharging||player.spinDashRolling?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);

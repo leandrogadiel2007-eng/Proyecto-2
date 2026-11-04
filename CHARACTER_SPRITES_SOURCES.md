@@ -1,20 +1,39 @@
 # Fuentes de sprites para Blue Rush
 
-Este documento registra las fuentes consultadas y el estado de integración de cada personaje. La hoja de Sonic que ya está en el repositorio fue subida por el propietario del proyecto.
-
-| Personaje | Juego / hoja | Enlace |
+| Personaje | Hoja de sprites | Fuente |
 |---|---|---|
-| Sonic | SauceKye · hoja original para Sonic Escape | https://www.patreon.com/SauceK/posts/free-original-4-92998423 |
-| Tails | Sonic Advance 3 · Ren Ramos | https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7146/ |
+| Sonic | SauceK · Sonic Escape | https://www.patreon.com/SauceK/posts/free-original-4-92998423 |
+| Tails | SauceK · Sonic Escape | https://www.patreon.com/SauceK/posts/free-original-4-92998423 |
 | Knuckles | Sonic Advance 3 · Ren Ramos | https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/ |
 | Amy Rose | Sonic Advance 3 · Ren Ramos | https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7148/ |
 | Shadow | Sonic Battle · QuadFactor | https://www.spriters-resource.com/game_boy_advance/sonicbattle/asset/10045/ |
 
-Alternativa fan-made: SauceK publicó hojas propias de Tails, Knuckles y Amy y en su publicación indica que se pueden usar libremente y sin crédito: https://www.patreon.com/SauceK/posts/free-original-4-92998423. Esa autorización se refiere a sus hojas; no concede derechos sobre los personajes de Sonic ni garantiza autorización de uso comercial.
+SauceK publicó las hojas de Sonic y Tails como recursos gratuitos para su fan game Sonic Escape y permite reutilizarlas sin exigir crédito en la publicación original. Esa autorización cubre sus hojas, no los derechos sobre los personajes de Sonic ni una garantía de uso comercial.
 
-## Estado de la selección
-- Sonic utiliza `assets/Sonic/sonicsheet-game-atlas.png`, el atlas de juego de SauceKye con 10 columnas y 9 filas. La secuencia de carrera usa los fotogramas 11–16 de Sonic Escape; se conserva también `assets/Sonic/sonicsheet.png` como hoja original subida al proyecto.
-- Tails usa `assets/Tails/tailssheet.png`, recortada como atlas de 9 × 9 para reposo, carrera, salto, vuelo, nado, ataque de colas y giro.
-- Habilidades: vuelo limitado a 9 segundos (segundo toque de salto en el aire; toques posteriores lo impulsan), ataque frontal con las colas (Z por defecto) y nado bajo los puentes (↓ para sumergirse y salto para salir). También conserva Spin Dash.
-- Fuente de la hoja: colección de Miles “Tails” Prower de *Sonic Advance 3*, Ren Ramos, The Spriters Resource: https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7146/.
-- Knuckles, Amy y Shadow todavía usan los dibujos vectoriales provisionales. La elección se guarda por cuenta y se sincroniza online.
+## Mapa correcto de Tails
+
+La hoja `assets/Tails/tailssheet.png` es el atlas de SauceK de **9 × 9 celdas**. El mapeo se contrastó con las animaciones del proyecto original [SauceK/SonicEscapeV](https://github.com/Saucekye/SonicEscapeV), en `Scenes/Characters/Tails/Tails.tscn`, que declara también `hframes=9` y `vframes=9`.
+
+| Acción | Fotogramas |
+|---|---|
+| Reposo (`stance`) | 0, 1, 2, 3, 4, 0 |
+| Carrera (`run`) | 11, 12, 13, 14, 15, 16 |
+| Carrera rápida (`Dash`) | 21, 22, 23, 24, 26, 27, 28 |
+| Máxima velocidad (`Dash max`) | 47, 48, 49 |
+| Salto (`jump`) | 29, 30, 31, 32 |
+| Caída (`falling`) | 80 (el fotograma 81 queda fuera de la cuadrícula 9 × 9) |
+| Vuelo (`fly`) | 76, 77, 78 |
+| Giro en bola (`ball`) | 7, 8, 9, 10 |
+| Ataque de colas (`swipe`) | 70, 71, 72, 73, 19 |
+| Carga Spin Dash | 35, 56, 57, 38, 39, 40, 53, 54, 55 |
+| Giro aéreo (`airspin`) | 36, 37, 38, 39 |
+
+El nado personalizado de Blue Rush reutiliza los fotogramas de propulsión de vuelo, ya que esta hoja no define una animación de nado independiente.
+
+## Habilidades implementadas
+- Vuelo limitado a 9 segundos; segundo toque de salto en el aire para despegar y mantener salto para ganar impulso.
+- Ataque frontal con las dos colas (Z por defecto).
+- Nado bajo los puentes (↓ para sumergirse y salto para impulsarse).
+- Spin Dash con las poses de carga y bola correspondientes a la hoja original.
+
+Knuckles, Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
