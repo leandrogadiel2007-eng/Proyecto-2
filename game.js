@@ -1401,73 +1401,63 @@ function drawEnemyFallback(e){
    g.fillStyle="#d6e1e9";g.strokeStyle="#26374b";g.lineWidth=2;g.beginPath();g.ellipse(7,-8,10,8,-.15,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffdf4d";g.beginPath();g.ellipse(8,-8,7,5,0,0,Math.PI*2);g.fill();g.fillStyle="#fff";g.beginPath();g.ellipse(10,-9,3.1,3.8,0,0,Math.PI*2);g.fill();g.fillStyle="#162944";g.beginPath();g.arc(11,-8,1.7,0,Math.PI*2);g.fill();g.fillStyle="#e83c4a";g.strokeStyle="#791f37";g.lineWidth=1.5;g.beginPath();g.moveTo(-10,7);g.lineTo(-22,11);g.lineTo(-12,1);g.closePath();g.fill();g.stroke();g.fillStyle="#172a43";g.fillRect(-5,14,6,5);g.fillRect(7,13,6,5);g.fillStyle="#79eaff";g.fillRect(12,-4,4,3);g.fillStyle="#fff3a1";g.fillRect(4,-14,5,2);
   }
   g.restore();
-}/* Carga la hoja nueva de SauceKye desde assets/Sonic. Cada celda mide 64 × 64 px. */
+}/* Atlas de juego de SauceKye: 10 columnas × 9 filas.
+   La animación run usa los fotogramas 11–16, igual que Sonic Escape. */
+const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet-game-atlas.png";
+const SONIC_ATLAS_COLUMNS=10;
+const SONIC_ATLAS_ROWS=9;
 let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],ready:false};
-const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet.png";
-const SONIC_CELL_SIZE=64;
 
-function loadSonicSheetCell(sheet,col,row){
- const sx=col*SONIC_CELL_SIZE,sy=row*SONIC_CELL_SIZE;
- if(sx>=sheet.naturalWidth||sy>=sheet.naturalHeight)return null;
- const cellWidth=Math.min(SONIC_CELL_SIZE,sheet.naturalWidth-sx);
- const cellHeight=Math.min(SONIC_CELL_SIZE,sheet.naturalHeight-sy);
+function loadSonicSheetFrame(sheet,frameIndex){
+ const totalFrames=SONIC_ATLAS_COLUMNS*SONIC_ATLAS_ROWS;
+ if(!Number.isInteger(frameIndex)||frameIndex<0||frameIndex>=totalFrames)return null;
+ const cellWidth=sheet.naturalWidth/SONIC_ATLAS_COLUMNS;
+ const cellHeight=sheet.naturalHeight/SONIC_ATLAS_ROWS;
+ const col=frameIndex%SONIC_ATLAS_COLUMNS,row=Math.floor(frameIndex/SONIC_ATLAS_COLUMNS);
+ const sx=Math.round(col*cellWidth),sy=Math.round(row*cellHeight);
+ const sw=Math.round((col+1)*cellWidth)-sx,sh=Math.round((row+1)*cellHeight)-sy;
  const probe=document.createElement("canvas");
- probe.width=cellWidth;probe.height=cellHeight;
+ probe.width=sw;probe.height=sh;
  const pctx=probe.getContext("2d",{willReadFrequently:true});
  if(!pctx)return null;
  try{
-  pctx.drawImage(sheet,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
-  const pixels=pctx.getImageData(0,0,cellWidth,cellHeight).data;
-  let left=cellWidth,top=cellHeight,right=-1,bottom=-1;
-  for(let y=0;y<cellHeight;y++)for(let x=0;x<cellWidth;x++){
-   if(pixels[(y*cellWidth+x)*4+3]>18){
+  pctx.drawImage(sheet,sx,sy,sw,sh,0,0,sw,sh);
+  const pixels=pctx.getImageData(0,0,sw,sh).data;
+  let left=sw,top=sh,right=-1,bottom=-1;
+  for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){
+   if(pixels[(y*sw+x)*4+3]>18){
     if(x<left)left=x;if(x>right)right=x;
     if(y<top)top=y;if(y>bottom)bottom=y;
    }
   }
   if(right<left||bottom<top)return null;
-  return {
-   file:"sheet-"+col+"-"+row,
-   img:sheet,
-   bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}
-  };
+  return {file:"frame-"+frameIndex,img:sheet,bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}};
  }catch(error){
-  console.warn("[Blue Rush] No se pudo leer una celda de Sonic:",col,row,error);
-  return {file:"sheet-"+col+"-"+row,img:sheet,bounds:{x:sx,y:sy,width:cellWidth,height:cellHeight}};
+  console.warn("[Blue Rush] No se pudo recortar el fotograma "+frameIndex,error);
+  return {file:"frame-"+frameIndex,img:sheet,bounds:{x:sx,y:sy,width:sw,height:sh}};
  }
 }
-function sonicSheetRow(sheet,row,first=0,last=11){
- const frames=[];
- for(let col=first;col<=last;col++){
-  const frame=loadSonicSheetCell(sheet,col,row);
-  if(frame)frames.push(frame);
- }
- return frames;
-}
-function sonicSheetCells(sheet,cells){
- return cells.map(([col,row])=>loadSonicSheetCell(sheet,col,row)).filter(Boolean);
+function sonicSheetFrames(sheet,indices){
+ return indices.map(index=>loadSonicSheetFrame(sheet,index)).filter(Boolean);
 }
 function loadSonicCostumes(){
  const sheet=new Image();
  sheet.onload=()=>{
+  const stance=sonicSheetFrames(sheet,[0,1,2,3,4,0]);
+  const run=sonicSheetFrames(sheet,[11,12,13,14,15,16]);
   const result={
-   // Los cinco primeros cuadros son la pose tranquila de Sonic.
-   idle:sonicSheetCells(sheet,[[0,0],[1,0],[2,0],[3,0],[4,0]]),
-   // Las filas de movimiento se usan como ciclos independientes.
-   run:sonicSheetRow(sheet,9),
-   dash:sonicSheetRow(sheet,8),
-   speeddash:sonicSheetRow(sheet,7),
-   jump:sonicSheetRow(sheet,5),
-   fall:sonicSheetRow(sheet,6),
-   // En la primera fila, las celdas 7–10 muestran a Sonic hecho bola.
-   spin:sonicSheetCells(sheet,[[7,0],[8,0],[9,0],[10,0]]),
-   spindash:sonicSheetCells(sheet,[[7,0],[8,0],[9,0],[10,0]])
+   idle:stance,
+   run,
+   // Mantén la misma zancada a cualquier velocidad: no se usan poses de ataque al correr.
+   dash:run,
+   speeddash:run,
+   jump:sonicSheetFrames(sheet,[29,30,31,32]),
+   spin:sonicSheetFrames(sheet,[7,8,9,10]),
+   spindash:sonicSheetFrames(sheet,[7,8,9,10]),
+   fall:sonicSheetFrames(sheet,[80,81])
   };
-  const fallback=result.run.length?result.run:(result.idle.length?result.idle:[]);
-  if(!result.idle.length&&fallback.length)result.idle=[fallback[0]];
-  if(!result.run.length)result.run=result.idle;
-  if(!result.dash.length)result.dash=result.run;
-  if(!result.speeddash.length)result.speeddash=result.dash;
+  if(!result.idle.length&&result.run.length)result.idle=[result.run[0]];
+  if(!result.run.length&&result.idle.length)result.run=result.idle;
   if(!result.jump.length)result.jump=result.run;
   if(!result.fall.length)result.fall=result.jump;
   if(!result.spin.length)result.spin=result.run;
@@ -1477,22 +1467,21 @@ function loadSonicCostumes(){
    jump:result.jump,spin:result.spin,spindash:result.spindash,fall:result.fall,
    ready:Boolean(result.idle.length&&result.run.length&&result.spin.length)
   };
-  console.info("Blue Rush: hoja de Sonic cargada",{
+  console.info("Blue Rush: atlas de Sonic Escape cargado",{
    width:sheet.naturalWidth,height:sheet.naturalHeight,
    idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,
-   dash:sonicAnimations.dash.length,speeddash:sonicAnimations.speeddash.length,
    jump:sonicAnimations.jump.length,spin:sonicAnimations.spin.length,fall:sonicAnimations.fall.length
   });
   if(!running)status.textContent=sonicAnimations.ready
-   ?"SPRITES NUEVOS DE SONIC LISTOS · PULSA JUGAR"
-   :"NO SE PUDIERON LEER LOS SPRITES DE SONIC · REVISA LA HOJA";
+   ?"CARRERA DE SONIC CORREGIDA · PULSA JUGAR"
+   :"NO SE PUDIERON LEER LOS SPRITES DE SONIC · REVISA EL ATLAS";
  };
  sheet.onerror=()=>{
   sonicAnimations.ready=false;
   console.error("[Blue Rush] No se pudo cargar "+SONIC_SHEET_PATH);
-  if(!running)status.textContent="NO SE CARGÓ LA HOJA DE SONIC · RECARGA LA PÁGINA";
+  if(!running)status.textContent="NO SE CARGÓ EL ATLAS DE SONIC · RECARGA LA PÁGINA";
  };
- sheet.src=SONIC_SHEET_PATH+"?v=saucekye-1";
+ sheet.src=SONIC_SHEET_PATH+"?v=saucekye-run-1";
 }
 loadSonicCostumes();
 
@@ -1552,7 +1541,7 @@ function drawFallbackPlayer(){
   frames=sonicAnimations.fall;
   index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
  }else if(moving){
-  frames=speedRatio>=0.58?sonicAnimations.speeddash:(speedRatio>=0.38?sonicAnimations.dash:sonicAnimations.run);
+  frames=sonicAnimations.run;
   index=Math.floor(player.runPhase*frames.length)%Math.max(1,frames.length);
  }else{
   frames=sonicAnimations.idle;
@@ -1564,7 +1553,7 @@ function drawFallbackPlayer(){
  const img=entry&&entry.img;
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
- // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
+ // Recorta transparencias del atlas para mantener a Sonic centrado y con una escala legible.
  const airbornePose=rolling||falling||jumping;
  // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
  const maxSpeedPose=moving&&speedRatio>=0.58;

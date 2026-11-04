@@ -13,7 +13,7 @@ Este documento registra las fuentes consultadas y el estado de integración de c
 Alternativa fan-made: SauceK publicó hojas propias de Tails, Knuckles y Amy y en su publicación indica que se pueden usar libremente y sin crédito: https://www.patreon.com/SauceK/posts/free-original-4-92998423. Esa autorización se refiere a sus hojas; no concede derechos sobre los personajes de Sonic ni garantiza autorización de uso comercial.
 
 ## Estado de la selección
-- Sonic utiliza `assets/Sonic/sonicsheet.png` de SauceKye; el juego recorta sus celdas para las animaciones de movimiento.
+- Sonic utiliza `assets/Sonic/sonicsheet-game-atlas.png`, el atlas de juego de SauceKye con 10 columnas y 9 filas. La secuencia de carrera usa los fotogramas 11–16 de Sonic Escape; se conserva también `assets/Sonic/sonicsheet.png` como hoja original subida al proyecto.
 - Tails, Knuckles, Amy y Shadow ya se pueden seleccionar, pero todavía aparecen como dibujos vectoriales provisionales dentro del juego.
 - La elección se guarda por cuenta en este navegador y se sincroniza con los demás jugadores online.
 - Para sustituir los dibujos provisionales de Tails, Knuckles, Amy y Shadow por spritesheets, primero se deben revisar sus términos de uso y preparar los recortes de animación.
