@@ -468,13 +468,15 @@ function sendOnlineState(now){
   }else if(player.spinDashCharging)animation='spindash';
   else if(player.spin||player.rolling||player.homingActive)animation='spin';
   else if(!player.onGround)animation=player.vy<0?'jump':'fall';
-  else if(speedRatio>=0.58)animation='speeddash';
+  else if(selectedCharacterId==='sonic'&&player.onGround&&!player.rolling&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD)animation='speeddash'; 
+  else if(speedRatio>=0.58)animation='dash';
   else if(speedRatio>=0.38)animation='dash';
   else if(Math.abs(player.vx)>25)animation='run';
  }
  if(!animation.startsWith('peelout')){
   phase=animation==='spin'||animation==='spindash'?player.spinPhase:
    (animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+  if(animation==='speeddash')phase=(elapsed*10/Math.max(1,sonicAnimations.speeddash.length))%1;
  }
  const payload={id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
@@ -1590,6 +1592,7 @@ function drawEnemyFallback(e){
 const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet-game-atlas.png";
 const SONIC_ATLAS_COLUMNS=10;
 const SONIC_ATLAS_ROWS=9;
+const SONIC_MAX_SPEED_THRESHOLD=640;
 const SUPER_PEELOUT_LAUNCH_ANIM_DURATION=.3;
 const SUPER_PEELOUT_BURST_DURATION=1.15;
 let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],peelOutCharge:[],peelOutLoop:[],peelOutBurst:[],ready:false};
@@ -1636,7 +1639,8 @@ function loadSonicCostumes(){
    run,
    // Mantén la misma zancada a cualquier velocidad: no se usan poses de ataque al correr.
    dash:run,
-   speeddash:run,
+   // Fotogramas originales de la animación Dash max de SauceKye.
+   speeddash:sonicSheetFrames(sheet,[48,49,50]),
    jump:sonicSheetFrames(sheet,[29,30,31,32]),
    spin:sonicSheetFrames(sheet,[7,8,9,10]),
    spindash:sonicSheetFrames(sheet,[7,8,9,10]),
@@ -1653,6 +1657,7 @@ function loadSonicCostumes(){
   if(!result.fall.length)result.fall=result.jump;
   if(!result.spin.length)result.spin=result.run;
   if(!result.spindash.length)result.spindash=result.spin;
+  if(!result.speeddash.length)result.speeddash=result.run;
   sonicAnimations={
    idle:result.idle,run:result.run,dash:result.dash,speeddash:result.speeddash,
    jump:result.jump,spin:result.spin,spindash:result.spindash,fall:result.fall,
@@ -1754,6 +1759,9 @@ function drawPlayer(){
  }else if(falling){
   frames=sonicAnimations.fall;
   index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
+ }else if(moving&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){
+  frames=sonicAnimations.speeddash;
+  index=Math.floor(elapsed*10)%Math.max(1,frames.length);
  }else if(moving){
   frames=sonicAnimations.run;
   index=Math.floor(player.runPhase*frames.length)%Math.max(1,frames.length);
@@ -1768,7 +1776,7 @@ function drawPlayer(){
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  const airbornePose=rolling||falling||jumping;
- const maxSpeedPose=moving&&speedRatio>=0.58;
+ const maxSpeedPose=moving&&!rolling&&!peelOutPose&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD;
  const targetW=(falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56));
  const targetH=(falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54));
  const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
