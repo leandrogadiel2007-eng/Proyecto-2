@@ -368,7 +368,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -465,7 +465,10 @@ function sendOnlineState(now){
    }
   }else if(player.peelOutBurst>0&&player.peelOutBurstTime<SUPER_PEELOUT_LAUNCH_ANIM_DURATION){
    animation='peeloutBurst';phase=Math.min(1,player.peelOutBurstTime/SUPER_PEELOUT_LAUNCH_ANIM_DURATION);
-  }else if(player.spinDashCharging)animation='spindash';
+  }else if(player.spinDashCharging){
+   animation='spindash';
+   phase=getSpinDashChargeFrameIndex()/Math.max(1,sonicAnimations.spindash.length);
+  }
   else if(player.spin||player.rolling||player.homingActive)animation='spin';
   else if(!player.onGround)animation=player.vy<0?'jump':'fall';
   else if(selectedCharacterId==='sonic'&&player.onGround&&!player.rolling&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD)animation='speeddash'; 
@@ -473,8 +476,10 @@ function sendOnlineState(now){
   else if(speedRatio>=0.38)animation='dash';
   else if(Math.abs(player.vx)>25)animation='run';
  }
- if(!animation.startsWith('peelout')){
-  phase=animation==='spin'||animation==='spindash'?player.spinPhase:
+ if(animation==='spindash'){
+  phase=getSpinDashChargeFrameIndex()/Math.max(1,sonicAnimations.spindash.length);
+ }else if(!animation.startsWith('peelout')){
+  phase=animation==='spin'?player.spinPhase:
    (animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
   if(animation==='speeddash')phase=(elapsed*10/Math.max(1,sonicAnimations.speeddash.length))%1;
  }
@@ -542,7 +547,7 @@ function drawRemotePlayers(){
     const frame=frames[frameIndex];
     if(frame&&frame.img&&frame.img.naturalWidth){
      const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
-     const rolling=animation==='spin'||animation==='spindash';
+     const rolling=animation==='spin';
      const falling=animation==='fall'||animation==='jump';
      const fast=animation==='speeddash'||animation==='peeloutBurst';
      const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54));
@@ -619,8 +624,15 @@ function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGrou
 
 function beginSpinDash(){
  if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging||player.peelOutCharging||player.homingActive)return;
- player.spinDashCharging=true;player.spinDashCharge=0;player.spinDashRolling=false;
- player.vx=0;player.vy=0;player.onGround=true;player.spin=1;player.spinAngle=0;
+ player.spinDashCharging=true;player.spinDashCharge=0;player.spinDashAnimTime=0;player.spinDashRolling=false;
+ player.vx=0;player.vy=0;player.onGround=true;player.spin=0;player.spinAngle=0;
+}
+function getSpinDashChargeFrameIndex(){
+ const t=player.spinDashAnimTime||0,charge=player.spinDashCharge||0;
+ if(t<.1)return 0;                         // Crouch: 35
+ if(t<.22)return 1+Math.min(1,Math.floor((t-.1)/.06)); // Revcharge: 57,58
+ if(charge<.76)return 3+Math.floor(t*12)%3; // Revup: 40,41,42
+ return 6+Math.floor(t*10)%3;               // Revdown: 54,55,56
 }
 function releaseSpinDash(){
  if(!player||!player.spinDashCharging)return;
@@ -780,7 +792,10 @@ function update(dt){
   }
  }
  if(player.spinDashCharging||player.peelOutCharging){
-  if(player.spinDashCharging)player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
+  if(player.spinDashCharging){
+   player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
+   player.spinDashAnimTime=(player.spinDashAnimTime||0)+dt;
+  }
   if(player.peelOutCharging){
    player.peelOutCharge=Math.min(1,(player.peelOutCharge||0)+dt*.78);
    player.peelOutAnimTime=(player.peelOutAnimTime||0)+dt;
@@ -788,13 +803,8 @@ function update(dt){
   player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;
   player.y=groundSurfaceAt(player.x+player.w/2)-player.h;
   if(keys.left&&!keys.right)player.facing=-1;else if(keys.right&&!keys.left)player.facing=1;
-  if(player.spinDashCharging){
-   player.spin=1;
-   player.spinAngle=(player.spinAngle||0)+dt*(8+player.spinDashCharge*12);
-  }else{
-   // Super Peel-Out charge stays upright and never rotates the sprite.
-   player.spin=0;player.spinAngle=0;
-  }
+  // Both charging poses stay upright. Rotation begins only after Spin Dash release.
+  player.spin=0;player.spinAngle=0;
  }else{
   const homingSteering=Boolean(homingTarget);
   const dir=Number(keys.right)-Number(keys.left);
@@ -1595,7 +1605,7 @@ const SONIC_ATLAS_ROWS=9;
 const SONIC_MAX_SPEED_THRESHOLD=640;
 const SUPER_PEELOUT_LAUNCH_ANIM_DURATION=.3;
 const SUPER_PEELOUT_BURST_DURATION=1.15;
-let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],peelOutCharge:[],peelOutLoop:[],peelOutBurst:[],ready:false};
+let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],spinDashCrouch:[],spinDashRevCharge:[],spinDashRevUp:[],spinDashRevDown:[],spinDashBall:[],fall:[],peelOutCharge:[],peelOutLoop:[],peelOutBurst:[],ready:false};
 
 function loadSonicSheetFrame(sheet,frameIndex){
  const totalFrames=SONIC_ATLAS_COLUMNS*SONIC_ATLAS_ROWS;
@@ -1643,7 +1653,13 @@ function loadSonicCostumes(){
    speeddash:sonicSheetFrames(sheet,[48,49,50]),
    jump:sonicSheetFrames(sheet,[29,30,31,32]),
    spin:sonicSheetFrames(sheet,[7,8,9,10]),
-   spindash:sonicSheetFrames(sheet,[7,8,9,10]),
+   // Secuencia oficial Spin Dash de SauceKye/Sonic Escape.
+   spinDashCrouch:sonicSheetFrames(sheet,[35]),
+   spinDashRevCharge:sonicSheetFrames(sheet,[57,58]),
+   spinDashRevUp:sonicSheetFrames(sheet,[40,41,42]),
+   spinDashRevDown:sonicSheetFrames(sheet,[54,55,56]),
+   spinDashBall:sonicSheetFrames(sheet,[7,8,9,10]),
+   spindash:sonicSheetFrames(sheet,[35,57,58,40,41,42,54,55,56]),
    fall:sonicSheetFrames(sheet,[80,81]),
    // Secuencias originales de Sonic Escape:
    // Revpeelout = preparación, peel out = carga sostenida, Dash max = salida.
@@ -1660,8 +1676,10 @@ function loadSonicCostumes(){
   if(!result.speeddash.length)result.speeddash=result.run;
   sonicAnimations={
    idle:result.idle,run:result.run,dash:result.dash,speeddash:result.speeddash,
-   jump:result.jump,spin:result.spin,spindash:result.spindash,fall:result.fall,
-   peelOutCharge:result.peelOutCharge,peelOutLoop:result.peelOutLoop,peelOutBurst:result.peelOutBurst,
+   jump:result.jump,spin:result.spin,spindash:result.spindash,
+   spinDashCrouch:result.spinDashCrouch,spinDashRevCharge:result.spinDashRevCharge,
+   spinDashRevUp:result.spinDashRevUp,spinDashRevDown:result.spinDashRevDown,spinDashBall:result.spinDashBall,
+   fall:result.fall,peelOutCharge:result.peelOutCharge,peelOutLoop:result.peelOutLoop,peelOutBurst:result.peelOutBurst,
    ready:Boolean(result.idle.length&&result.run.length&&result.spin.length)
   };
   console.info("Blue Rush: atlas de Sonic Escape cargado",{
@@ -1729,7 +1747,7 @@ function drawPlayer(){
  const groundGap=terrainHeight(player.x+player.w/2)-(player.y+player.h);
  const slopeRunning=!player.onGround&&!player.spin&&!player.homingActive&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
  const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
- const rolling=player.rolling||player.homingActive||(Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling));
+ const rolling=player.rolling||player.homingActive||(Boolean(player.spin)&&(!player.onGround||player.spinDashRolling));
  const jumping=!player.onGround&&!rolling&&player.vy< -30;
  const falling=!player.onGround&&!rolling&&!slopeRunning&&!jumping;
  const peelOutCharging=Boolean(player.peelOutCharging);
@@ -1748,7 +1766,21 @@ function drawPlayer(){
   frames=sonicAnimations.peelOutBurst;
   index=Math.min(frames.length-1,Math.floor(player.peelOutBurstTime/.1));
  }else if(player.spinDashCharging){
-  frames=sonicAnimations.spindash;
+  const t=player.spinDashAnimTime||0,charge=player.spinDashCharge||0;
+  if(t<.1){
+   frames=sonicAnimations.spinDashCrouch;index=0;
+  }else if(t<.22){
+   frames=sonicAnimations.spinDashRevCharge;
+   index=Math.min(frames.length-1,Math.floor((t-.1)/.06));
+  }else if(charge<.76){
+   frames=sonicAnimations.spinDashRevUp;
+   index=Math.floor(t*12)%Math.max(1,frames.length);
+  }else{
+   frames=sonicAnimations.spinDashRevDown;
+   index=Math.floor(t*10)%Math.max(1,frames.length);
+  }
+ }else if(player.spinDashRolling){
+  frames=sonicAnimations.spinDashBall;
   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
  }else if(rolling){
   frames=sonicAnimations.spin;
