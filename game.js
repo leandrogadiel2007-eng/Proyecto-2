@@ -373,7 +373,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -597,7 +597,7 @@ function finishRunAfterDeath(){
 }
 function applyPlayerDamage(){
  if(player.invincible>0)return;
- player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutAnimTime=0;player.peelOutBurst=0;player.peelOutBurstTime=0;player.speed=900;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutAnimTime=0;player.peelOutBurst=0;player.peelOutBurstTime=0;player.peelOutSpeedFade=0;player.speed=900;
  const hasRings=rings.some(r=>r.got);
  if(!hasRings){
   finishRunAfterDeath();
@@ -665,9 +665,9 @@ function releaseSuperPeelOut(){
  const charge=Math.max(.12,Math.min(1,player.peelOutCharge||0));
  const direction=player.facing||1;
  player.peelOutCharging=false;player.peelOutCharge=0;
- player.peelOutBurst=SUPER_PEELOUT_BURST_DURATION;player.peelOutBurstTime=0;
- player.speed=1050;player.speedCharge=1;player.facing=direction;
- player.vx=direction*(720+330*charge);player.vy=0;player.onGround=true;
+ player.peelOutBurst=SUPER_PEELOUT_BURST_DURATION;player.peelOutBurstTime=0;player.peelOutSpeedFade=1.35;
+ player.speed=2250;player.speedCharge=1;player.facing=direction;
+ player.vx=direction*(1450+800*charge);player.vy=0;player.onGround=true;
  player.platformId=null;player.spin=0;player.rolling=false;player.spinAngle=0;
 }
 function homingAttack(){
@@ -772,9 +772,14 @@ function update(dt){
   player.peelOutBurstTime=(player.peelOutBurstTime||0)+dt;
   player.peelOutBurst=Math.max(0,player.peelOutBurst-dt);
   if(player.peelOutBurst===0){
-   player.speed=900;
+   // Conserva el límite alto un momento y después lo reduce suavemente.
    player.peelOutBurstTime=0;
+   player.peelOutSpeedFade=1.35;
   }
+ }else if(player.peelOutSpeedFade>0){
+  player.peelOutSpeedFade=Math.max(0,player.peelOutSpeedFade-dt);
+  player.speed+=(900-player.speed)*(1-Math.exp(-2.8*dt));
+  if(player.peelOutSpeedFade===0)player.speed=900;
  }
  const tunnelCenterBeforeMove=player.x+player.w/2;
  const nearTunnelEntry=!inUnderground&&tunnelCenterBeforeMove>=undergroundZone.entryX-78&&tunnelCenterBeforeMove<=undergroundZone.entryX+72;
@@ -1651,7 +1656,7 @@ const SONIC_ATLAS_COLUMNS=10;
 const SONIC_ATLAS_ROWS=9;
 const SONIC_MAX_SPEED_THRESHOLD=640;
 const SUPER_PEELOUT_LAUNCH_ANIM_DURATION=.3;
-const SUPER_PEELOUT_BURST_DURATION=1.15;
+const SUPER_PEELOUT_BURST_DURATION=1.9;
 let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],spinDashCrouch:[],spinDashRevCharge:[],spinDashRevUp:[],spinDashRevDown:[],spinDashBall:[],fall:[],peelOutCharge:[],peelOutLoop:[],peelOutBurst:[],ready:false};
 
 function loadSonicSheetFrame(sheet,frameIndex){
