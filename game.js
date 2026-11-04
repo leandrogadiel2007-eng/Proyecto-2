@@ -840,26 +840,34 @@ document.getElementById('restoreControlsButton').addEventListener('click',()=>{
 controlsPanel.querySelectorAll('[data-rebind]').forEach(button=>{
  button.addEventListener('click',()=>beginControlCapture(button.dataset.rebind));
 });
+const DEFAULT_CONTROL_ALIASES={left:['KeyA'],right:['KeyD'],down:['KeyS'],jump:['ArrowUp','KeyW'],spindash:['ShiftLeft','ShiftRight']};
+function resolveControlAction(code){
+ const direct=Object.keys(controlBindings).find(action=>controlBindings[action]===code);
+ if(direct)return direct;
+ return Object.keys(DEFAULT_CONTROL_ALIASES).find(action=>
+  controlBindings[action]===DEFAULT_CONTROL_BINDINGS[action]&&DEFAULT_CONTROL_ALIASES[action].includes(code)
+ )||null;
+}
 function setKey(key,down,code=''){
- const pressedCode=code||key;
- if(pressedCode===controlBindings.left)keys.left=down;
- if(pressedCode===controlBindings.right)keys.right=down;
- if(pressedCode===controlBindings.down)keys.down=down;
- if(pressedCode===controlBindings.spindash){
+ const pressedCode=code||key,action=resolveControlAction(pressedCode);
+ if(action==='left')keys.left=down;
+ if(action==='right')keys.right=down;
+ if(action==='down')keys.down=down;
+ if(action==='spindash'){
   const wasHeld=keys.spindash;keys.spindash=down;
   if(down&&!wasHeld)beginSpinDash();
   if(!down&&wasHeld)releaseSpinDash();
  }
- if(pressedCode===controlBindings.peelout){
+ if(action==='peelout'){
   const wasHeld=keys.peelout;keys.peelout=down;
   if(down&&!wasHeld)beginSuperPeelOut();
   if(!down&&wasHeld)releaseSuperPeelOut();
  }
- if(pressedCode===controlBindings.homing){
+ if(action==='homing'){
   const wasHeld=keys.homing;keys.homing=down;
   if(down&&!wasHeld)homingAttack();
  }
- if(pressedCode===controlBindings.jump){
+ if(action==='jump'){
   const wasHeld=keys.jump;keys.jump=down;
   if(down&&!wasHeld)jump();
  }
