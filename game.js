@@ -1401,110 +1401,98 @@ function drawEnemyFallback(e){
    g.fillStyle="#d6e1e9";g.strokeStyle="#26374b";g.lineWidth=2;g.beginPath();g.ellipse(7,-8,10,8,-.15,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffdf4d";g.beginPath();g.ellipse(8,-8,7,5,0,0,Math.PI*2);g.fill();g.fillStyle="#fff";g.beginPath();g.ellipse(10,-9,3.1,3.8,0,0,Math.PI*2);g.fill();g.fillStyle="#162944";g.beginPath();g.arc(11,-8,1.7,0,Math.PI*2);g.fill();g.fillStyle="#e83c4a";g.strokeStyle="#791f37";g.lineWidth=1.5;g.beginPath();g.moveTo(-10,7);g.lineTo(-22,11);g.lineTo(-12,1);g.closePath();g.fill();g.stroke();g.fillStyle="#172a43";g.fillRect(-5,14,6,5);g.fillRect(7,13,6,5);g.fillStyle="#79eaff";g.fillRect(12,-4,4,3);g.fillStyle="#fff3a1";g.fillRect(4,-14,5,2);
   }
   g.restore();
-}/* Carga directa de los SVG en assets/sonic. La secuencia Spin Dash se identificó en assets/sonic/project.json. */
+}/* Carga la hoja nueva de SauceKye desde assets/Sonic. Cada celda mide 64 × 64 px. */
 let sonicAnimations={idle:[],run:[],dash:[],speeddash:[],jump:[],spin:[],spindash:[],fall:[],ready:false};
-const sonicSpriteFiles={
- idle:[
-  "01740b16763e9570f66ce0faf001c035.svg",
-  "0f0fe78857ea041f15fde4fec23023ae.svg",
-  "172146abbfa4348e9f0a63ada310f3fc.svg"
- ],
- run:[
-  "c71e608d77556b1e6a484888bb70ec4a.svg",
-  "f5d47bb333339f157b9fd8567188ad19.svg",
-  "07c7cc8d51f6e0a3feef7e40bc98d62e.svg",
-  "593317731819fb43d31d97d7fcff9c14.svg",
-  "f2542218ee731bfcc4911b9e90120b24.svg",
-  "e977afdd8469ddd252b2654da0f30ad2.svg",
-  "7b538cdee48eb69c53c9169f3cc07941.svg",
-  "4e53232099ed2bda8c569d1d7ebfae64.svg"
- ],
- jump:["66a1cf3c5c762ce8c8330ea6faa81549.svg"],
- dash:[
-  "27a64ba40464d134f7650ecc79759a2b.svg",
-  "aeefb13ebb8deaa7be9231a353f9b7cb.svg",
-  "19738b23f8e867b11a7b2a9a3a911f4e.svg",
-  "8044cc670da7557d30c4c3330efa75f6.svg"
- ],
- speeddash:[
-  "a19f441b6c45d019a4b2fc9600dc5b6e.svg",
-  "874f590f9bb1c565f85f9163d4fa0100.svg",
-  "c48f11f9eb3267704d212a0b496ccf1b.svg",
-  "e7249d0f8afa580f8c4bb2a1f5e6de60.svg"
- ],
- fall:[
-  "463471181dc7d56b61067295cc25ceec.svg",
-  "3bf7c06e2758651c68a0825b2fecd156.svg"
- ],
- spin:[
-  "e4267914ba5b6441124e0e990a123fec.svg",
-  "c1208453f3701096d5877803e6657c9e.svg",
-  "3b6181d7c0f1ca61f51c81a31b90ff35.svg",
-  "f36bc5dd5dd01907d45daacf611eccd8.svg",
-  "272d17a2be621eb6c5a6448ef3f38ee3.svg"
- ],
- spindash:[
-  "ae3ea09ee21b6581b863d85d0a2f0809.svg",
-  "75baeb8e4efd54402e93d790f23c3ca7.svg",
-  "72eb3473aee982a542f91c77b660622a.svg",
-  "fe0867e9bf3f7eb4685dd9066a7d0fe3.svg",
-  "b342eff97e29b1785d7846611d3a1949.svg",
-  "51c9d39f0188245f4f41970dda3315ea.svg",
-  "956335f02212c02a759cbd6458cffd59.svg",
-  "9deb5eb2ace01864f0ee3608fdf4214d.svg",
-  "2e35050243bb1a9740af66232b4157ab.svg",
-  "709f200d37b7a243470df5094b771a3c.svg"
- ]
-};
-function visibleImageBounds(img){
- const width=Math.max(1,Math.ceil(img.naturalWidth)),height=Math.max(1,Math.ceil(img.naturalHeight));
- if(width*height>1500000)return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
+const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet.png";
+const SONIC_CELL_SIZE=64;
+
+function loadSonicSheetCell(sheet,col,row){
+ const sx=col*SONIC_CELL_SIZE,sy=row*SONIC_CELL_SIZE;
+ if(sx>=sheet.naturalWidth||sy>=sheet.naturalHeight)return null;
+ const cellWidth=Math.min(SONIC_CELL_SIZE,sheet.naturalWidth-sx);
+ const cellHeight=Math.min(SONIC_CELL_SIZE,sheet.naturalHeight-sy);
+ const probe=document.createElement("canvas");
+ probe.width=cellWidth;probe.height=cellHeight;
+ const pctx=probe.getContext("2d",{willReadFrequently:true});
+ if(!pctx)return null;
  try{
-  const probe=document.createElement("canvas");probe.width=width;probe.height=height;
-  const pctx=probe.getContext("2d",{willReadFrequently:true});pctx.drawImage(img,0,0,width,height);
-  const pixels=pctx.getImageData(0,0,width,height).data;
-  let left=width,top=height,right=-1,bottom=-1;
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-   if(pixels[(y*width+x)*4+3]>18){if(x<left)left=x;if(x>right)right=x;if(y<top)top=y;if(y>bottom)bottom=y}
+  pctx.drawImage(sheet,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
+  const pixels=pctx.getImageData(0,0,cellWidth,cellHeight).data;
+  let left=cellWidth,top=cellHeight,right=-1,bottom=-1;
+  for(let y=0;y<cellHeight;y++)for(let x=0;x<cellWidth;x++){
+   if(pixels[(y*cellWidth+x)*4+3]>18){
+    if(x<left)left=x;if(x>right)right=x;
+    if(y<top)top=y;if(y>bottom)bottom=y;
+   }
   }
-  if(right<left||bottom<top)return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
-  return {x:left,y:top,width:right-left+1,height:bottom-top+1};
- }catch(_){return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight}}
-}
-function loadSonicFrame(file){
- return new Promise(resolve=>{
-  const img=new Image();
-  img.onload=()=>resolve({file,img,bounds:visibleImageBounds(img)});
-  img.onerror=()=>{console.warn("No se pudo cargar el sprite:",file);resolve(null)};
-  img.src="./assets/sonic/"+file;
- });
-}
-async function loadSonicCostumes(){
- const loaded=await Promise.all(Object.entries(sonicSpriteFiles).map(async([state,files])=>{
-  const frames=(await Promise.all(files.map(loadSonicFrame))).filter(Boolean);
-  return [state,frames];
- }));
- const result=Object.fromEntries(loaded);
- sonicAnimations={
-  idle:result.idle||[],
-  run:result.run||[],
-  dash:result.dash||[],
-  speeddash:result.speeddash||[],
-  jump:result.jump||[],
-  spin:result.spin||[],
-  spindash:result.spindash||[],
-  fall:result.fall||[],
-  ready:Boolean((result.idle||[]).length&&(result.run||[]).length&&(result.dash||[]).length&&(result.speeddash||[]).length&&(result.spin||[]).length&&(result.spindash||[]).length&&(result.fall||[]).length)
- };
- console.info("Blue Rush: animaciones de Sonic",{
-  idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,dash:sonicAnimations.dash.length,
-  speeddash:sonicAnimations.speeddash.length,spin:sonicAnimations.spin.length,spindash:sonicAnimations.spindash.length,fall:sonicAnimations.fall.length
- });
- if(!running){
-  status.textContent=sonicAnimations.ready
-   ?"SPRITES REALES LISTOS · PULSA JUGAR"
-   :"NO SE CARGARON LOS SVG · RECARGA LA PÁGINA";
+  if(right<left||bottom<top)return null;
+  return {
+   file:"sheet-"+col+"-"+row,
+   img:sheet,
+   bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}
+  };
+ }catch(error){
+  console.warn("[Blue Rush] No se pudo leer una celda de Sonic:",col,row,error);
+  return {file:"sheet-"+col+"-"+row,img:sheet,bounds:{x:sx,y:sy,width:cellWidth,height:cellHeight}};
  }
+}
+function sonicSheetRow(sheet,row,first=0,last=11){
+ const frames=[];
+ for(let col=first;col<=last;col++){
+  const frame=loadSonicSheetCell(sheet,col,row);
+  if(frame)frames.push(frame);
+ }
+ return frames;
+}
+function sonicSheetCells(sheet,cells){
+ return cells.map(([col,row])=>loadSonicSheetCell(sheet,col,row)).filter(Boolean);
+}
+function loadSonicCostumes(){
+ const sheet=new Image();
+ sheet.onload=()=>{
+  const result={
+   // Los cinco primeros cuadros son la pose tranquila de Sonic.
+   idle:sonicSheetCells(sheet,[[0,0],[1,0],[2,0],[3,0],[4,0]]),
+   // Las filas de movimiento se usan como ciclos independientes.
+   run:sonicSheetRow(sheet,9),
+   dash:sonicSheetRow(sheet,8),
+   speeddash:sonicSheetRow(sheet,7),
+   jump:sonicSheetRow(sheet,5),
+   fall:sonicSheetRow(sheet,6),
+   // En la primera fila, las celdas 7–10 muestran a Sonic hecho bola.
+   spin:sonicSheetCells(sheet,[[7,0],[8,0],[9,0],[10,0]]),
+   spindash:sonicSheetCells(sheet,[[7,0],[8,0],[9,0],[10,0]])
+  };
+  const fallback=result.run.length?result.run:(result.idle.length?result.idle:[]);
+  if(!result.idle.length&&fallback.length)result.idle=[fallback[0]];
+  if(!result.run.length)result.run=result.idle;
+  if(!result.dash.length)result.dash=result.run;
+  if(!result.speeddash.length)result.speeddash=result.dash;
+  if(!result.jump.length)result.jump=result.run;
+  if(!result.fall.length)result.fall=result.jump;
+  if(!result.spin.length)result.spin=result.run;
+  if(!result.spindash.length)result.spindash=result.spin;
+  sonicAnimations={
+   idle:result.idle,run:result.run,dash:result.dash,speeddash:result.speeddash,
+   jump:result.jump,spin:result.spin,spindash:result.spindash,fall:result.fall,
+   ready:Boolean(result.idle.length&&result.run.length&&result.spin.length)
+  };
+  console.info("Blue Rush: hoja de Sonic cargada",{
+   width:sheet.naturalWidth,height:sheet.naturalHeight,
+   idle:sonicAnimations.idle.length,run:sonicAnimations.run.length,
+   dash:sonicAnimations.dash.length,speeddash:sonicAnimations.speeddash.length,
+   jump:sonicAnimations.jump.length,spin:sonicAnimations.spin.length,fall:sonicAnimations.fall.length
+  });
+  if(!running)status.textContent=sonicAnimations.ready
+   ?"SPRITES NUEVOS DE SONIC LISTOS · PULSA JUGAR"
+   :"NO SE PUDIERON LEER LOS SPRITES DE SONIC · REVISA LA HOJA";
+ };
+ sheet.onerror=()=>{
+  sonicAnimations.ready=false;
+  console.error("[Blue Rush] No se pudo cargar "+SONIC_SHEET_PATH);
+  if(!running)status.textContent="NO SE CARGÓ LA HOJA DE SONIC · RECARGA LA PÁGINA";
+ };
+ sheet.src=SONIC_SHEET_PATH+"?v=saucekye-1";
 }
 loadSonicCostumes();
 
@@ -1556,6 +1544,9 @@ function drawFallbackPlayer(){
   }else if(rolling){
   frames=sonicAnimations.spin;
   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
+ }else if(!player.onGround&&player.vy< -30){
+  frames=sonicAnimations.jump;
+  index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
  }else if(falling){
   frames=sonicAnimations.fall;
   index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
@@ -1586,7 +1577,7 @@ function drawFallbackPlayer(){
   if(moving)g.rotate(player.facing*speedRatio*0.055);
   if(player.facing<0)g.scale(-1,1);
  }
- g.imageSmoothingEnabled=true;
+ g.imageSmoothingEnabled=false;
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
 }function drawSpinDashCharge(){
