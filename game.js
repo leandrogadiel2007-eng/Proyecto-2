@@ -510,7 +510,7 @@ function drawRemotePlayers(){
      const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54));
      const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
      g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
-     g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
+     g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
     }
    }
   }
@@ -1536,7 +1536,8 @@ function drawFallbackPlayer(){
  const slopeRunning=!player.onGround&&!player.spin&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
  const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
  const rolling=Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling);
- const falling=!player.onGround&&!rolling&&!slopeRunning;
+ const jumping=!player.onGround&&!rolling&&player.vy< -30;
+ const falling=!player.onGround&&!rolling&&!slopeRunning&&!jumping;
  let frames,index;
  if(player.spinDashCharging){
    frames=sonicAnimations.spindash;
@@ -1544,7 +1545,7 @@ function drawFallbackPlayer(){
   }else if(rolling){
   frames=sonicAnimations.spin;
   index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
- }else if(!player.onGround&&player.vy< -30){
+ }else if(jumping){
   frames=sonicAnimations.jump;
   index=Math.floor(player.fallPhase*frames.length)%Math.max(1,frames.length);
  }else if(falling){
@@ -1564,11 +1565,11 @@ function drawFallbackPlayer(){
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  // Recorta transparencias de los SVG para mantener a Sonic centrado y con una escala legible.
- const airbornePose=rolling||falling;
+ const airbornePose=rolling||falling||jumping;
  // Sonic crece visualmente al alcanzar la velocidad máxima y también al caer.
  const maxSpeedPose=moving&&speedRatio>=0.58;
- const targetW=falling?66:(rolling?46:(maxSpeedPose?74:56));
- const targetH=falling?66:(rolling?46:(maxSpeedPose?59:54));
+ const targetW=(falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56));
+ const targetH=(falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54));
  const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
