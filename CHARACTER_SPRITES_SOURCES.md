@@ -14,6 +14,7 @@ Alternativa fan-made: SauceK publicó hojas propias de Tails, Knuckles y Amy y e
 
 ## Estado de la selección
 - Sonic utiliza `assets/Sonic/sonicsheet-game-atlas.png`, el atlas de juego de SauceKye con 10 columnas y 9 filas. La secuencia de carrera usa los fotogramas 11–16 de Sonic Escape; se conserva también `assets/Sonic/sonicsheet.png` como hoja original subida al proyecto.
-- Tails, Knuckles, Amy y Shadow ya se pueden seleccionar, pero todavía aparecen como dibujos vectoriales provisionales dentro del juego.
-- La elección se guarda por cuenta en este navegador y se sincroniza con los demás jugadores online.
-- Para sustituir los dibujos provisionales de Tails, Knuckles, Amy y Shadow por spritesheets, primero se deben revisar sus términos de uso y preparar los recortes de animación.
+- Tails usa `assets/Tails/tailssheet.png`, recortada como atlas de 9 × 9 para reposo, carrera, salto, vuelo, nado, ataque de colas y giro.
+- Habilidades: vuelo limitado a 9 segundos (segundo toque de salto en el aire; toques posteriores lo impulsan), ataque frontal con las colas (Z por defecto) y nado bajo los puentes (↓ para sumergirse y salto para salir). También conserva Spin Dash.
+- Fuente de la hoja: colección de Miles “Tails” Prower de *Sonic Advance 3*, Ren Ramos, The Spriters Resource: https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7146/.
+- Knuckles, Amy y Shadow todavía usan los dibujos vectoriales provisionales. La elección se guarda por cuenta y se sincroniza online.

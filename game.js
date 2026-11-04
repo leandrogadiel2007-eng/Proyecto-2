@@ -15,7 +15,7 @@ const bestScoreValue=document.getElementById('bestScoreValue'),totalScoreValue=d
 const CHARACTER_STORAGE_KEY='blueRushSelectedCharacter:';
 const CHARACTER_DATA={
  sonic:{name:'Sonic',description:'El erizo azul original de Blue Rush.'},
- tails:{name:'Tails',description:'Zorro naranja de dos colas · diseño vectorial provisional.'},
+ tails:{name:'Tails',description:'Puede volar hasta 9 segundos, nadar bajo los puentes y atacar con sus dos colas. Pulsa salto otra vez en el aire para volar, ↓ en un puente para bucear y Z para atacar.'},
  knuckles:{name:'Knuckles',description:'Equidna rojo de puños fuertes · diseño vectorial provisional.'},
  amy:{name:'Amy',description:'Eriza rosa de vestido rojo · diseño vectorial provisional.'},
  shadow:{name:'Shadow',description:'Erizo oscuro con detalles rojos · diseño vectorial provisional.'}
@@ -87,6 +87,15 @@ function setSelectedCharacter(value,save=true){
  });
  const note=document.getElementById('characterSelectNote');
  if(note)note.textContent=CHARACTER_DATA[selectedCharacterId].description;
+ const jumpHelp=document.querySelector('[data-binding-label="jump"]');
+ const jumpCaption=jumpHelp&&jumpHelp.parentElement?jumpHelp.parentElement.querySelector('small'):null;
+ if(jumpCaption)jumpCaption.textContent=selectedCharacterId==='tails'?'SALTO / VUELO':'SPIN ATTACK';
+ const downHelp=document.querySelector('[data-binding-label="down"]');
+ const downCaption=downHelp&&downHelp.parentElement?downHelp.parentElement.querySelector('small'):null;
+ if(downCaption)downCaption.textContent=selectedCharacterId==='tails'?'BUCEAR / RODAR':'RODAR';
+ const attackHelp=document.querySelector('[data-binding-label="homing"]');
+ const attackCaption=attackHelp&&attackHelp.parentElement?attackHelp.parentElement.querySelector('small'):null;
+ if(attackCaption)attackCaption.textContent=selectedCharacterId==='tails'?'ATAQUE COLAS':'HOMING';
  if(save&&authenticatedUser){
   try{localStorage.setItem(CHARACTER_STORAGE_KEY+authenticatedUser.id,selectedCharacterId)}
   catch(error){console.warn('[Blue Rush] No se pudo guardar el personaje elegido:',error)}
@@ -374,7 +383,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -427,7 +436,7 @@ async function startOnlineGame(){
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
    if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:'sonic',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
    other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.characterId=normalizeCharacterId(payload.characterId);other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
-   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall','peeloutCharge','peeloutLoop','peeloutBurst'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
+   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall','fly','swim','tired','tailsAttack','peeloutCharge','peeloutLoop','peeloutBurst'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
   roomChannel.on('presence',{event:'sync'},()=>{
@@ -462,7 +471,11 @@ function leaveOnlineRoom(){
 function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle',phase=0;
  if(running){
-  if(player.peelOutCharging){
+  if(selectedCharacterId==='tails'&&player.tailsSwimming)animation='swim';
+  else if(selectedCharacterId==='tails'&&player.tailsFlying)animation='fly';
+  else if(selectedCharacterId==='tails'&&player.tailsTired&&!player.onGround)animation='tired';
+  else if(selectedCharacterId==='tails'&&player.tailsAttackTimer>0)animation='tailsAttack';
+  else if(player.peelOutCharging){
    if(player.peelOutAnimTime<.5){
     animation='peeloutCharge';phase=Math.min(1,player.peelOutAnimTime/.5);
    }else{
@@ -485,8 +498,8 @@ function sendOnlineState(now){
  if(animation==='spindash'){
   phase=getSpinDashChargeFrameIndex()/Math.max(1,sonicAnimations.spindash.length);
  }else if(!animation.startsWith('peelout')){
-  phase=animation==='spin'?player.spinPhase:
-   (animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
+  phase=animation==='spin'||animation==='tailsAttack'?player.spinPhase:
+   (animation==='fall'||animation==='jump'||animation==='fly'||animation==='swim'||animation==='tired'?player.fallPhase:player.runPhase);
   if(animation==='speeddash')phase=(elapsed*10/Math.max(1,sonicAnimations.speeddash.length))%1;
  }
  const payload={id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
@@ -537,7 +550,9 @@ function drawRemotePlayers(){
   if(now-other.lastSeen>9000){remotePlayers.delete(id);continue}
   other.x+=(other.targetX-other.x)*0.32;other.y+=(other.targetY-other.y)*0.32;
   const animation=other.animation||'idle',sx=other.x-camera+player.w/2,sy=other.y+player.h/2;
-  if(other.characterId&&other.characterId!=='sonic'){
+  if(other.characterId==='tails'){
+   drawTailsCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation,phase:other.phase,spinAngle:other.spinAngle});
+  }else if(other.characterId&&other.characterId!=='sonic'){
    drawVectorCharacter(other.characterId,Math.round(sx),Math.round(sy),{facing:other.facing,moving:['run','dash','speeddash'].includes(animation),rolling:['spin','spindash'].includes(animation),falling:['fall','jump'].includes(animation),phase:other.phase,spinAngle:other.spinAngle});
   }else{
    const frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;
@@ -598,7 +613,7 @@ function finishRunAfterDeath(){
 }
 function applyPlayerDamage(){
  if(player.invincible>0)return;
- player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutAnimTime=0;player.peelOutBurst=0;player.peelOutBurstTime=0;player.peelOutSpeedFade=0;player.speed=900;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.tailsFlying=false;player.tailsTired=false;player.tailsSwimming=false;player.tailsFlightTime=0;player.tailsAttackTimer=0;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutAnimTime=0;player.peelOutBurst=0;player.peelOutBurstTime=0;player.peelOutSpeedFade=0;player.speed=900;
  const hasRings=rings.some(r=>r.got);
  if(!hasRings){
   finishRunAfterDeath();
@@ -628,7 +643,17 @@ function applyPlayerDamage(){
  player.onGround=false;
  player.vx=-player.facing*180;
 }
-function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}}
+function jump(){
+ if(!running)startGame();if(inUnderground)return;
+ if(selectedCharacterId==='tails'){
+  if(player.tailsSwimming){if(player.tailsSwimStrokeCooldown<=0){player.vy=-410;player.tailsSwimStrokeCooldown=.2;}return;}
+  if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=true;player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;return;}
+  if(!player.tailsFlying&&!player.tailsTired){player.tailsFlying=true;player.tailsFlightTime=0;player.vy=Math.min(player.vy,-360);player.spin=0;player.spinAngle=0;player.spinAttack=false;}
+  else if(player.tailsFlying){player.vy=Math.max(-470,player.vy-185);}
+  return;
+ }
+ if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}
+}
 
 function beginSpinDash(){
  if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging||player.peelOutCharging||player.homingActive)return;
@@ -694,6 +719,13 @@ function homingAttack(){
  player.vx=dx/distance*980;player.vy=dy/distance*980;
  return true;
 }
+
+function tailsAttack(){
+ if(!running)startGame();
+ if(!running||selectedCharacterId!=='tails'||player.tailsSwimming||(player.tailsAttackCooldown||0)>0)return false;
+ player.tailsAttackTimer=.34;player.tailsAttackCooldown=.48;player.spinAttack=false;player.rolling=false;player.homingActive=false;player.homingTargetId=null;status.textContent='ATAQUE DE COLAS';return true;
+}
+function activateCharacterAttack(){return selectedCharacterId==='tails'?tailsAttack():homingAttack()}
 
 const CONTROL_BINDINGS_STORAGE_KEY='blueRushControlBindingsV1';
 const DEFAULT_CONTROL_BINDINGS={left:'ArrowLeft',right:'ArrowRight',down:'ArrowDown',jump:'Space',spindash:'KeyX',peelout:'KeyC',homing:'KeyZ'};
@@ -865,7 +897,7 @@ function setKey(key,down,code=''){
  }
  if(action==='homing'){
   const wasHeld=keys.homing;keys.homing=down;
-  if(down&&!wasHeld)homingAttack();
+  if(down&&!wasHeld)activateCharacterAttack();
  }
  if(action==='jump'){
   const wasHeld=keys.jump;keys.jump=down;
@@ -907,7 +939,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
   if(c==='jump'){keys.jump=true;jump()}
   else if(c==='spindash'){if(!running)startGame();keys.spindash=true;beginSpinDash()}
   else if(c==='peelout'){if(!running)startGame();keys.peelout=true;beginSuperPeelOut()}
-  else if(c==='homing'){if(!running)startGame();homingAttack()}
+  else if(c==='homing'){if(!running)startGame();activateCharacterAttack()}
   else{if(!running)startGame();keys[c]=true}
  };
  const release=e=>{
@@ -924,10 +956,19 @@ document.querySelectorAll('[data-control]').forEach(b=>{
  b.addEventListener('pointerleave',release);
 });
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
-function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
+function applyAirMotion(dt){
+ if(selectedCharacterId==='tails'&&player.tailsFlying){player.vy=Math.min(125,player.vy+230*dt);player.y+=player.vy*dt;return}
+ if(selectedCharacterId==='tails'&&player.tailsTired){player.vy=Math.min(1180,player.vy+900*dt);player.y+=player.vy*dt;return}
+ player.vy+=1550*dt;player.y+=player.vy*dt;
+}
 function update(dt){
  updateEnemyExplosions(dt);
  if(!running||!controlsPanel.classList.contains('hidden'))return;elapsed+=dt;
+ if(player.tailsAttackTimer>0)player.tailsAttackTimer=Math.max(0,player.tailsAttackTimer-dt);
+ if(player.tailsAttackCooldown>0)player.tailsAttackCooldown=Math.max(0,player.tailsAttackCooldown-dt);
+ if(player.tailsSwimStrokeCooldown>0)player.tailsSwimStrokeCooldown=Math.max(0,player.tailsSwimStrokeCooldown-dt);
+ if(selectedCharacterId==='tails'&&player.tailsFlying){player.tailsFlightTime=(player.tailsFlightTime||0)+dt;if(player.tailsFlightTime>=9){player.tailsFlying=false;player.tailsTired=true;status.textContent='TAILS CANSADO · DESCENDIENDO';}}
+
  if(player.spinDashRolling){
   player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
   if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
@@ -947,6 +988,10 @@ function update(dt){
  }
  const tunnelCenterBeforeMove=player.x+player.w/2;
  const nearTunnelEntry=!inUnderground&&tunnelCenterBeforeMove>=undergroundZone.entryX-78&&tunnelCenterBeforeMove<=undergroundZone.entryX+72;
+ if(selectedCharacterId==='tails'&&keys.down&&player.onGround&&!player.tailsSwimming&&!player.spinDashCharging&&!player.peelOutCharging){
+  const diveBridge=bridgeAt(player.x+player.w/2);
+  if(diveBridge){player.tailsSwimming=true;player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;player.onGround=false;player.platformId=null;player.vx*=.35;player.vy=0;player.y=bridgeSurfaceY(diveBridge)+88;player.spin=0;player.spinAngle=0;player.spinAttack=false;keys.down=false;status.textContent='TAILS SE SUMERGE · PULSA SALTO PARA SUBIR';}
+ }
  if(selectedCharacterId==='sonic'&&keys.down&&player.onGround&&!inUnderground&&!nearTunnelEntry&&
     Math.abs(player.vx)>145&&!player.spinDashCharging&&!player.peelOutCharging){
   player.rolling=true;
@@ -967,7 +1012,19 @@ function update(dt){
    player.facing=dx<0?-1:1;player.onGround=false;player.platformId=null;player.spin=1;
   }
  }
- if(player.spinDashCharging||player.peelOutCharging){
+ if(player.tailsSwimming){
+  const swimBridge=bridgeAt(player.x+player.w/2);
+  if(!swimBridge){player.tailsSwimming=false;player.onGround=true;player.platformId=null;player.y=groundSurfaceAt(player.x+player.w/2)-player.h;player.vy=0;}
+  else{
+   const deckY=bridgeSurfaceY(swimBridge),waterY=deckY+72,swimDirection=Number(keys.right)-Number(keys.left);
+   if(swimDirection){player.facing=swimDirection;player.vx+=(swimDirection*260-player.vx)*Math.min(1,4*dt);}else player.vx*=Math.pow(.15,dt);
+   player.x=Math.max(swimBridge.x+14,Math.min(swimBridge.x+swimBridge.w-14-player.w,player.x+player.vx*dt));
+   player.vy+=(keys.down?560:250)*dt;player.vy=Math.max(-440,Math.min(270,player.vy));player.y+=player.vy*dt;
+   const shallowLimit=deckY-player.h+2,deepLimit=waterY+150;
+   if(player.y<=shallowLimit){player.y=deckY-player.h;player.tailsSwimming=false;player.onGround=true;player.platformId=null;player.vy=0;player.vx*=.7;keys.down=false;}
+   else{player.y=Math.min(deepLimit,player.y);player.onGround=false;player.platformId=null;player.spin=0;player.spinAngle=0;player.spinAttack=false;}
+  }
+ }else if(player.spinDashCharging||player.peelOutCharging){
   if(player.spinDashCharging){
    player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
    player.spinDashAnimTime=(player.spinDashAnimTime||0)+dt;
@@ -1061,8 +1118,9 @@ function update(dt){
   }
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
+ if(selectedCharacterId==='tails'&&player.onGround){player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging||player.homingActive)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
+ if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging||player.homingActive||player.tailsAttackTimer>0)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
@@ -1117,10 +1175,14 @@ function update(dt){
     e.nextShot=elapsed+5;
    }
   }
-  const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
+  const enemyY=e.y+(e.kind===2?-7:0);
+  const bodyHit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
+  const tailsSwipeHit=selectedCharacterId==='tails'&&player.tailsAttackTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*34))<48&&Math.abs(enemyY-(player.y+player.h/2))<54;
+  const hit=bodyHit||tailsSwipeHit;
   if(hit){
    const rollingHit=player.rolling&&Math.abs(player.vx)>160;
-   const attackHit=player.homingActive||player.spinAttack||rollingHit;
+   const tailsFlightHit=selectedCharacterId==='tails'&&player.tailsFlying&&!player.tailsTired&&bodyHit;
+   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit;
    if(attackHit){
     const homingHit=player.homingActive;
     destroyEnemy(e);
@@ -1188,6 +1250,9 @@ function update(dt){
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
   if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
+ if(selectedCharacterId==='tails'){
+  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
+ }
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -1813,7 +1878,50 @@ function drawEnemyFallback(e){
    g.fillStyle="#d6e1e9";g.strokeStyle="#26374b";g.lineWidth=2;g.beginPath();g.ellipse(7,-8,10,8,-.15,0,Math.PI*2);g.fill();g.stroke();g.fillStyle="#ffdf4d";g.beginPath();g.ellipse(8,-8,7,5,0,0,Math.PI*2);g.fill();g.fillStyle="#fff";g.beginPath();g.ellipse(10,-9,3.1,3.8,0,0,Math.PI*2);g.fill();g.fillStyle="#162944";g.beginPath();g.arc(11,-8,1.7,0,Math.PI*2);g.fill();g.fillStyle="#e83c4a";g.strokeStyle="#791f37";g.lineWidth=1.5;g.beginPath();g.moveTo(-10,7);g.lineTo(-22,11);g.lineTo(-12,1);g.closePath();g.fill();g.stroke();g.fillStyle="#172a43";g.fillRect(-5,14,6,5);g.fillRect(7,13,6,5);g.fillStyle="#79eaff";g.fillRect(12,-4,4,3);g.fillStyle="#fff3a1";g.fillRect(4,-14,5,2);
   }
   g.restore();
-}/* Atlas de juego de SauceKye: 10 columnas × 9 filas.
+}
+/* Atlas de Tails: hoja de sprites de 9 × 9 celdas, ya incluida en assets/Tails. */
+const TAILS_SHEET_PATH="./assets/Tails/tailssheet.png";
+const TAILS_ATLAS_COLUMNS=9,TAILS_ATLAS_ROWS=9;
+let tailsAnimations={idle:[],run:[],jump:[],fall:[],tired:[],fly:[],swim:[],tailsAttack:[],spin:[],ready:false};
+function loadTailsSheetFrame(sheet,frameIndex){
+ const total=TAILS_ATLAS_COLUMNS*TAILS_ATLAS_ROWS;if(!Number.isInteger(frameIndex)||frameIndex<0||frameIndex>=total)return null;
+ const cw=sheet.naturalWidth/TAILS_ATLAS_COLUMNS,ch=sheet.naturalHeight/TAILS_ATLAS_ROWS,col=frameIndex%TAILS_ATLAS_COLUMNS,row=Math.floor(frameIndex/TAILS_ATLAS_COLUMNS);
+ const sx=Math.round(col*cw),sy=Math.round(row*ch),sw=Math.round((col+1)*cw)-sx,sh=Math.round((row+1)*ch)-sy;
+ const probe=document.createElement("canvas");probe.width=sw;probe.height=sh;const pctx=probe.getContext("2d",{willReadFrequently:true});if(!pctx)return null;
+ try{pctx.drawImage(sheet,sx,sy,sw,sh,0,0,sw,sh);const px=pctx.getImageData(0,0,sw,sh).data;let l=sw,t=sh,r=-1,b=-1;
+  for(let y=0;y<sh;y++)for(let x=0;x<sw;x++)if(px[(y*sw+x)*4+3]>18){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y;}
+  if(r<l||b<t)return null;return {img:sheet,bounds:{x:sx+l,y:sy+t,width:r-l+1,height:b-t+1}};
+ }catch(error){console.warn("[Blue Rush] No se pudo recortar un sprite de Tails:",error);return {img:sheet,bounds:{x:sx,y:sy,width:sw,height:sh}};}
+}
+function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
+function loadTailsSprites(){
+ const sheet=new Image();sheet.onload=()=>{
+  tailsAnimations={
+   idle:tailsSheetFrames(sheet,[0,1,2,3,4]),run:tailsSheetFrames(sheet,[11,12,13,14,15,16,17]),
+   jump:tailsSheetFrames(sheet,[18,19,21,22,23,24,25,26]),fall:tailsSheetFrames(sheet,[27,28,31,32,33]),
+   tired:tailsSheetFrames(sheet,[27,28,31,32,33]),fly:tailsSheetFrames(sheet,[41,42,43,44,45,46,47,48,49,50,51,52,53]),
+   swim:tailsSheetFrames(sheet,[36,37,38,39,40,41,42,43,44]),tailsAttack:tailsSheetFrames(sheet,[27,28,29,30,31,32,33,34,35]),
+   spin:tailsSheetFrames(sheet,[18,19,21,22,23,24]),ready:true
+  };
+  for(const name of ["run","jump","fall","tired","fly","swim","tailsAttack","spin"])if(!tailsAnimations[name].length)tailsAnimations[name]=tailsAnimations.idle;
+  console.info("[Blue Rush] Sprites de Tails cargados",{width:sheet.naturalWidth,height:sheet.naturalHeight,run:tailsAnimations.run.length,fly:tailsAnimations.fly.length,swim:tailsAnimations.swim.length,attack:tailsAnimations.tailsAttack.length});
+ };
+ sheet.onerror=()=>{tailsAnimations.ready=false;console.error("[Blue Rush] No se pudo cargar la hoja de sprites de Tails:",TAILS_SHEET_PATH)};
+ sheet.src=TAILS_SHEET_PATH+"?v=tails-abilities-1";
+}
+function drawTailsCharacter(screenX,screenY,options={}){
+ const animation=options.animation||"idle",phase=Number(options.phase)||0,frames=tailsAnimations[animation]&&tailsAnimations[animation].length?tailsAnimations[animation]:tailsAnimations.idle;
+ if(!frames.length){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
+ const index=Math.floor(phase*(animation==="fly"||animation==="swim"?10:8))%frames.length,entry=frames[(index+frames.length)%frames.length],img=entry&&entry.img,b=entry&&entry.bounds;
+ if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
+ const targetW=animation==="fly"?70:animation==="swim"?61:animation==="tailsAttack"?64:58,targetH=animation==="fly"?66:animation==="swim"?54:animation==="tailsAttack"?60:56;
+ const scale=Math.min(targetW/b.width,targetH/b.height),dw=b.width*scale,dh=b.height*scale,smoothing=g.imageSmoothingEnabled;
+ g.save();g.translate(Math.round(screenX),Math.round(screenY));if(animation==="spin")g.rotate(Number(options.spinAngle)||phase*8);else if(Number(options.facing)<0)g.scale(-1,1);
+ g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,-dh/2,dw,dh);g.imageSmoothingEnabled=smoothing;g.restore();
+}
+loadTailsSprites();
+
+/* Atlas de juego de SauceKye: 10 columnas × 9 filas.
    La animación run usa los fotogramas 11–16, igual que Sonic Escape. */
 const SONIC_SHEET_PATH="./assets/Sonic/sonicsheet-game-atlas.png";
 const SONIC_ATLAS_COLUMNS=10;
@@ -1953,10 +2061,16 @@ function drawFallbackPlayer(){
 function drawPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
+ if(selectedCharacterId==='tails'){
+  let animation='idle';
+  if(player.tailsSwimming)animation='swim';else if(player.tailsFlying)animation='fly';else if(player.tailsTired&&!player.onGround)animation='tired';else if(player.tailsAttackTimer>0)animation='tailsAttack';
+  else if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(Math.abs(player.vx)>25)animation='run';
+  const phase=animation==='tailsAttack'||animation==='spin'?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
+  drawTailsCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
+ }
  if(selectedCharacterId!=='sonic'){
   const phase=player.spinDashCharging||player.spinDashRolling?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
-  drawVectorCharacter(selectedCharacterId,x,y,{facing:player.facing,moving:player.onGround&&Math.abs(player.vx)>25,rolling:Boolean(player.spin),falling:!player.onGround&&!player.spin,phase,spinAngle:player.spinAngle});
-  return;
+  drawVectorCharacter(selectedCharacterId,x,y,{facing:player.facing,moving:player.onGround&&Math.abs(player.vx)>25,rolling:Boolean(player.spin),falling:!player.onGround&&!player.spin,phase,spinAngle:player.spinAngle});return;
  }
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
