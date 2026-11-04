@@ -1083,7 +1083,7 @@ function drawBackground(){
   g.fillStyle="#fff";g.fillRect(x+21,y+2,ww*.2,4);g.fillRect(x+ww*.62,y+7,ww*.14,3);
  }
  // Islas cafés lejanas, detrás de las capas verdes y de los detalles cercanos.
- g.save();g.translate(0,-70); // Eleva 190 px el paisaje respecto a la composición anterior para mantener islas y horizonte visibles.
+ g.save();g.translate(0,0); // Baja 70 px el paisaje para equilibrar el horizonte con el nivel.
  island(115+((camera*.035)%(w+260)),336,.95);
  island(420+((camera*.045)%(w+300)),340,.7);
  island(690+((camera*.03)%(w+320)),326,1.12);
