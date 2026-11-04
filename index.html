@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css?v=character-select-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=online-multiplayer-3"></script>
-  <script src="game.js?v=sonic-run-fixed-1" defer></script>
+  <script src="game.js?v=sonic-actions-1" defer></script>
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-label="Inicio de sesión de Blue Rush">
@@ -59,11 +59,14 @@
         <div class="game-footer">
           <div class="key-help"><span class="key">←</span><span class="key">A</span><small>IZQUIERDA</small></div>
           <div class="key-help"><span class="key">→</span><span class="key">D</span><small>DERECHA</small></div>
-          <div class="key-help"><span class="key wide">SPACE</span><small>SALTAR</small></div>
+          <div class="key-help"><span class="key wide">SPACE</span><small>SPIN ATTACK</small></div>
+          <div class="key-help"><span class="key">↓</span><small>ROLLING</small></div>
+          <div class="key-help"><span class="key">C</span><small>PEEL-OUT</small></div>
+          <div class="key-help"><span class="key">Z</span><small>HOMING</small></div>
           <button id="resetButton" class="reset-button" type="button">VOLVER AL INICIO ↻</button>
         </div>
         <div class="touch-controls" aria-label="Controles táctiles">
-          <button type="button" data-control="left" aria-label="Mover a la izquierda">◀</button><button type="button" data-control="right" aria-label="Mover a la derecha">▶</button><button type="button" data-control="down" class="down-button" aria-label="Entrar en la zona subterránea">BAJAR ↓</button><button type="button" data-control="jump" class="jump-button">SALTAR ↑</button><button type="button" data-control="spindash" class="spindash-button" aria-label="Cargar y soltar Spin Dash">GIRO</button>
+          <button type="button" data-control="left" aria-label="Mover a la izquierda">◀</button><button type="button" data-control="right" aria-label="Mover a la derecha">▶</button><button type="button" data-control="down" class="down-button" aria-label="Rodar; cerca de la entrada, bajar al túnel">RODAR ↓</button><button type="button" data-control="jump" class="jump-button" aria-label="Saltar y hacer Spin Attack">SPIN ATTACK</button><button type="button" data-control="spindash" class="spindash-button" aria-label="Cargar y soltar Spin Dash">SPIN DASH</button><button type="button" data-control="peelout" class="peelout-button" aria-label="Mantener para cargar y soltar Super Peel-Out">PEEL-OUT</button><button type="button" data-control="homing" class="homing-button" aria-label="Homing Attack al enemigo cercano">HOMING</button>
         </div>
       </section>
       <aside class="start-panel" aria-label="Configuración de partida">

@@ -156,7 +156,7 @@ document.querySelectorAll('[data-demo-account]').forEach(button=>{
 function switchDemoAccount(){
  if(onlineMode)leaveOnlineRoom();
  running=false;
- keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
  resetPlayer();
  startScreen.classList.remove('hidden');
  try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(error){console.warn('[Blue Rush] No se pudo limpiar la sesión guardada:',error)}
@@ -175,7 +175,7 @@ const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function'
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
 const remotePlayers=new Map();
 const NETWORK_SEND_INTERVAL=120;
-const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false,spindash:false};
+const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false,spindash:false,peelout:false,homing:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
 const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
 // Spritesheet Green Island (edición gratuita).
@@ -368,7 +368,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,platformId:null};keys.spindash=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutBurst:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -455,7 +455,7 @@ function leaveOnlineRoom(){
 }
 function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
- if(running){if(player.spinDashCharging)animation='spindash';else if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.58)animation='speeddash';else if(speedRatio>=0.38)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
+ if(running){if(player.spinDashCharging||player.peelOutCharging)animation='spindash';else if(player.spin||player.rolling||player.homingActive)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.58)animation='speeddash';else if(speedRatio>=0.38)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
  const phase=animation==='spin'||animation==='spindash'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
  const payload={id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
@@ -525,7 +525,7 @@ function drawRemotePlayers(){
  }
 }
 function resetGame(){
- leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function finishRunAfterDeath(){
@@ -553,7 +553,7 @@ function finishRunAfterDeath(){
 }
 function applyPlayerDamage(){
  if(player.invincible>0)return;
- player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutBurst=0;player.speed=900;
  const hasRings=rings.some(r=>r.got);
  if(!hasRings){
   finishRunAfterDeath();
@@ -583,7 +583,7 @@ function applyPlayerDamage(){
  player.onGround=false;
  player.vx=-player.facing*180;
 }
-function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0}}
+function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}}
 
 function beginSpinDash(){
  if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging)return;
@@ -601,9 +601,88 @@ function releaseSpinDash(){
  player.speedCharge=Math.max(player.speedCharge,.25+.75*charge);
 }
 
-function setKey(key,down){const k=key.toLowerCase(),isJump=key===' '||key==='ArrowUp'||k==='w',isSpinDash=key==='Shift'||k==='x';if(key==='ArrowLeft'||k==='a')keys.left=down;if(key==='ArrowRight'||k==='d')keys.right=down;if(key==='ArrowDown'||k==='s')keys.down=down;if(isSpinDash){const wasHeld=keys.spindash;keys.spindash=down;if(down&&!wasHeld)beginSpinDash();if(!down&&wasHeld)releaseSpinDash()}if(isJump){const wasHeld=keys.jump;keys.jump=down;if(down&&!wasHeld)jump()}if(down&&key==='Enter'&&!running)startGame()}
-window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();setKey(e.key,true)});
-window.addEventListener('keyup',e=>setKey(e.key,false));window.addEventListener('blur',()=>{keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;if(player&&player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}});
+function beginSuperPeelOut(){
+ if(!running)startGame();
+ if(!running||selectedCharacterId!=='sonic'||inUnderground||!player.onGround||
+    player.platformId!==null||player.spinDashCharging||player.peelOutCharging||
+    Math.abs(player.vx)>260)return;
+ player.peelOutCharging=true;player.peelOutCharge=0;player.rolling=false;
+ player.spinDashRolling=false;player.vx=0;player.vy=0;player.spin=1;player.spinAngle=0;
+}
+function releaseSuperPeelOut(){
+ if(!player||!player.peelOutCharging)return;
+ const charge=Math.max(.12,Math.min(1,player.peelOutCharge||0));
+ const direction=player.facing||1;
+ player.peelOutCharging=false;player.peelOutCharge=0;player.peelOutBurst=1.15;
+ player.speed=1050;player.speedCharge=1;player.facing=direction;
+ player.vx=direction*(720+330*charge);player.vy=0;player.onGround=true;
+ player.platformId=null;player.spin=0;player.rolling=false;player.spinAngle=0;
+}
+function homingAttack(){
+ if(!running)startGame();
+ if(!running||selectedCharacterId!=='sonic'||inUnderground||player.onGround||
+    player.homingActive||player.spinDashCharging||player.peelOutCharging)return false;
+ const cx=player.x+player.w/2,cy=player.y+player.h/2;
+ const candidates=enemies.filter(enemy=>{
+  if(!enemy.alive)return false;
+  const dx=enemy.x-cx,dy=(enemy.y-8)-cy,distance=Math.hypot(dx,dy);
+  return dx*(player.facing||1)>=-55&&Math.abs(dy)<=285&&distance<=455;
+ }).map(enemy=>({enemy,distance:Math.hypot(enemy.x-cx,(enemy.y-8)-cy)}))
+   .sort((a,b)=>a.distance-b.distance);
+ if(!candidates.length){
+  status.textContent='HOMING ATTACK · NO HAY ENEMIGO CERCA';
+  return false;
+ }
+ const target=candidates[0].enemy,dx=target.x-cx,dy=(target.y-8)-cy,distance=Math.max(1,Math.hypot(dx,dy));
+ player.homingActive=true;player.homingTargetId=target.id;
+ player.homingTimer=Math.max(.38,Math.min(.82,distance/980+.24));
+ player.spinAttack=false;player.rolling=false;player.onGround=false;player.platformId=null;
+ player.spin=1;player.spinAngle=0;player.facing=dx<0?-1:1;
+ player.vx=dx/distance*980;player.vy=dy/distance*980;
+ return true;
+}
+
+function setKey(key,down){
+ const k=key.toLowerCase();
+ const isJump=key===' '||key==='ArrowUp'||k==='w';
+ const isSpinDash=key==='Shift'||k==='x';
+ const isPeelOut=k==='c';
+ const isHoming=k==='z';
+ if(key==='ArrowLeft'||k==='a')keys.left=down;
+ if(key==='ArrowRight'||k==='d')keys.right=down;
+ if(key==='ArrowDown'||k==='s')keys.down=down;
+ if(isSpinDash){
+  const wasHeld=keys.spindash;keys.spindash=down;
+  if(down&&!wasHeld)beginSpinDash();
+  if(!down&&wasHeld)releaseSpinDash();
+ }
+ if(isPeelOut){
+  const wasHeld=keys.peelout;keys.peelout=down;
+  if(down&&!wasHeld)beginSuperPeelOut();
+  if(!down&&wasHeld)releaseSuperPeelOut();
+ }
+ if(isHoming){
+  const wasHeld=keys.homing;keys.homing=down;
+  if(down&&!wasHeld)homingAttack();
+ }
+ if(isJump){
+  const wasHeld=keys.jump;keys.jump=down;
+  if(down&&!wasHeld)jump();
+ }
+ if(down&&key==='Enter'&&!running)startGame();
+}
+window.addEventListener('keydown',e=>{
+ if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
+ setKey(e.key,true);
+});
+window.addEventListener('keyup',e=>setKey(e.key,false));
+window.addEventListener('blur',()=>{
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
+ if(player){
+  if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}if(player&&player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
+  if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
+ }
+});
 startButton.addEventListener('click',()=>{leaveOnlineRoom();startGame()});onlineButton.addEventListener('click',startOnlineGame);resetButton.addEventListener('click',resetGame);window.addEventListener('beforeunload',leaveOnlineRoom);
 document.querySelectorAll('[data-control]').forEach(b=>{
  const c=b.dataset.control;
@@ -611,41 +690,79 @@ document.querySelectorAll('[data-control]').forEach(b=>{
   e.preventDefault();
   if(c==='jump'){keys.jump=true;jump()}
   else if(c==='spindash'){if(!running)startGame();keys.spindash=true;beginSpinDash()}
+  else if(c==='peelout'){if(!running)startGame();keys.peelout=true;beginSuperPeelOut()}
+  else if(c==='homing'){if(!running)startGame();homingAttack()}
   else{if(!running)startGame();keys[c]=true}
  };
  const release=e=>{
   e.preventDefault();
   if(c==='jump')keys.jump=false;
   else if(c==='spindash'){keys.spindash=false;releaseSpinDash()}
+  else if(c==='peelout'){keys.peelout=false;releaseSuperPeelOut()}
+  else if(c==='homing')keys.homing=false;
   else keys[c]=false;
  };
- b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);
- b.addEventListener('pointercancel',release);b.addEventListener('pointerleave',release);
+ b.addEventListener('pointerdown',press);
+ b.addEventListener('pointerup',release);
+ b.addEventListener('pointercancel',release);
+ b.addEventListener('pointerleave',release);
 });
 // Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
 function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  updateEnemyExplosions(dt);
  if(!running)return;elapsed+=dt;
-  if(player.spinDashRolling){
-   player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
-   if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
-  }
-  if(player.spinDashCharging){
-   player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
-   player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;
-   player.y=groundSurfaceAt(player.x+player.w/2)-player.h;
-   if(keys.left&&!keys.right)player.facing=-1;else if(keys.right&&!keys.left)player.facing=1;
-   player.spin=1;player.spinAngle=(player.spinAngle||0)+dt*(8+player.spinDashCharge*12);
+ if(player.spinDashRolling){
+  player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
+  if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
+ }
+ if(player.peelOutBurst>0){
+  player.peelOutBurst=Math.max(0,player.peelOutBurst-dt);
+  if(player.peelOutBurst===0)player.speed=900;
+ }
+ const tunnelCenterBeforeMove=player.x+player.w/2;
+ const nearTunnelEntry=!inUnderground&&tunnelCenterBeforeMove>=undergroundZone.entryX-78&&tunnelCenterBeforeMove<=undergroundZone.entryX+72;
+ if(selectedCharacterId==='sonic'&&keys.down&&player.onGround&&!inUnderground&&!nearTunnelEntry&&
+    Math.abs(player.vx)>145&&!player.spinDashCharging&&!player.peelOutCharging){
+  player.rolling=true;
+ }else if(!keys.down||!player.onGround||inUnderground||selectedCharacterId!=='sonic'){
+  player.rolling=false;
+ }
+ let homingTarget=null;
+ if(player.homingActive){
+  player.homingTimer=Math.max(0,(player.homingTimer||0)-dt);
+  homingTarget=enemies.find(enemy=>enemy.id===player.homingTargetId&&enemy.alive)||null;
+  if(!homingTarget||player.homingTimer<=0){
+   player.homingActive=false;player.homingTargetId=null;homingTarget=null;
   }else{
+   const dx=homingTarget.x-(player.x+player.w/2);
+   const dy=(homingTarget.y-8)-(player.y+player.h/2);
+   const distance=Math.max(1,Math.hypot(dx,dy));
+   player.vx=dx/distance*980;player.vy=dy/distance*980;
+   player.facing=dx<0?-1:1;player.onGround=false;player.platformId=null;player.spin=1;
+  }
+ }
+ if(player.spinDashCharging||player.peelOutCharging){
+  if(player.spinDashCharging)player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
+  if(player.peelOutCharging)player.peelOutCharge=Math.min(1,(player.peelOutCharge||0)+dt*.78);
+  player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;
+  player.y=groundSurfaceAt(player.x+player.w/2)-player.h;
+  if(keys.left&&!keys.right)player.facing=-1;else if(keys.right&&!keys.left)player.facing=1;
+  player.spin=1;player.spinAngle=(player.spinAngle||0)+dt*(8+(player.spinDashCharge||player.peelOutCharge||0)*12);
+ }else{
+  const homingSteering=Boolean(homingTarget);
   const dir=Number(keys.right)-Number(keys.left);
-  if(dir){
+  if(homingSteering){
+   player.speedCharge=Math.max(player.speedCharge,.7);
+  }else if(dir){
    if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
    else player.speedCharge=Math.min(1,player.speedCharge+0.4*dt);
    player.facing=dir;const targetSpeed=dir*(215+515*player.speedCharge);
    player.vx+=(targetSpeed-player.vx)*Math.min(1,6.4*dt);
   }else{
-   player.speedCharge=Math.max(0,player.speedCharge-(player.spinDashRolling ? 0.22 : 2.4)*dt);player.vx*=Math.pow(player.spinDashRolling ? 0.78 : 0.12,dt);
+   const rollingFriction=player.spinDashRolling||player.rolling;
+   player.speedCharge=Math.max(0,player.speedCharge-(rollingFriction?.22:2.4)*dt);
+   player.vx*=Math.pow(rollingFriction?.78:.12,dt);
    if(Math.abs(player.vx)<8)player.vx=0;
   }
   const wasGrounded=player.onGround,oldBottom=player.y+player.h,oldX=player.x,oldY=player.y,oldPlatformId=player.platformId,oldGround=groundSurfaceAt(oldX+player.w/2);
@@ -666,21 +783,21 @@ function update(dt){
     player.platformId=null;applyAirMotion(dt);player.onGround=false;
    }
   }else if(wasGrounded){
-   player.platformId=null;player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=player.spinDashRolling?1:0;if(!player.spin)player.spinAngle=0;
+   player.platformId=null;player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.spin=player.spinDashRolling||player.rolling?1:0;if(!player.spin)player.spinAngle=0;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
   }else{
    applyAirMotion(dt);player.onGround=false;
    const descending=player.vy>=0;
    const landingPlatform=descending&&oldBottom<=player.y+player.h&&platformUnderPlayer(player.x,player.w);
    const landingY=landingPlatform?aerialPlatformY(landingPlatform):Infinity;
    if(landingPlatform&&oldBottom<=landingY+Math.max(28,Math.abs(player.vx)*dt*1.4)&&player.y+player.h>=landingY){
-    player.y=landingY-player.h;player.vy=0;player.onGround=true;player.platformId=landingPlatform.id;player.spin=0;player.spinAngle=0;
+    player.y=landingY-player.h;player.vy=0;player.onGround=true;player.platformId=landingPlatform.id;player.spin=player.rolling?1:0;player.spinAngle=0;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
    }else if(descending&&player.y+player.h>=groundNow&&oldBottom<=oldGround+Math.max(28,Math.abs(player.vx)*dt*1.4)){
-    player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+    player.y=groundNow-player.h;player.vy=0;player.onGround=true;player.platformId=null;player.spin=player.rolling?1:0;player.spinAngle=0;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
    }
   }
   // El trampolín impulsa a Sonic a la primera plataforma de la ruta aérea.
   if(!inUnderground&&player.onGround&&player.platformId===null&&player.vx>80&&elapsed>=aerialSpring.cooldownUntil&&player.x+player.w>aerialSpring.x&&player.x<aerialSpring.x+aerialSpring.w){
-   player.vy=-1050;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;
+   player.vy=-1050;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.spinAttack=selectedCharacterId==='sonic';
    player.speedCharge=Math.max(player.speedCharge,.78);player.vx=Math.max(player.vx,430);
    aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;addScore(25);
   }
@@ -690,7 +807,7 @@ function update(dt){
    inUnderground=true;keys.down=false;
    player.x=undergroundZone.entryX+40-player.w/2;
    player.y=undergroundPathY(player.x+player.w/2)-player.h;
-   player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
+   player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.homingActive=false;player.homingTargetId=null;
   }
   if(inUnderground){
    const center=player.x+player.w/2;
@@ -713,7 +830,7 @@ function update(dt){
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
- if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
+ if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.peelOutCharging||player.homingActive)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
  else if(player.spin)player.spinPhase+=dt*(0.8+speedRatio*1.7);
  else player.fallPhase+=dt*(0.9+speedRatio*1.1);
  if(player.invincible>0)player.invincible-=dt;
@@ -770,8 +887,24 @@ function update(dt){
   }
   const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   if(hit){
-   if(player.vy>100&&player.y+player.h<enemyY+12){destroyEnemy(e);player.vy=-370;player.onGround=false;addScore(100)}
-   else if(player.invincible<=0){
+   const rollingHit=player.rolling&&Math.abs(player.vx)>160;
+   const attackHit=player.homingActive||player.spinAttack||rollingHit;
+   if(attackHit){
+    const homingHit=player.homingActive;
+    destroyEnemy(e);
+    addScore(100);
+    if(homingHit){
+     player.homingActive=false;player.homingTargetId=null;player.homingTimer=0;
+     player.vx=player.facing*300;player.vy=-410;player.onGround=false;player.spin=1;
+     player.spinAttack=true;
+    }else if(player.spinAttack){
+     player.vy=-370;player.onGround=false;player.spin=1;
+    }else if(rollingHit){
+     player.spin=1;player.spinAngle=(player.spinAngle||0)+.8;
+    }
+   }else if(player.vy>100&&player.y+player.h<enemyY+12){
+    destroyEnemy(e);player.vy=-370;player.onGround=false;addScore(100);
+   }else if(player.invincible<=0){
     applyPlayerDamage();
    }
   }
@@ -1516,7 +1649,17 @@ function drawFallbackPlayer(){
  g.fillStyle="#f12a43";g.beginPath();g.ellipse(-5,17,10,5,-.15,0,Math.PI*2);g.ellipse(10,17,9,5,.1,0,Math.PI*2);g.fill();
  g.fillStyle="#ffffff";g.fillRect(-12,15,11,2);g.fillRect(5,15,10,2);
  g.restore();
-}function drawPlayer(){
+}function drawHomingTarget(){
+ if(!player||!player.homingActive||!player.homingTargetId)return;
+ const target=enemies.find(enemy=>enemy.id===player.homingTargetId&&enemy.alive);
+ if(!target)return;
+ const x=target.x-camera,y=target.y-8;
+ const pulse=2+Math.sin(elapsed*20)*2;
+ g.save();g.strokeStyle="#ffe45b";g.lineWidth=2;g.beginPath();g.arc(x,y,17+pulse,0,Math.PI*2);g.stroke();
+ g.beginPath();g.moveTo(x-25,y);g.lineTo(x-11,y);g.moveTo(x+11,y);g.lineTo(x+25,y);
+ g.moveTo(x,y-25);g.lineTo(x,y-11);g.moveTo(x,y+11);g.lineTo(x,y+25);g.stroke();g.restore();
+}
+function drawPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
  if(selectedCharacterId!=='sonic'){
@@ -1531,11 +1674,13 @@ function drawFallbackPlayer(){
  // Cerca del suelo, conserva el sprite de carrera; el salto mantiene su animación aérea.
  const slopeRunning=!player.onGround&&!player.spin&&player.vy>=0&&Math.abs(player.vx)>25&&groundGap>=-10&&groundGap<56;
  const moving=(player.onGround||slopeRunning)&&Math.abs(player.vx)>25;
- const rolling=Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling);
+ const rolling=player.rolling||player.homingActive||(Boolean(player.spin)&&(!player.onGround||player.spinDashCharging||player.spinDashRolling||player.peelOutCharging));
  const jumping=!player.onGround&&!rolling&&player.vy< -30;
  const falling=!player.onGround&&!rolling&&!slopeRunning&&!jumping;
  let frames,index;
- if(player.spinDashCharging){
+ if(player.peelOutCharging){
+   frames=sonicAnimations.idle;index=0;
+ }else if(player.spinDashCharging){
    frames=sonicAnimations.spindash;
    index=Math.floor(player.spinPhase*frames.length)%Math.max(1,frames.length);
   }else if(rolling){
@@ -1578,12 +1723,15 @@ function drawFallbackPlayer(){
  g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,airbornePose?-dh/2:player.h/2-dh-1,dw,dh);
  g.restore();
 }function drawSpinDashCharge(){
- if(!player||!player.spinDashCharging)return;
+ if(!player||(!player.spinDashCharging&&!player.peelOutCharging))return;
+ const peelOut=player.peelOutCharging;
+ const charge=peelOut?(player.peelOutCharge||0):(player.spinDashCharge||0);
+ const label=peelOut?"SUPER PEEL-OUT":"SPIN DASH";
  const x=player.x-camera+player.w/2,y=player.y-48;
- g.save();g.fillStyle="rgba(5,22,42,.9)";g.fillRect(x-29,y-5,58,9);
- g.strokeStyle="#ffe78a";g.lineWidth=1.5;g.strokeRect(x-29,y-5,58,9);
- g.fillStyle="#ffcf35";g.fillRect(x-27,y-3,54*(player.spinDashCharge||0),5);
- g.fillStyle="#fff8c9";g.font="bold 8px Arial";g.textAlign="center";g.textBaseline="bottom";g.fillText("SPIN DASH",x,y-7);
+ g.save();g.fillStyle="rgba(5,22,42,.9)";g.fillRect(x-43,y-5,86,9);
+ g.strokeStyle="#ffe78a";g.lineWidth=1.5;g.strokeRect(x-43,y-5,86,9);
+ g.fillStyle="#ffcf35";g.fillRect(x-41,y-3,82*charge,5);
+ g.fillStyle="#fff8c9";g.font="bold 8px Arial";g.textAlign="center";g.textBaseline="bottom";g.fillText(label,x,y-7);
  g.restore();
 }
 function drawPlayerName(){
@@ -1635,6 +1783,7 @@ function draw(){
   ["DECORACIÓN",drawDecorations],
   ["ANILLOS",()=>rings.forEach(drawRing)],
   ["ENEMIGOS",()=>enemies.forEach(drawEnemy)],
+  ["OBJETIVO HOMING",drawHomingTarget],
   ["EXPLOSIONES",drawEnemyExplosions],
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
