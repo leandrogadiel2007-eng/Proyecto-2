@@ -701,10 +701,10 @@ function update(dt){
  if(player.x>=worldWidth-player.w-90&&!levelCompleted){
   levelCompleted=true;
   if(onlineMode&&!raceFinished){
-   raceFinished=true;raceWinner=playerName;recordRun('win');running=false;
+   raceFinished=true;raceWinner=playerName;addScore(1000);recordRun('win');running=false;
    if(multiplayerChannel)multiplayerChannel.send({type:'broadcast',event:'player-finished',payload:{id:multiplayerId,name:playerName,time:Math.round(elapsed*100)/100,progress:100,finishedAt:Date.now()}}).catch(error=>console.warn('[Blue Rush] No se pudo anunciar la meta:',error));
    startScreen.querySelector('h2').textContent='🏁 ¡Ganaste la carrera!';
-   startScreen.querySelector('p:not(.start-kicker)').textContent='Llegaste primero a la meta. Tiempo: '+elapsed.toFixed(1)+' s. ¡Desafía a tu rival otra vez!';
+   startScreen.querySelector('p:not(.start-kicker)').textContent='¡Premio por ganar: +1.000 puntos! Puntaje final: '+score+'. Tiempo: '+elapsed.toFixed(1)+' s. ¡Desafía a tu rival otra vez!';
    status.textContent='CARRERA TERMINADA · GANADOR: '+playerName;
   }else{
    recordRun('complete');running=false;startScreen.querySelector('h2').textContent='¡Nivel completado!';
