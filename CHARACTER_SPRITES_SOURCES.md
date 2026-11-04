@@ -1,6 +1,6 @@
 # Fuentes de sprites para Blue Rush
 
-Estas hojas se investigaron como referencias visuales. El proyecto no las copia ni aloja, porque la disponibilidad para descargar no confirma una licencia que permita redistribuirlas públicamente.
+Este documento registra las fuentes consultadas y el estado de integración de cada personaje. La hoja de Sonic que ya está en el repositorio fue subida por el propietario del proyecto.
 
 | Personaje | Juego / hoja | Enlace |
 |---|---|---|
@@ -14,6 +14,6 @@ Alternativa fan-made: SauceK publicó hojas propias de Tails, Knuckles y Amy y e
 
 ## Estado de la selección
 - Sonic utiliza `assets/Sonic/sonicsheet.png` de SauceKye; el juego recorta sus celdas para las animaciones de movimiento.
-- Tails, Knuckles, Amy y Shadow ya se pueden seleccionar y aparecen como dibujos vectoriales provisionales originales dentro del juego.
+- Tails, Knuckles, Amy y Shadow ya se pueden seleccionar, pero todavía aparecen como dibujos vectoriales provisionales dentro del juego.
 - La elección se guarda por cuenta en este navegador y se sincroniza con los demás jugadores online.
-- Para reemplazar los dibujos provisionales por los spritesheets enlazados, primero se deben revisar y respetar sus términos de uso y preparar sus recortes de animación.
+- Para sustituir los dibujos provisionales de Tails, Knuckles, Amy y Shadow por spritesheets, primero se deben revisar sus términos de uso y preparar los recortes de animación.
