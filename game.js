@@ -1022,12 +1022,18 @@ function update(dt){
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
-// Render retro: baja resolución virtual ampliada sin suavizado.
-const PIXEL=1;
+// Render pixel-art compartido por Sonic y todo el escenario.
+// Se renderiza a tamaño lógico completo y después se reduce a una rejilla de píxeles.
+const PIXEL=1.5;
 const scene=document.createElement('canvas');
-scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);
+scene.width=VIEW_W;scene.height=VIEW_H;
 const g=scene.getContext('2d');
-g.imageSmoothingEnabled=true;
+g.imageSmoothingEnabled=false;
+const pixelScene=document.createElement('canvas');
+pixelScene.width=Math.max(1,Math.ceil(VIEW_W/PIXEL));
+pixelScene.height=Math.max(1,Math.ceil(VIEW_H/PIXEL));
+const pixelCtx=pixelScene.getContext('2d');
+pixelCtx.imageSmoothingEnabled=false;
 function pxRect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
 function pxCircle(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);g.fill()}
 
@@ -1077,7 +1083,7 @@ function drawBackground(){
   g.fillStyle="#fff";g.fillRect(x+21,y+2,ww*.2,4);g.fillRect(x+ww*.62,y+7,ww*.14,3);
  }
  // Islas cafés lejanas, detrás de las capas verdes y de los detalles cercanos.
- g.save();g.translate(0,120); // Baja el horizonte para acompañar el escenario vertical ampliado.
+ g.save();g.translate(0,-70); // Eleva 190 px el paisaje respecto a la composición anterior para mantener islas y horizonte visibles.
  island(115+((camera*.035)%(w+260)),336,.95);
  island(420+((camera*.045)%(w+300)),340,.7);
  island(690+((camera*.03)%(w+320)),326,1.12);
@@ -1137,6 +1143,13 @@ function drawBackground(){
   const wide=58+(i%3)*12;
   mountain(mx,270,peak,wide);
  }
+ // Islas tropicales elevadas y delante del mar: ahora quedan dentro del encuadre.
+ // Las colinas verdes que se dibujan después cubren sus bases y las integran en el paisaje.
+ island(115+((camera*.035)%(w+260)),336,.95);
+ island(420+((camera*.045)%(w+300)),340,.7);
+ island(690+((camera*.03)%(w+320)),326,1.12);
+ island(980+((camera*.04)%(w+340)),341,.82);
+ island(1250+((camera*.035)%(w+360)),333,1.02);
  // Las colinas verdes se dibujan como una masa continua hasta el horizonte;
  // así no quedan picos sueltos flotando sobre el mar.
  // Más nubes pequeñas en distintas distancias para que el cielo no se vea vacío.
@@ -1916,9 +1929,14 @@ function drawHud(){
 }
 let lastRenderError="";
 function copyScene(){
- ctx.imageSmoothingEnabled=true;
+ // Primero se reduce todo el nivel a una rejilla uniforme; después se amplía
+ // con vecino más cercano para conservar los bordes duros del pixel-art.
+ pixelCtx.imageSmoothingEnabled=false;
+ pixelCtx.clearRect(0,0,pixelScene.width,pixelScene.height);
+ pixelCtx.drawImage(scene,0,0,scene.width,scene.height,0,0,pixelScene.width,pixelScene.height);
+ ctx.imageSmoothingEnabled=false;
  ctx.clearRect(0,0,W,H);
- ctx.drawImage(scene,0,0,W,H);
+ ctx.drawImage(pixelScene,0,0,pixelScene.width,pixelScene.height,0,0,W,H);
 }
 function draw(){
  lastRenderError="";
@@ -1963,7 +1981,7 @@ function draw(){
    }
    // If an error left a canvas save/clip state unbalanced, reset the offscreen context.
    try{
-    scene.width=Math.floor(VIEW_W/PIXEL);scene.height=Math.floor(VIEW_H/PIXEL);g.imageSmoothingEnabled=true;
+    scene.width=VIEW_W;scene.height=VIEW_H;g.imageSmoothingEnabled=false;
     drawBackground();copyScene();copied=true;
    }catch(recoveryError){
     console.error("[Blue Rush] No se pudo recuperar el canvas",recoveryError);
