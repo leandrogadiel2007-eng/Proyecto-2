@@ -79,6 +79,18 @@
           <p class="multiplayer-note">Comparte este código con tus amigos para jugar por internet en la misma sala.</p>
           <button id="onlineButton" class="primary-button online-button" type="button">JUGAR ONLINE <span aria-hidden="true">↗</span></button>
           <button id="startButton" class="secondary-button" type="button">JUGAR SOLO</button>
+          <section class="score-panel" aria-label="Puntuaciones guardadas">
+            <div class="score-stats">
+              <div class="score-stat"><small>RÉCORD PERSONAL</small><strong id="bestScoreValue">0</strong></div>
+              <div class="score-stat"><small>PUNTOS ACUMULADOS</small><strong id="totalScoreValue">0</strong></div>
+            </div>
+            <p id="scoreMeta" class="score-meta">PARTIDAS 0 · VICTORIAS 0</p>
+            <div class="score-ranking-block">
+              <p class="score-ranking-title">TOP 3 · ESTE NAVEGADOR</p>
+              <ol id="scoreRanking" class="score-ranking"></ol>
+            </div>
+            <p class="score-storage-note">Tus marcas se guardan en este navegador y se separan por cuenta.</p>
+          </section>
         </div>
       </aside>
     </section>

@@ -9,8 +9,64 @@ const DEMO_ACCOUNTS=[
  {id:'amy',email:'amy@bluerush.demo',password:'AMY2026!',name:'Amy'}
 ];
 const AUTH_SESSION_KEY='blueRushDemoSession';
+const SCORE_STORAGE_KEY='blueRushScoreRecordsV1';
+const bestScoreValue=document.getElementById('bestScoreValue'),totalScoreValue=document.getElementById('totalScoreValue'),scoreMeta=document.getElementById('scoreMeta'),scoreRanking=document.getElementById('scoreRanking');
 let authenticatedUser=null;
 let playerName='';
+let currentRunRecorded=true;
+function readScoreRecords(){
+ try{const data=JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY)||'{}');return data&&typeof data==='object'&&!Array.isArray(data)?data:{}}
+ catch(_){return {}}
+}
+function cleanScoreStats(raw){
+ const s=raw&&typeof raw==='object'?raw:{};
+ return {bestScore:Math.max(0,Math.floor(Number(s.bestScore)||0)),totalScore:Math.max(0,Math.floor(Number(s.totalScore)||0)),runs:Math.max(0,Math.floor(Number(s.runs)||0)),wins:Math.max(0,Math.floor(Number(s.wins)||0)),bestTime:Number.isFinite(Number(s.bestTime))&&Number(s.bestTime)>0?Number(s.bestTime):0,lastScore:Math.max(0,Math.floor(Number(s.lastScore)||0)),lastOutcome:String(s.lastOutcome||'')};
+}
+function writeScoreRecords(records){
+ try{localStorage.setItem(SCORE_STORAGE_KEY,JSON.stringify(records));return true}
+ catch(error){console.warn('[Blue Rush] No se pudo guardar el ranking:',error);return false}
+}
+function renderScoreboard(){
+ const records=readScoreRecords(),stats=authenticatedUser?cleanScoreStats(records[authenticatedUser.id]):cleanScoreStats(null);
+ if(bestScoreValue)bestScoreValue.textContent=stats.bestScore.toLocaleString('es-EC');
+ if(totalScoreValue)totalScoreValue.textContent=stats.totalScore.toLocaleString('es-EC');
+ if(scoreMeta)scoreMeta.textContent='PARTIDAS '+stats.runs+' · VICTORIAS '+stats.wins;
+ if(!scoreRanking)return;
+ scoreRanking.replaceChildren();
+ DEMO_ACCOUNTS.map(account=>({account,stats:cleanScoreStats(records[account.id])}))
+  .sort((a,b)=>b.stats.bestScore-a.stats.bestScore||a.account.name.localeCompare(b.account.name))
+  .slice(0,3).forEach(entry=>{
+   const item=document.createElement('li'),name=document.createElement('span'),points=document.createElement('strong');
+   if(authenticatedUser&&authenticatedUser.id===entry.account.id)item.classList.add('is-current');
+   name.textContent=entry.account.name+(authenticatedUser&&authenticatedUser.id===entry.account.id?' · TÚ':'');
+   points.textContent=entry.stats.bestScore.toLocaleString('es-EC')+' pts';
+   item.append(name,points);scoreRanking.append(item);
+  });
+}
+function saveBestScore(){
+ if(!authenticatedUser||!Number.isFinite(score)||score<=0)return;
+ const records=readScoreRecords(),stats=cleanScoreStats(records[authenticatedUser.id]);
+ if(score>stats.bestScore){stats.bestScore=Math.floor(score);records[authenticatedUser.id]=stats;if(writeScoreRecords(records))renderScoreboard()}
+}
+function addScore(points){
+ const amount=Math.max(0,Math.floor(Number(points)||0));
+ if(!amount)return;
+ score+=amount;saveBestScore();
+}
+function recordRun(outcome){
+ if(currentRunRecorded||!authenticatedUser)return;
+ currentRunRecorded=true;
+ const records=readScoreRecords(),stats=cleanScoreStats(records[authenticatedUser.id]),finalScore=Math.max(0,Math.floor(Number(score)||0));
+ stats.totalScore+=finalScore;stats.runs+=1;stats.lastScore=finalScore;stats.lastOutcome=outcome;
+ stats.bestScore=Math.max(stats.bestScore,finalScore);
+ if(outcome==='complete'||outcome==='win'){
+  stats.wins+=1;
+  const time=Math.max(0,Number(elapsed)||0);
+  if(time>0&&(!stats.bestTime||time<stats.bestTime))stats.bestTime=time;
+ }
+ records[authenticatedUser.id]=stats;
+ if(writeScoreRecords(records))renderScoreboard();
+}
 function showAuthMessage(message,isError=false){
  authMessage.textContent=message;
  authMessage.classList.toggle('is-error',isError);
@@ -34,6 +90,7 @@ function setAuthenticatedUser(user,saveSession=true){
   logoutButton.hidden=true;
   if(loginPasswordInput)loginPasswordInput.value='';
  }
+ renderScoreboard();
 }
 function restoreDemoSession(){
  try{
@@ -281,7 +338,7 @@ function startGame(){
   startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
   startButton.textContent='JUGAR SOLO';
   playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;
-  running=true;startScreen.classList.add('hidden');
+  currentRunRecorded=false;running=true;startScreen.classList.add('hidden');
   status.textContent=onlineMode?'ONLINE · SALA '+multiplayerRoom:'¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';
   lastTime=performance.now();
  }
@@ -303,7 +360,7 @@ async function startOnlineGame(){
   roomChannel.on('broadcast',{event:'player-finished'},({payload})=>{
     if(!payload||payload.id===multiplayerId||raceFinished)return;
     const name=String(payload.name||'El rival').replace(/[<>]/g,'').slice(0,16)||'El rival';
-    raceFinished=true;raceWinner=name;levelCompleted=true;running=false;
+    recordRun('loss');raceFinished=true;raceWinner=name;levelCompleted=true;running=false;
     startScreen.querySelector('h2').textContent='🏁 ¡'+name+' ganó la carrera!';
     startScreen.querySelector('p:not(.start-kicker)').textContent='Tu rival llegó primero a la meta. ¡Vuelve a correr para intentar ganar!';
     startButton.textContent='CORRER OTRA VEZ';startScreen.classList.remove('hidden');
@@ -387,6 +444,7 @@ function finishRunAfterDeath(){
   status.textContent='ONLINE · '+multiplayerRoom+' · VOLVISTE AL INICIO';
   return;
  }
+ recordRun('gameover');
  resetPlayer();
  startScreen.querySelector('h2').textContent='GAME OVER';
  startScreen.querySelector('p:not(.start-kicker)').textContent='Sonic recibió daño sin anillos. Pulsa VOLVER A JUGAR para intentarlo de nuevo.';
@@ -526,7 +584,7 @@ function update(dt){
   if(!inUnderground&&player.onGround&&player.platformId===null&&player.vx>80&&elapsed>=aerialSpring.cooldownUntil&&player.x+player.w>aerialSpring.x&&player.x<aerialSpring.x+aerialSpring.w){
    player.vy=-1050;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;
    player.speedCharge=Math.max(player.speedCharge,.78);player.vx=Math.max(player.vx,430);
-   aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;score+=25;
+   aerialSpring.cooldownUntil=elapsed+1.0;aerialSpring.flashUntil=elapsed+.45;addScore(25);
   }
  const tunnelCenter=player.x+player.w/2;
   if(!inUnderground&&keys.down&&player.onGround&&player.platformId===null&&
@@ -554,7 +612,7 @@ function update(dt){
     player.vy=0;player.onGround=true;player.platformId=null;player.spin=0;player.spinAngle=0;
    }
   }
-  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;score+=250}}
+  for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(player.onGround){player.fallPhase=0;if(player.spinDashCharging||player.spinDashRolling)player.spinPhase+=dt*(2+speedRatio*7);else if(Math.abs(player.vx)>25)player.runPhase+=dt*(0.9+speedRatio*3.0)}
@@ -583,7 +641,7 @@ function update(dt){
    }
   }
   if(!r.got&&elapsed>=(r.dropSafeUntil||0)&&Math.abs((player.x+player.w/2)-r.x)<24&&Math.abs((player.y+player.h/2)-r.y)<29){
-   r.got=true;r.bouncing=false;r.vx=0;r.vy=0;r.dropSafeUntil=0;score+=10;
+   r.got=true;r.bouncing=false;r.vx=0;r.vy=0;r.dropSafeUntil=0;addScore(10);
   }
  });
  enemies.forEach(e=>{
@@ -613,7 +671,7 @@ function update(dt){
   }
   const enemyY=e.y+(e.kind===2?-7:0);const hit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   if(hit){
-   if(player.vy>100&&player.y+player.h<enemyY+12){destroyEnemy(e);player.vy=-370;player.onGround=false;score+=100}
+   if(player.vy>100&&player.y+player.h<enemyY+12){destroyEnemy(e);player.vy=-370;player.onGround=false;addScore(100)}
    else if(player.invincible<=0){
     applyPlayerDamage();
    }
@@ -638,18 +696,18 @@ function update(dt){
  beeProjectiles=beeProjectiles.filter(shot=>shot.alive&&shot.life>0);
  if(!inUnderground&&player.y>VIEW_H+100){
   player.x=Math.max(30,checkpointX);player.y=terrainHeight(player.x)-player.h;player.vy=0;player.vx=0;player.speedCharge=0;lives--;
-  if(lives<=0){running=false;startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
+  if(lives<=0){running=false;recordRun('gameover');startScreen.classList.remove('hidden');startScreen.querySelector('h2').textContent='¡Inténtalo otra vez!';startScreen.querySelector('p:not(.start-kicker)').textContent='Caíste fuera del recorrido. Pulsa jugar para volver a empezar.';resetPlayer()}
  }
  if(player.x>=worldWidth-player.w-90&&!levelCompleted){
   levelCompleted=true;
   if(onlineMode&&!raceFinished){
-   raceFinished=true;raceWinner=playerName;running=false;
+   raceFinished=true;raceWinner=playerName;recordRun('win');running=false;
    if(multiplayerChannel)multiplayerChannel.send({type:'broadcast',event:'player-finished',payload:{id:multiplayerId,name:playerName,time:Math.round(elapsed*100)/100,progress:100,finishedAt:Date.now()}}).catch(error=>console.warn('[Blue Rush] No se pudo anunciar la meta:',error));
    startScreen.querySelector('h2').textContent='🏁 ¡Ganaste la carrera!';
    startScreen.querySelector('p:not(.start-kicker)').textContent='Llegaste primero a la meta. Tiempo: '+elapsed.toFixed(1)+' s. ¡Desafía a tu rival otra vez!';
    status.textContent='CARRERA TERMINADA · GANADOR: '+playerName;
   }else{
-   running=false;startScreen.querySelector('h2').textContent='¡Nivel completado!';
+   recordRun('complete');running=false;startScreen.querySelector('h2').textContent='¡Nivel completado!';
    startScreen.querySelector('p:not(.start-kicker)').textContent='¡Llegaste al final de Blue Rush! Puntos: '+score+'. Pulsa para correr otra vez.';
   }
   startScreen.classList.remove('hidden');startButton.innerHTML='CORRER OTRA VEZ <span aria-hidden="true">↻</span>';

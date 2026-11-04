@@ -278,3 +278,22 @@ body.auth-locked{overflow:hidden}
  .auth-brand{font-size:11px}.auth-kicker,.demo-title,.demo-account b,.demo-account strong{font-size:6px}
  .topbar-actions{gap:6px}.topbar-actions .phase{font-size:6px;padding:7px 9px}.logout-button{font-size:6px;padding:7px 9px}
 }
+
+
+/* Récord personal y ranking local de Blue Rush */
+.score-panel{width:100%;margin-top:17px;padding-top:14px;border-top:1px solid #36739c}
+.score-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.score-stat{min-width:0;padding:10px 8px;border:1px solid #397ca6;border-radius:10px;background:linear-gradient(145deg,#0b3158,#092545);text-align:center}
+.score-stat small{display:block;min-height:22px;color:#a9d8f1;font:6px/1.7 'Press Start 2P',monospace;letter-spacing:.1px}
+.score-stat strong{display:block;margin-top:3px;color:#ffe27a;font:700 22px/1.2 'Space Grotesk',sans-serif;overflow-wrap:anywhere}
+.score-meta{margin:8px 0 12px!important;color:#c5e8f8!important;text-align:center;font:7px/1.7 'Press Start 2P',monospace!important;letter-spacing:.1px}
+.score-ranking-title{margin:0 0 7px!important;color:#bdf47e!important;font:6px/1.8 'Press Start 2P',monospace!important;letter-spacing:.2px}
+.score-ranking{display:grid;gap:5px;margin:0;padding:0;list-style:none;counter-reset:score-rank}
+.score-ranking li{counter-increment:score-rank;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;border:1px solid #28577b;border-radius:7px;background:#082646;color:#d8efff;font:700 11px 'Space Grotesk',sans-serif}
+.score-ranking li:before{content:counter(score-rank)'.';flex:none;color:#8fcfff;font:7px 'Press Start 2P',monospace}
+.score-ranking li span{min-width:0;overflow-wrap:anywhere}
+.score-ranking li strong{flex:none;color:#ffe27a;font:700 11px 'Space Grotesk',sans-serif}
+.score-ranking li.is-current{border-color:#e5ca68;background:#173b55;color:#fff2ae}
+.score-ranking li.is-current:before{color:#ffe27a}
+.score-storage-note{margin:9px 0 0!important;color:#91b7d2!important;text-align:center;font:10px/1.45 'Nunito',sans-serif!important}
+@media(max-width:700px){.score-panel{max-width:460px;margin:16px auto 0}.score-stat small{font-size:6px}}
