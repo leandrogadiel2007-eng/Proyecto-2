@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css?v=character-select-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=online-multiplayer-3"></script>
-  <script src="game.js?v=super-peelout-mega-boost-1" defer></script>
+  <script src="game.js?v=custom-controls-panel-1" defer></script>
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-label="Inicio de sesión de Blue Rush">
@@ -57,15 +57,38 @@
           <canvas id="game" width="960" height="600" aria-label="Juego de plataformas. Usa A y D o las flechas para moverte, y espacio para saltar."></canvas>
         </div>
         <div class="game-footer">
-          <div class="key-help"><span class="key">←</span><span class="key">A</span><small>IZQUIERDA</small></div>
-          <div class="key-help"><span class="key">→</span><span class="key">D</span><small>DERECHA</small></div>
-          <div class="key-help"><span class="key wide">SPACE</span><small>SPIN ATTACK</small></div>
-          <div class="key-help"><span class="key">↓</span><small>ROLLING</small></div>
-          <div class="key-help"><span class="key">X</span><small>SPIN DASH</small></div>
-          <div class="key-help"><span class="key">C</span><small>PEEL-OUT</small></div>
-          <div class="key-help"><span class="key">Z</span><small>HOMING</small></div>
+          <div class="key-help"><span class="key" data-binding-label="left">←</span><small>IZQUIERDA</small></div>
+          <div class="key-help"><span class="key" data-binding-label="right">→</span><small>DERECHA</small></div>
+          <div class="key-help"><span class="key wide" data-binding-label="jump">ESPACIO</span><small>SPIN ATTACK</small></div>
+          <div class="key-help"><span class="key" data-binding-label="down">↓</span><small>RODAR</small></div>
+          <div class="key-help"><span class="key" data-binding-label="spindash">X</span><small>SPIN DASH</small></div>
+          <div class="key-help"><span class="key" data-binding-label="peelout">C</span><small>PEEL-OUT</small></div>
+          <div class="key-help"><span class="key" data-binding-label="homing">Z</span><small>HOMING</small></div>
+          <button id="controlsButton" class="controls-button" type="button" aria-haspopup="dialog" aria-controls="controlsPanel">CAMBIAR CONTROLES ⚙</button>
           <button id="resetButton" class="reset-button" type="button">VOLVER AL INICIO ↻</button>
         </div>
+        <div id="controlsBackdrop" class="controls-backdrop hidden"></div>
+        <section id="controlsPanel" class="controls-panel hidden" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+          <header class="controls-panel-header">
+            <div><p class="controls-kicker">BLUE RUSH · CONFIGURACIÓN</p><h2 id="controlsTitle">Cambiar controles</h2></div>
+            <button id="closeControlsButton" class="controls-close" type="button" aria-label="Cerrar configuración">×</button>
+          </header>
+          <p class="controls-description">Selecciona CAMBIAR y pulsa la nueva tecla que quieras usar.</p>
+          <div class="controls-list">
+            <div class="control-row"><div><strong>IZQUIERDA</strong><small>Mover al lado izquierdo</small></div><div class="control-row-actions"><kbd data-binding-label="left">←</kbd><button type="button" data-rebind="left">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>DERECHA</strong><small>Mover al lado derecho</small></div><div class="control-row-actions"><kbd data-binding-label="right">→</kbd><button type="button" data-rebind="right">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>RODAR / ENTRAR</strong><small>Rodar y entrar al túnel</small></div><div class="control-row-actions"><kbd data-binding-label="down">↓</kbd><button type="button" data-rebind="down">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>SALTAR / SPIN ATTACK</strong><small>Saltar y atacar girando</small></div><div class="control-row-actions"><kbd data-binding-label="jump">ESPACIO</kbd><button type="button" data-rebind="jump">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>SPIN DASH</strong><small>Mantener para cargar y soltar</small></div><div class="control-row-actions"><kbd data-binding-label="spindash">X</kbd><button type="button" data-rebind="spindash">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>SUPER PEEL-OUT</strong><small>Mantener para cargar y soltar</small></div><div class="control-row-actions"><kbd data-binding-label="peelout">C</kbd><button type="button" data-rebind="peelout">CAMBIAR</button></div></div>
+            <div class="control-row"><div><strong>HOMING ATTACK</strong><small>Atacar al enemigo cercano</small></div><div class="control-row-actions"><kbd data-binding-label="homing">Z</kbd><button type="button" data-rebind="homing">CAMBIAR</button></div></div>
+          </div>
+          <p id="controlsCaptureMessage" class="controls-capture-message" role="status" aria-live="polite">Tus controles se guardan automáticamente en este navegador.</p>
+          <footer class="controls-panel-actions">
+            <button id="restoreControlsButton" class="controls-restore" type="button">RESTAURAR ORIGINALES</button>
+            <button id="doneControlsButton" class="controls-done" type="button">LISTO</button>
+          </footer>
+        </section>
         <div class="touch-controls" aria-label="Controles táctiles">
           <button type="button" data-control="left" aria-label="Mover a la izquierda">◀</button><button type="button" data-control="right" aria-label="Mover a la derecha">▶</button><button type="button" data-control="down" class="down-button" aria-label="Rodar; cerca de la entrada, bajar al túnel">RODAR ↓</button><button type="button" data-control="jump" class="jump-button" aria-label="Saltar y hacer Spin Attack">SPIN ATTACK</button><button type="button" data-control="spindash" class="spindash-button" aria-label="Cargar y soltar Spin Dash">SPIN DASH</button><button type="button" data-control="peelout" class="peelout-button" aria-label="Mantener para cargar y soltar Super Peel-Out">PEEL-OUT</button><button type="button" data-control="homing" class="homing-button" aria-label="Homing Attack al enemigo cercano">HOMING</button>
         </div>

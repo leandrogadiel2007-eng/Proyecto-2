@@ -3,6 +3,7 @@
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),onlineButton=document.getElementById('onlineButton'),roomCodeInput=document.getElementById('roomCode'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
 const authGate=document.getElementById('authGate'),loginForm=document.getElementById('loginForm'),loginEmailInput=document.getElementById('loginEmail'),loginPasswordInput=document.getElementById('loginPassword'),authMessage=document.getElementById('authMessage'),logoutButton=document.getElementById('logoutButton');
+const controlsButton=document.getElementById('controlsButton'),controlsPanel=document.getElementById('controlsPanel'),controlsBackdrop=document.getElementById('controlsBackdrop'),controlsCaptureMessage=document.getElementById('controlsCaptureMessage');
 const DEMO_ACCOUNTS=[
  {id:'sonic',email:'sonic@bluerush.demo',password:'RUSH2026!',name:'Sonic'},
  {id:'tails',email:'tails@bluerush.demo',password:'FLY2026!',name:'Tails'},
@@ -694,41 +695,196 @@ function homingAttack(){
  return true;
 }
 
-function setKey(key,down){
- const k=key.toLowerCase();
- const isJump=key===' '||key==='ArrowUp'||k==='w';
- const isSpinDash=key==='Shift'||k==='x';
- const isPeelOut=k==='c';
- const isHoming=k==='z';
- if(key==='ArrowLeft'||k==='a')keys.left=down;
- if(key==='ArrowRight'||k==='d')keys.right=down;
- if(key==='ArrowDown'||k==='s')keys.down=down;
- if(isSpinDash){
+const CONTROL_BINDINGS_STORAGE_KEY='blueRushControlBindingsV1';
+const DEFAULT_CONTROL_BINDINGS={left:'ArrowLeft',right:'ArrowRight',down:'ArrowDown',jump:'Space',spindash:'KeyX',peelout:'KeyC',homing:'KeyZ'};
+const CONTROL_LABELS={left:'Izquierda',right:'Derecha',down:'Rodar',jump:'Saltar / Spin Attack',spindash:'Spin Dash',peelout:'Super Peel-Out',homing:'Homing Attack'};
+let controlBindings={...DEFAULT_CONTROL_BINDINGS};
+let listeningForControl=null;
+function isUsableControlCode(code){
+ if(!code||['Escape','Tab','Enter','Backspace','Delete','CapsLock','ControlLeft','ControlRight','AltLeft','AltRight','MetaLeft','MetaRight'].includes(code))return false;
+ if(/^F(?:[1-9]|1[0-2])$/.test(code))return false;
+ return true;
+}
+function loadControlBindings(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(CONTROL_BINDINGS_STORAGE_KEY)||'null');
+  if(saved&&typeof saved==='object'){
+   const used=new Set();
+   for(const action of Object.keys(DEFAULT_CONTROL_BINDINGS)){
+    const code=String(saved[action]||'');
+    if(isUsableControlCode(code)&&!used.has(code)){controlBindings[action]=code;used.add(code)}
+   }
+  }
+ }catch(error){console.warn('[Blue Rush] No se pudieron cargar los controles:',error)}
+}
+function saveControlBindings(){
+ try{localStorage.setItem(CONTROL_BINDINGS_STORAGE_KEY,JSON.stringify(controlBindings));return true}
+ catch(error){console.warn('[Blue Rush] No se pudieron guardar los controles:',error);return false}
+}
+function displayControlCode(code){
+ if(code==='Space')return 'ESPACIO';
+ if(code==='ArrowLeft')return '←';
+ if(code==='ArrowRight')return '→';
+ if(code==='ArrowUp')return '↑';
+ if(code==='ArrowDown')return '↓';
+ if(code==='ShiftLeft'||code==='ShiftRight')return 'SHIFT';
+ if(code==='ControlLeft'||code==='ControlRight')return 'CTRL';
+ if(code==='AltLeft'||code==='AltRight')return 'ALT';
+ if(code.startsWith('Key'))return code.slice(3).toUpperCase();
+ if(code.startsWith('Digit'))return code.slice(5);
+ if(code.startsWith('Numpad'))return 'NUM '+code.slice(6);
+ if(code==='Comma')return ',';
+ if(code==='Period')return '.';
+ if(code==='Slash')return '/';
+ if(code==='Semicolon')return ';';
+ if(code==='Quote')return "'";
+ if(code==='BracketLeft')return '[';
+ if(code==='BracketRight')return ']';
+ if(code==='Backslash')return '\\';
+ if(code==='Minus')return '-';
+ if(code==='Equal')return '=';
+ return code.replace(/([A-Z])/g,' $1').toUpperCase();
+}
+function renderControlBindings(){
+ document.querySelectorAll('[data-binding-label]').forEach(node=>{
+  const action=node.dataset.bindingLabel;
+  if(controlBindings[action])node.textContent=displayControlCode(controlBindings[action]);
+ });
+ document.querySelectorAll('[data-rebind]').forEach(button=>{
+  const action=button.dataset.rebind;
+  const waiting=listeningForControl===action;
+  button.textContent=waiting?'PULSA UNA TECLA':'CAMBIAR';
+  button.classList.toggle('is-listening',waiting);
+ });
+}
+function setControlMessage(message,isError=false){
+ if(!controlsCaptureMessage)return;
+ controlsCaptureMessage.textContent=message;
+ controlsCaptureMessage.classList.toggle('is-error',isError);
+}
+function stopGameInputForMenu(){
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
+ if(player){
+  if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
+  if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
+ }
+}
+function openControlsPanel(){
+ if(!controlsPanel||!controlsBackdrop)return;
+ stopGameInputForMenu();
+ listeningForControl=null;
+ controlsPanel.classList.remove('hidden');
+ controlsBackdrop.classList.remove('hidden');
+ setControlMessage('Selecciona CAMBIAR y pulsa una tecla del teclado.');
+ renderControlBindings();
+ const firstButton=controlsPanel.querySelector('[data-rebind]');
+ if(firstButton)firstButton.focus();
+}
+function closeControlsPanel(){
+ if(!controlsPanel||!controlsBackdrop)return;
+ listeningForControl=null;
+ controlsPanel.classList.add('hidden');
+ controlsBackdrop.classList.add('hidden');
+ renderControlBindings();
+ if(controlsButton)controlsButton.focus();
+}
+function beginControlCapture(action){
+ if(!Object.prototype.hasOwnProperty.call(controlBindings,action))return;
+ listeningForControl=action;
+ setControlMessage('Esperando una tecla para '+CONTROL_LABELS[action]+'. Pulsa ESC para cancelar.');
+ renderControlBindings();
+ const button=controlsPanel.querySelector('[data-rebind="'+action+'"]');
+ if(button)button.focus();
+}
+function captureControlKey(event){
+ if(!listeningForControl)return false;
+ event.preventDefault();event.stopImmediatePropagation();
+ if(event.repeat)return true;
+ if(event.code==='Escape'){
+  const previous=listeningForControl;
+  listeningForControl=null;
+  setControlMessage('Cambio cancelado. Se conserva '+displayControlCode(controlBindings[previous])+'.');
+  renderControlBindings();
+  return true;
+ }
+ if(event.ctrlKey||event.altKey||event.metaKey||!isUsableControlCode(event.code)){
+  setControlMessage('Esa tecla está reservada. Prueba con una letra, número, flecha o ESPACIO.',true);
+  return true;
+ }
+ const conflict=Object.keys(controlBindings).find(action=>action!==listeningForControl&&controlBindings[action]===event.code);
+ if(conflict){
+  setControlMessage('Esa tecla ya está asignada a '+CONTROL_LABELS[conflict]+'. Elige otra.',true);
+  return true;
+ }
+ const action=listeningForControl;
+ controlBindings[action]=event.code;
+ listeningForControl=null;
+ const saved=saveControlBindings();
+ setControlMessage(saved?'Control actualizado: '+CONTROL_LABELS[action]+' = '+displayControlCode(event.code)+'.':'Cambio aplicado, pero el navegador no permitió guardar la configuración.',!saved);
+ renderControlBindings();
+ return true;
+}
+loadControlBindings();
+renderControlBindings();
+controlsButton.addEventListener('click',openControlsPanel);
+controlsBackdrop.addEventListener('click',closeControlsPanel);
+document.getElementById('closeControlsButton').addEventListener('click',closeControlsPanel);
+document.getElementById('doneControlsButton').addEventListener('click',closeControlsPanel);
+document.getElementById('restoreControlsButton').addEventListener('click',()=>{
+ controlBindings={...DEFAULT_CONTROL_BINDINGS};
+ const saved=saveControlBindings();
+ listeningForControl=null;
+ renderControlBindings();
+ setControlMessage(saved?'Se restauraron los controles originales.':'Controles restaurados, pero no se pudieron guardar.',!saved);
+});
+controlsPanel.querySelectorAll('[data-rebind]').forEach(button=>{
+ button.addEventListener('click',()=>beginControlCapture(button.dataset.rebind));
+});
+function setKey(key,down,code=''){
+ const pressedCode=code||key;
+ if(pressedCode===controlBindings.left)keys.left=down;
+ if(pressedCode===controlBindings.right)keys.right=down;
+ if(pressedCode===controlBindings.down)keys.down=down;
+ if(pressedCode===controlBindings.spindash){
   const wasHeld=keys.spindash;keys.spindash=down;
   if(down&&!wasHeld)beginSpinDash();
   if(!down&&wasHeld)releaseSpinDash();
  }
- if(isPeelOut){
+ if(pressedCode===controlBindings.peelout){
   const wasHeld=keys.peelout;keys.peelout=down;
   if(down&&!wasHeld)beginSuperPeelOut();
   if(!down&&wasHeld)releaseSuperPeelOut();
  }
- if(isHoming){
+ if(pressedCode===controlBindings.homing){
   const wasHeld=keys.homing;keys.homing=down;
   if(down&&!wasHeld)homingAttack();
  }
- if(isJump){
+ if(pressedCode===controlBindings.jump){
   const wasHeld=keys.jump;keys.jump=down;
   if(down&&!wasHeld)jump();
  }
- if(down&&key==='Enter'&&!running)startGame();
+ if(down&&pressedCode==='Enter'&&!running)startGame();
 }
 window.addEventListener('keydown',e=>{
- if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
- setKey(e.key,true);
+ if(captureControlKey(e))return;
+ if(!controlsPanel.classList.contains('hidden')){
+  e.preventDefault();
+  if(e.code==='Escape')closeControlsPanel();
+  return;
+ }
+ if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code))e.preventDefault();
+ setKey(e.key,true,e.code);
+},true);
+window.addEventListener('keyup',e=>{
+ if(!controlsPanel.classList.contains('hidden')){e.preventDefault();return}
+ setKey(e.key,false,e.code);
 });
-window.addEventListener('keyup',e=>setKey(e.key,false));
 window.addEventListener('blur',()=>{
+ if(listeningForControl!==null){
+  const action=listeningForControl;listeningForControl=null;
+  setControlMessage('Asignación cancelada. Vuelve a pulsar CAMBIAR para intentarlo.');
+  renderControlBindings();
+ }
  keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
  if(player){
   if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
@@ -763,7 +919,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
 function applyAirMotion(dt){player.vy+=1550*dt;player.y+=player.vy*dt}
 function update(dt){
  updateEnemyExplosions(dt);
- if(!running)return;elapsed+=dt;
+ if(!running||!controlsPanel.classList.contains('hidden'))return;elapsed+=dt;
  if(player.spinDashRolling){
   player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
   if(player.spinDashRollTime<=0||Math.abs(player.vx)<115)player.spinDashRolling=false;
