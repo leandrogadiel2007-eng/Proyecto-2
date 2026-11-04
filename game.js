@@ -550,7 +550,9 @@ function drawRemotePlayers(){
      const rolling=animation==='spin';
      const falling=animation==='fall'||animation==='jump';
      const fast=animation==='speeddash'||animation==='peeloutBurst';
-     const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54));
+     const peelOutPose=animation==='peeloutCharge'||animation==='peeloutLoop';
+     const targetW=peelOutPose?64:(falling?66:(rolling?46:(fast?74:56)));
+     const targetH=peelOutPose?62:(falling?66:(rolling?46:(fast?59:54)));
      const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
      g.save();g.translate(Math.round(sx),Math.round(sy));
      if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
@@ -1809,8 +1811,8 @@ function drawPlayer(){
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  const airbornePose=rolling||falling||jumping;
  const maxSpeedPose=moving&&!rolling&&!peelOutPose&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD;
- const targetW=(falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56));
- const targetH=(falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54));
+ const targetW=peelOutPose?64:((falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56)));
+ const targetH=peelOutPose?62:((falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54)));
  // Suaviza el tamaño al pasar de Spin Dash a carrera de máxima velocidad.
  // Así se conserva el sprite grande de velocidad sin que aparezca de golpe.
  const scaleTime=Math.max(0,Math.min(.1,elapsed-(player.spriteScaleTime??elapsed)));
