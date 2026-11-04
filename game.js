@@ -1213,78 +1213,109 @@ function traceTerrain(){
  for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
 }
 function drawGround(){
- // Extiende el suelo según la posición vertical de cámara para no revelar huecos vacíos.
- const w=scene.width,h=scene.height+CAMERA_FILL_MARGIN+Math.max(0,cameraY),tile=32;
+ // Suelo de estilo plataformas clásico: bloques de tierra cálida y una capa
+ // de césped gruesa, brillante y legible junto al sprite pixel-art de Sonic.
+ const w=scene.width,h=scene.height+CAMERA_FILL_MARGIN+Math.max(0,cameraY),tile=40,grassDepth=23;
  g.save();
- // Recorta el suelo siguiendo exactamente la curva del terreno.
+ // La tierra sigue exactamente el perfil del terreno, incluso en pendientes.
  g.beginPath();g.moveTo(0,h);g.lineTo(0,terrainHeight(camera));
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
  g.lineTo(w,h);g.closePath();g.clip();
 
- // La cuadrícula queda anclada al mundo, no a la altura del terreno ni a la pantalla.
- // Así los bloques conservan su tamaño y alineación al subir y bajar las colinas.
  const offsetX=-(((camera%tile)+tile)%tile);
  let minTop=Infinity;
- for(let x=0;x<=w;x+=16)minTop=Math.min(minTop,terrainHeight(camera+x));
+ for(let x=0;x<=w;x+=12)minTop=Math.min(minTop,terrainHeight(camera+x));
  const startY=Math.floor(minTop/tile)*tile;
  for(let y=startY;y<h;y+=tile){
   const row=Math.floor(y/tile);
   const shift=(row%2===0)?0:tile/2;
   for(let x=offsetX-tile;x<w+tile;x+=tile){
-   const xx=x+shift;
-   const col=Math.floor((xx+camera)/tile);
+   const xx=x+shift,col=Math.floor((xx+camera)/tile);
    const dark=((col+row)%2===0);
-   g.fillStyle=dark?"#9b4b2d":"#c8753e";
+   // Cuadrícula checker discreta, sin marcos negros alrededor de cada bloque.
+   g.fillStyle=dark?"#a95b36":"#c77740";
    g.fillRect(xx,y,tile,tile);
-   g.fillStyle=dark?"#b45d35":"#e18b4b";
-   g.fillRect(xx,y,tile,3);g.fillRect(xx,y,3,tile);
-   g.fillStyle=dark?"#713b2a":"#a75832";
-   g.fillRect(xx,y+tile-3,tile,3);g.fillRect(xx+tile-3,y,3,tile);
-   if(Math.abs(col*7+row*11)%4===0){
-    g.fillStyle="rgba(245,169,95,.34)";
-    g.fillRect(xx+7,y+9,8,2);g.fillRect(xx+10,y+11,5,2);
-   }else if(Math.abs(col*5-row*3)%5===0){
-    g.fillStyle="rgba(72,35,27,.22)";
-    g.fillRect(xx+8,y+18,11,2);g.fillRect(xx+17,y+20,5,2);
+   g.fillStyle=dark?"#bd7042":"#dc914f";
+   g.fillRect(xx+2,y+2,tile-5,2);
+   g.fillStyle=dark?"#87472f":"#a65c36";
+   g.fillRect(xx+3,y+tile-3,tile-7,2);
+   const mark=Math.abs(col*13+row*7)%6;
+   if(mark===0){
+    g.fillStyle="rgba(246,177,102,.38)";
+    g.fillRect(xx+8,y+12,7,2);g.fillRect(xx+13,y+14,5,2);
+   }else if(mark===2){
+    g.fillStyle="rgba(89,45,31,.24)";
+    g.fillRect(xx+20,y+20,9,2);g.fillRect(xx+24,y+22,5,2);
+   }else if(mark===4){
+    g.fillStyle="rgba(255,199,119,.24)";
+    g.fillRect(xx+9,y+27,5,2);
    }
   }
  }
- // Sombra ligera también queda dentro de la silueta recortada del suelo.
  const soilShade=g.createLinearGradient(0,startY,0,h);
- soilShade.addColorStop(0,"rgba(255,190,103,.04)");
- soilShade.addColorStop(1,"rgba(45,27,25,.18)");
+ soilShade.addColorStop(0,"rgba(255,190,103,.02)");
+ soilShade.addColorStop(.45,"rgba(83,43,31,.06)");
+ soilShade.addColorStop(1,"rgba(35,24,25,.27)");
  g.fillStyle=soilShade;g.fillRect(0,startY,w,h-startY);
  g.restore();
 
- // Césped dibujado como una franja que sigue la misma curva que la tierra.
+ // Capa de césped continua que acompaña las subidas y bajadas del suelo.
  g.save();g.imageSmoothingEnabled=false;
  g.beginPath();g.moveTo(0,terrainHeight(camera));
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
- g.lineTo(w,terrainHeight(camera+w)+15);
- for(let x=w;x>=0;x-=4)g.lineTo(x,terrainHeight(camera+x)+15);
- g.closePath();g.fillStyle="#165b32";g.fill();
+ g.lineTo(w,terrainHeight(camera+w)+grassDepth);
+ for(let x=w;x>=0;x-=4)g.lineTo(x,terrainHeight(camera+x)+grassDepth);
+ g.closePath();g.fillStyle="#12582f";g.fill();
 
- // Bordes de césped y pequeños píxeles colocados siguiendo la altura local del terreno.
- for(let x=0;x<w+24;x+=4){
-  const wx=camera+x,gy=terrainHeight(wx);
-  const n=Math.abs(Math.floor(wx/24))%4;
-  g.fillStyle="#249b43";g.fillRect(x,gy+2,4,6);
-  g.fillStyle=n===0?"#8be957":n===1?"#43c83f":n===2?"#d0f779":"#36ae3b";
+ // Banda media de hierba, con variación pixelada pero sin líneas duras.
+ g.beginPath();g.moveTo(0,terrainHeight(camera)+3);
+ for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)+3);
+ g.lineTo(w,terrainHeight(camera+w)+14);
+ for(let x=w;x>=0;x-=4)g.lineTo(x,terrainHeight(camera+x)+14);
+ g.closePath();g.fillStyle="#218b3c";g.fill();
+
+ // Destellos verdes sobre la parte superior de la hierba.
+ for(let x=0;x<w+8;x+=4){
+  const gy=terrainHeight(camera+x),slot=Math.abs(Math.floor((camera+x)/24))%5;
+  g.fillStyle=slot===0?"#b1f36a":slot===1?"#63d94a":slot===2?"#39bd43":slot===3?"#8de95a":"#2ca747";
   g.fillRect(x,gy+2,4,3);
+  if(slot===1||slot===4){g.fillStyle="#d6ff82";g.fillRect(x+1,gy+1,2,1)}
  }
- for(let x=-(((camera%13)+13)%13);x<w+13;x+=13){
-  const gy=terrainHeight(camera+x),n=Math.abs(Math.floor((x+camera)/13))%3;
-  g.fillStyle=n===0?"#238b3b":n===1?"#48c844":"#a4ed57";
-  g.fillRect(x,gy+8,3,5);
-  if(n===1)g.fillRect(x+3,gy+6,3,4);
+
+ // Pequeñas briznas sobre el borde: se calculan desde la posición del mundo
+ // para que no parpadeen cuando la cámara avanza.
+ for(let x=-12;x<w+16;x+=12){
+  const wx=Math.floor(camera+x),gy=terrainHeight(wx),seed=Math.abs(Math.floor(wx/12)*17)%7;
+  if(seed===0||seed===3||seed===5){
+   g.fillStyle=seed===5?"#b5f46b":"#49c947";
+   g.fillRect(x,gy-2,3,5);
+   g.fillRect(x+2,gy-4-(seed===3?2:0),2,5+(seed===3?2:0));
+   if(seed===0){g.fillStyle="#e0ff91";g.fillRect(x+1,gy-2,2,2)}
+  }
  }
- // Contorno superior limpio, siguiendo colinas y bajadas sin una línea horizontal falsa.
+
+ // Flores diminutas y espaciadas para dar escala al paisaje sin tapar a Sonic.
+ const firstFlower=Math.floor(camera/156)*156;
+ for(let wx=firstFlower;wx<camera+w+156;wx+=156){
+  const seed=Math.abs(Math.floor(wx/156)*7)%5;
+  if(seed!==1&&seed!==4)continue;
+  const x=wx-camera+8,gy=terrainHeight(wx+8);
+  g.fillStyle="#277f3c";g.fillRect(x+1,gy-3,2,4);
+  g.fillStyle=seed===1?"#fff0a1":"#ffd45b";
+  g.fillRect(x-1,gy-7,3,3);g.fillRect(x+2,gy-6,3,3);
+  g.fillStyle="#f6a52f";g.fillRect(x+1,gy-6,2,2);
+ }
+
+ // Sombra fina bajo el borde y línea superior luminosa para separar el camino.
+ g.beginPath();g.moveTo(0,terrainHeight(camera)+grassDepth-2);
+ for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x)+grassDepth-2);
+ g.strokeStyle="#0b4829";g.lineWidth=2;g.stroke();
  g.beginPath();g.moveTo(0,terrainHeight(camera));
  for(let x=4;x<=w;x+=4)g.lineTo(x,terrainHeight(camera+x));
- g.strokeStyle="#a5ef63";g.lineWidth=2;g.stroke();
+ g.strokeStyle="#b9f36c";g.lineWidth=2;g.stroke();
  g.restore();
 
- // Corta visualmente la tierra bajo cada puente y crea un cauce profundo con agua.
+ // Corta visualmente la tierra bajo cada puente y conserva el agua debajo de la pasarela.
  const channelBottom=scene.height+Math.max(0,cameraY)+220;
  for(const bridge of bridgeSpecs){
   const sx=bridge.x-camera,wBridge=bridge.w;
@@ -1295,16 +1326,12 @@ function drawGround(){
   const cutTop=Math.min(highestGround,deckY)-4;
   const waterY=deckY+72;
   g.save();
-  // Hueco oscuro bajo la pasarela; cubre la tierra y el césped del tramo.
-  g.fillStyle="#123d59";
-  g.fillRect(sx,cutTop,wBridge,channelBottom-cutTop);
-  // Caras rocosas verticales en ambos extremos del cauce.
+  g.fillStyle="#123d59";g.fillRect(sx,cutTop,wBridge,channelBottom-cutTop);
   g.fillStyle="#71442f";g.fillRect(sx,cutTop,9,Math.max(0,waterY-cutTop));
   g.fillRect(sx+wBridge-9,cutTop,9,Math.max(0,waterY-cutTop));
   g.fillStyle="#b56d3d";g.fillRect(sx,cutTop,wBridge,4);
   g.fillStyle="#8b5238";g.fillRect(sx+9,cutTop+8,3,Math.max(0,waterY-cutTop-8));
   g.fillRect(sx+wBridge-12,cutTop+8,3,Math.max(0,waterY-cutTop-8));
-  // El agua queda claramente por debajo de las tablas.
   const waterGradient=g.createLinearGradient(0,waterY,0,channelBottom);
   waterGradient.addColorStop(0,"#32b8e4");
   waterGradient.addColorStop(.12,"#1686c5");
