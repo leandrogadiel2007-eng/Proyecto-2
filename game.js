@@ -368,7 +368,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -1811,7 +1811,17 @@ function drawPlayer(){
  const maxSpeedPose=moving&&!rolling&&!peelOutPose&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD;
  const targetW=(falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56));
  const targetH=(falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54));
- const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height));
+ // Suaviza el tamaño al pasar de Spin Dash a carrera de máxima velocidad.
+ // Así se conserva el sprite grande de velocidad sin que aparezca de golpe.
+ const scaleTime=Math.max(0,Math.min(.1,elapsed-(player.spriteScaleTime??elapsed)));
+ player.spriteScaleTime=elapsed;
+ if(!Number.isFinite(player.spriteTargetW)||!Number.isFinite(player.spriteTargetH)){
+  player.spriteTargetW=targetW;player.spriteTargetH=targetH;
+ }
+ const sizeBlend=1-Math.exp(-18*scaleTime);
+ player.spriteTargetW+=(targetW-player.spriteTargetW)*sizeBlend;
+ player.spriteTargetH+=(targetH-player.spriteTargetH)*sizeBlend;
+ const scale=Math.min(player.spriteTargetW/Math.max(1,b.width),player.spriteTargetH/Math.max(1,b.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(rolling)g.rotate(player.spinAngle||0);
