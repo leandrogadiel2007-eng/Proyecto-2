@@ -586,7 +586,7 @@ function applyPlayerDamage(){
 function jump(){if(!running)startGame();if(inUnderground)return;if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}}
 
 function beginSpinDash(){
- if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging)return;
+ if(!running||inUnderground||!player||!player.onGround||player.platformId!==null||player.spinDashCharging||player.peelOutCharging||player.homingActive)return;
  player.spinDashCharging=true;player.spinDashCharge=0;player.spinDashRolling=false;
  player.vx=0;player.vy=0;player.onGround=true;player.spin=1;player.spinAngle=0;
 }
@@ -604,7 +604,7 @@ function releaseSpinDash(){
 function beginSuperPeelOut(){
  if(!running)startGame();
  if(!running||selectedCharacterId!=='sonic'||inUnderground||!player.onGround||
-    player.platformId!==null||player.spinDashCharging||player.peelOutCharging||
+    player.platformId!==null||player.spinDashCharging||player.spinDashRolling||player.peelOutCharging||player.homingActive||
     Math.abs(player.vx)>260)return;
  player.peelOutCharging=true;player.peelOutCharge=0;player.rolling=false;
  player.spinDashRolling=false;player.vx=0;player.vy=0;player.spin=1;player.spinAngle=0;
