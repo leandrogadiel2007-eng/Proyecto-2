@@ -297,3 +297,17 @@ body.auth-locked{overflow:hidden}
 .score-ranking li.is-current:before{color:#ffe27a}
 .score-storage-note{margin:9px 0 0!important;color:#91b7d2!important;text-align:center;font:10px/1.45 'Nunito',sans-serif!important}
 @media(max-width:700px){.score-panel{max-width:460px;margin:16px auto 0}.score-stat small{font-size:6px}}
+
+
+/* Selector de personajes */
+.character-select{width:100%;margin:3px 0 13px;padding:10px 0 12px;border-top:1px solid #34749a;border-bottom:1px solid #34749a}
+.character-select-title{margin:0 0 8px!important;color:#bdf47e!important;text-align:center;font:7px/1.8 'Press Start 2P',monospace!important;letter-spacing:.25px}
+.character-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.character-option{display:flex;align-items:center;gap:7px;min-width:0;padding:7px 6px;border:1px solid #356c91;border-radius:9px;background:linear-gradient(145deg,#0c3156,#082545);color:#e8f8ff;text-align:left;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.character-option:hover{border-color:#9ee7ff;transform:translateY(-1px)}
+.character-option.is-selected{border-color:#ffe27a;background:linear-gradient(145deg,#17486a,#0d3152);box-shadow:0 0 0 1px #ffe27a44}
+.character-avatar{display:grid;place-items:center;width:31px;height:31px;flex:none;border:2px solid #eaf7ff;border-radius:50%;color:white;font:900 12px 'Space Grotesk',sans-serif;text-shadow:0 1px 3px #001a38;box-shadow:0 2px 5px #001a3866}
+.avatar-sonic{background:radial-gradient(circle at 32% 25%,#6de8ff,#1479e5 64%,#073e91)}.avatar-tails{background:radial-gradient(circle at 32% 25%,#ffe0a0,#ed8a27 64%,#a74b15)}.avatar-knuckles{background:radial-gradient(circle at 32% 25%,#ff9a86,#d52b36 64%,#7c1728)}.avatar-amy{background:radial-gradient(circle at 32% 25%,#ffd7ea,#e978ad 64%,#983567)}.avatar-shadow{background:radial-gradient(circle at 32% 25%,#727c89,#252c3a 64%,#090f1c)}
+.character-option-copy{display:grid;gap:2px;min-width:0}.character-option-copy b{font:700 11px 'Space Grotesk',sans-serif;white-space:nowrap}.character-option-copy small{color:#a9d5ed;font:9px 'Nunito',sans-serif;white-space:nowrap}.character-option.is-selected .character-option-copy b{color:#ffe27a}
+.character-select-note{margin:7px 0 0!important;color:#a9d2e9!important;text-align:center;font:9px/1.35 'Nunito',sans-serif!important}
+@media(max-width:700px){.character-select{max-width:460px;margin:3px auto 12px}.character-option{padding:7px}.character-option-copy b{font-size:12px}}

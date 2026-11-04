@@ -11,6 +11,15 @@ const DEMO_ACCOUNTS=[
 const AUTH_SESSION_KEY='blueRushDemoSession';
 const SCORE_STORAGE_KEY='blueRushScoreRecordsV1';
 const bestScoreValue=document.getElementById('bestScoreValue'),totalScoreValue=document.getElementById('totalScoreValue'),scoreMeta=document.getElementById('scoreMeta'),scoreRanking=document.getElementById('scoreRanking');
+const CHARACTER_STORAGE_KEY='blueRushSelectedCharacter:';
+const CHARACTER_DATA={
+ sonic:{name:'Sonic',description:'El erizo azul original de Blue Rush.'},
+ tails:{name:'Tails',description:'Zorro naranja de dos colas · diseño vectorial provisional.'},
+ knuckles:{name:'Knuckles',description:'Equidna rojo de puños fuertes · diseño vectorial provisional.'},
+ amy:{name:'Amy',description:'Eriza rosa de vestido rojo · diseño vectorial provisional.'},
+ shadow:{name:'Shadow',description:'Erizo oscuro con detalles rojos · diseño vectorial provisional.'}
+};
+let selectedCharacterId='sonic';
 let authenticatedUser=null;
 let playerName='';
 let currentRunRecorded=true;
@@ -67,6 +76,29 @@ function recordRun(outcome){
  records[authenticatedUser.id]=stats;
  if(writeScoreRecords(records))renderScoreboard();
 }
+function normalizeCharacterId(value){return Object.prototype.hasOwnProperty.call(CHARACTER_DATA,String(value||''))?String(value):'sonic'}
+function setSelectedCharacter(value,save=true){
+ selectedCharacterId=normalizeCharacterId(value);
+ document.querySelectorAll('[data-character]').forEach(button=>{
+  const active=button.dataset.character===selectedCharacterId;
+  button.classList.toggle('is-selected',active);
+  button.setAttribute('aria-pressed',active?'true':'false');
+ });
+ const note=document.getElementById('characterSelectNote');
+ if(note)note.textContent=CHARACTER_DATA[selectedCharacterId].description;
+ if(save&&authenticatedUser){
+  try{localStorage.setItem(CHARACTER_STORAGE_KEY+authenticatedUser.id,selectedCharacterId)}
+  catch(error){console.warn('[Blue Rush] No se pudo guardar el personaje elegido:',error)}
+ }
+}
+function restoreSelectedCharacter(){
+ let saved='sonic';
+ if(authenticatedUser){try{saved=localStorage.getItem(CHARACTER_STORAGE_KEY+authenticatedUser.id)||'sonic'}catch(_){}}
+ setSelectedCharacter(saved,false);
+}
+document.querySelectorAll('[data-character]').forEach(button=>{
+ button.addEventListener('click',()=>setSelectedCharacter(button.dataset.character,true));
+});
 function showAuthMessage(message,isError=false){
  authMessage.textContent=message;
  authMessage.classList.toggle('is-error',isError);
@@ -80,6 +112,7 @@ function setAuthenticatedUser(user,saveSession=true){
  if(loggedIn){
   playerName=authenticatedUser.name;
   playerNameInput.value=authenticatedUser.name;
+  restoreSelectedCharacter();
   logoutButton.textContent='SALIR · '+authenticatedUser.name.toUpperCase();
   status.textContent='SESIÓN ACTIVA · '+authenticatedUser.name.toUpperCase();
   if(saveSession){
@@ -89,6 +122,7 @@ function setAuthenticatedUser(user,saveSession=true){
  }else{
   logoutButton.hidden=true;
   if(loginPasswordInput)loginPasswordInput.value='';
+  restoreSelectedCharacter();
  }
  renderScoreboard();
 }
@@ -312,7 +346,7 @@ function markEnemyDestroyed(enemyId,x,y,kind,showEffect=true){
 }
 function trackOnlineEnemyPresence(){
  if(!onlineMode||!multiplayerChannel||!player)return;
- multiplayerChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)})
+ multiplayerChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)})
   .catch(error=>console.warn('[Blue Rush] No se pudo actualizar el estado de enemigos:',error));
 }
 function destroyEnemy(enemy){
@@ -337,7 +371,7 @@ function startGame(){
  if(!authenticatedUser){authGate.classList.remove('hidden');document.body.classList.add('auth-locked');showAuthMessage('Inicia sesión para comenzar a jugar.',true);return}
  if(!running){
   if(levelCompleted)resetPlayer();
-  startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';
+  startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';
   startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
   startButton.textContent='JUGAR SOLO';
   playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;
@@ -378,8 +412,8 @@ async function startOnlineGame(){
    if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
    if(!Number.isFinite(x)||!Number.isFinite(y)||x< -200||x>worldWidth+200||y< -1000||y>5000)return;
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
-   if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
-   other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
+   if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:'sonic',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
+   other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.characterId=normalizeCharacterId(payload.characterId);other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
    const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
@@ -390,8 +424,9 @@ async function startOnlineGame(){
     if(!person||!person.id||person.id===multiplayerId)continue;
     if(Array.isArray(person.destroyedEnemies))for(const enemyId of person.destroyedEnemies){if(markEnemyDestroyed(enemyId,NaN,NaN,NaN,true))mergedEnemyState=true;}
     const id=String(person.id);seen.add(id);let other=remotePlayers.get(id);
-    if(!other){const x=Number.isFinite(Number(person.x))?Number(person.x):90,y=Number.isFinite(Number(person.y))?Number(person.y):terrainHeight(x)-43;other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}
+    if(!other){const x=Number.isFinite(Number(person.x))?Number(person.x):90,y=Number.isFinite(Number(person.y))?Number(person.y):terrainHeight(x)-43;other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:normalizeCharacterId(person.characterId),animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}
     if(person.name)other.name=String(person.name).replace(/[<>]/g,'').slice(0,16)||'Jugador';
+    other.characterId=normalizeCharacterId(person.characterId);
    }
    for(const id of remotePlayers.keys())if(!seen.has(id))remotePlayers.delete(id);
    if(mergedEnemyState)trackOnlineEnemyPresence();
@@ -399,7 +434,7 @@ async function startOnlineGame(){
   });
   multiplayerChannel=roomChannel;
   await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Se agotó el tiempo de conexión.')),12000);roomChannel.subscribe(state=>{if(state==='SUBSCRIBED'){clearTimeout(timeout);resolve()}else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){clearTimeout(timeout);reject(new Error('Supabase respondió: '+state))}})});
-  await roomChannel.track({id:multiplayerId,name:playerName,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)});
+  await roomChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)});
   onlineMode=true;trackOnlineEnemyPresence();lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
  }catch(error){
   console.error('[Blue Rush] Error de multijugador online:',error);onlineMode=false;const oldChannel=multiplayerChannel,oldClient=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;remotePlayers.clear();
@@ -415,24 +450,75 @@ function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle';
  if(running){if(player.spinDashCharging)animation='spindash';else if(player.spin)animation='spin';else if(!player.onGround)animation=player.vy<0?'jump':'fall';else if(speedRatio>=0.58)animation='speeddash';else if(speedRatio>=0.38)animation='dash';else if(Math.abs(player.vx)>25)animation='run'}
  const phase=animation==='spin'||animation==='spindash'?player.spinPhase:(animation==='fall'||animation==='jump'?player.fallPhase:player.runPhase);
- const payload={id:multiplayerId,name:playerName,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
+ const payload={id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,vx:Math.round(player.vx*10)/10,vy:Math.round(player.vy*10)/10,facing:player.facing,animation,phase,spinAngle:player.spinAngle||0,progress:Math.round(player.x/(worldWidth-player.w-90)*1000)/10,playing:running,sentAt:Date.now()};
  const channel=multiplayerChannel;channel.send({type:'broadcast',event:'player-state',payload}).then(result=>{if(result==='error')console.warn('[Blue Rush] Supabase no pudo enviar la posición del jugador.')}).catch(error=>console.warn('[Blue Rush] Error al enviar posición:',error));
 }
+
+function drawVectorCharacter(characterId,screenX,screenY,options={}){
+ const id=normalizeCharacterId(characterId),phase=Number(options.phase)||0;
+ const moving=Boolean(options.moving),rolling=Boolean(options.rolling),falling=Boolean(options.falling);
+ const footSwing=moving?Math.sin(phase*6)*5:0;
+ g.save();g.translate(Math.round(screenX),Math.round(screenY));
+ if(rolling)g.rotate(Number(options.spinAngle)||phase*7);else{if(falling)g.rotate(-.16);if(Number(options.facing)<0)g.scale(-1,1)}
+ const ellipse=(x,y,rx,ry,fill,stroke='#17314f',line=1.8)=>{g.fillStyle=fill;g.strokeStyle=stroke;g.lineWidth=line;g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill();if(stroke)g.stroke()};
+ const poly=(pts,fill,stroke='#17314f',line=1.8)=>{g.fillStyle=fill;g.strokeStyle=stroke;g.lineWidth=line;g.lineJoin='round';g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.closePath();g.fill();if(stroke)g.stroke()};
+ ellipse(0,25,19,4,'rgba(8,38,69,.24)',null,0);
+ if(id==='tails'){
+  poly([[-8,8],[-31,-12],[-21,0],[-5,10]],'#f28b28','#9d4b20',2);poly([[-7,12],[-31,8],[-20,2],[-5,8]],'#f28b28','#9d4b20',2);
+  poly([[-30,-12],[-34,-17],[-24,-15]],'#fff4df','#c1d1db',1);poly([[-31,8],[-35,4],[-25,7]],'#fff4df','#c1d1db',1);
+  poly([[-12,-19],[-16,-32],[-3,-24],[2,-30],[8,-17]],'#f28b28','#9d4b20',2);poly([[3,-21],[5,-33],[15,-24],[18,-14]],'#f28b28','#9d4b20',2);
+  ellipse(0,2,13,17,'#f28b28','#9d4b20',2);ellipse(5,-8,13,13,'#f28b28','#9d4b20',2);ellipse(9,-3,8,6,'#fff0d9','#b46a36',1.2);ellipse(10,-13,3.1,6,'#fff','#587b9a',.8);ellipse(11,-12,1.5,3,'#164577',null,0);
+  poly([[7,1],[13,5],[10,13],[4,10]],'#fff0d9','#b46a36',1);ellipse(-8,24+footSwing*.18,9,4,'#e53b3e','#81252e',1.5);ellipse(8,24-footSwing*.18,9,4,'#e53b3e','#81252e',1.5);
+  g.fillStyle='#fff';g.fillRect(-13,23+footSwing*.18,8,2);g.fillRect(3,23-footSwing*.18,8,2);
+ }else if(id==='knuckles'){
+  poly([[-5,-11],[-20,-18],[-14,-7],[-27,-4],[-14,1],[-23,10],[-8,8]],'#d72d32','#76222d',2);poly([[-10,-18],[-18,-27],[-4,-23],[4,-29],[8,-17]],'#e93438','#76222d',2);
+  ellipse(0,2,13,18,'#e93438','#76222d',2);ellipse(6,-9,14,13,'#ed4141','#76222d',2);ellipse(11,-4,8,6,'#f4d4b5','#8b5e4c',1);ellipse(11,-13,3.2,6,'#fff','#647e91',.8);ellipse(12,-12,1.6,3,'#16864c',null,0);ellipse(-3,14,8,7,'#f4d4b5','#8b5e4c',1);
+  ellipse(-17,7,7,8,'#fff','#7c8fa0',1.1);poly([[-20,1],[-26,-5],[-23,4],[-29,8],[-20,9]],'#fff','#7c8fa0',1);ellipse(19,8,7,8,'#fff','#7c8fa0',1.1);poly([[20,1],[27,-5],[24,5],[30,8],[20,10]],'#fff','#7c8fa0',1);
+  poly([[-12,24+footSwing*.18],[-4,22+footSwing*.18],[5,25+footSwing*.18],[9,29+footSwing*.18],[-13,29+footSwing*.18]],'#d52d35','#79232a',1.5);poly([[4,23-footSwing*.18],[14,22-footSwing*.18],[22,26-footSwing*.18],[20,30-footSwing*.18],[2,29-footSwing*.18]],'#d52d35','#79232a',1.5);
+  g.fillStyle='#f5d76c';g.fillRect(-4,25+footSwing*.18,7,2);g.fillRect(12,25-footSwing*.18,6,2);
+ }else if(id==='amy'){
+  poly([[-7,-15],[-21,-23],[-14,-9],[-25,-3],[-12,1],[-21,10],[-6,8]],'#f27cae','#9b3d76',2);poly([[-9,-19],[-15,-30],[-2,-23],[5,-31],[9,-16]],'#ff91bd','#9b3d76',2);
+  ellipse(0,1,13,17,'#f58ab8','#9b3d76',2);ellipse(6,-9,14,13,'#ff9bc4','#9b3d76',2);ellipse(10,-4,8,6,'#ffe0d4','#b66b82',1);ellipse(10,-13,3.2,6,'#fff','#647e91',.8);ellipse(11,-12,1.5,3,'#248a65',null,0);ellipse(-2,13,7,7,'#ffe0d4','#b66b82',1);
+  poly([[-12,7],[11,7],[17,22],[0,26],[-16,22]],'#e83a52','#8f243d',2);g.fillStyle='#ffd9e3';g.fillRect(-8,14,15,2);ellipse(-17,7,6,7,'#fff','#a1b3c0',1);ellipse(18,7,6,7,'#fff','#a1b3c0',1);
+  ellipse(-8,26+footSwing*.18,8,4,'#d92d4c','#81243a',1.2);ellipse(9,26-footSwing*.18,8,4,'#d92d4c','#81243a',1.2);g.fillStyle='#ffe78d';g.fillRect(-11,23+footSwing*.18,5,2);g.fillRect(6,23-footSwing*.18,5,2);g.strokeStyle='#ffe37b';g.lineWidth=2;g.beginPath();g.arc(4,-19,9,Math.PI,Math.PI*2);g.stroke();
+ }else{
+  poly([[-6,-12],[-22,-20],[-14,-9],[-28,-4],[-14,2],[-24,11],[-7,9]],'#171e2b','#080d18',2);poly([[-15,-19],[-19,-30],[-5,-24],[1,-32],[8,-17]],'#202938','#090f1b',2);poly([[-16,-18],[-21,-24],[-12,-22]],'#e53849',null,0);poly([[-8,-25],[-2,-31],[2,-24]],'#e53849',null,0);
+  ellipse(0,2,13,18,'#202938','#080f18',2);ellipse(6,-9,14,13,'#2a3442','#080f18',2);ellipse(10,-4,8,6,'#e7d3bd','#6e5b54',1);ellipse(10,-13,3.2,6,'#fff','#647e91',.8);ellipse(11,-12,1.5,3,'#d83243',null,0);
+  poly([[-5,8],[3,10],[8,20],[0,15],[-6,19],[-10,12]],'#f4f0e8','#9099a1',1);ellipse(-17,7,6,7,'#fff','#9caab5',1);ellipse(18,7,6,7,'#fff','#9caab5',1);
+  ellipse(-8,26+footSwing*.18,10,4,'#d83243','#641d31',1.5);ellipse(9,26-footSwing*.18,10,4,'#d83243','#641d31',1.5);g.fillStyle='#f7d56e';g.fillRect(-14,23+footSwing*.18,7,2);g.fillRect(3,23-footSwing*.18,7,2);
+  g.strokeStyle='#f1c84e';g.lineWidth=2;g.beginPath();g.ellipse(-18,7,4,6,0,0,Math.PI*2);g.stroke();g.beginPath();g.ellipse(19,8,4,6,0,0,Math.PI*2);g.stroke();
+ }
+ if(rolling){g.strokeStyle=id==='tails'?'#fff0d9':id==='knuckles'?'#ffbbbb':id==='amy'?'#ffd2e7':'#ff6575';g.lineWidth=3;g.beginPath();g.arc(0,0,25,.2,Math.PI*1.7);g.stroke()}
+ g.restore();
+}
+
 function drawRemotePlayers(){
  if(!onlineMode)return;const now=performance.now();
  for(const [id,other] of remotePlayers){
-  if(now-other.lastSeen>9000){remotePlayers.delete(id);continue}other.x+=(other.targetX-other.x)*0.32;other.y+=(other.targetY-other.y)*0.32;
-  const animation=other.animation||'idle',frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;if(!frames||!frames.length)continue;
-  const frame=frames[Math.floor(Math.max(0,other.phase)*Math.max(1,frames.length))%frames.length];if(!frame||!frame.img||!frame.img.naturalWidth)continue;
-  const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight},rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
-  const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54)),scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
-  const sx=other.x-camera+player.w/2,sy=other.y+player.h/2;g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
-  g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
+  if(now-other.lastSeen>9000){remotePlayers.delete(id);continue}
+  other.x+=(other.targetX-other.x)*0.32;other.y+=(other.targetY-other.y)*0.32;
+  const animation=other.animation||'idle',sx=other.x-camera+player.w/2,sy=other.y+player.h/2;
+  if(other.characterId&&other.characterId!=='sonic'){
+   drawVectorCharacter(other.characterId,Math.round(sx),Math.round(sy),{facing:other.facing,moving:['run','dash','speeddash'].includes(animation),rolling:['spin','spindash'].includes(animation),falling:['fall','jump'].includes(animation),phase:other.phase,spinAngle:other.spinAngle});
+  }else{
+   const frames=sonicAnimations[animation]&&sonicAnimations[animation].length?sonicAnimations[animation]:sonicAnimations.idle;
+   if(frames&&frames.length){
+    const frame=frames[Math.floor(Math.max(0,other.phase)*frames.length)%frames.length];
+    if(frame&&frame.img&&frame.img.naturalWidth){
+     const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
+     const rolling=animation==='spin'||animation==='spindash',falling=animation==='fall'||animation==='jump',fast=animation==='speeddash';
+     const targetW=falling?66:(rolling?46:(fast?74:56)),targetH=falling?66:(rolling?46:(fast?59:54));
+     const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
+     g.save();g.translate(Math.round(sx),Math.round(sy));if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
+     g.imageSmoothingEnabled=true;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
+    }
+   }
+  }
   g.save();g.font='900 12px Arial, sans-serif';g.textAlign='center';g.textBaseline='bottom';g.lineJoin='round';g.lineWidth=3;g.strokeStyle='#082b53';g.strokeText(other.name,Math.round(sx),Math.round(other.y-7));g.fillStyle='#fff3a2';g.fillText(other.name,Math.round(sx),Math.round(other.y-7));g.restore();
  }
 }
 function resetGame(){
- leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function finishRunAfterDeath(){
@@ -1449,6 +1535,11 @@ function drawFallbackPlayer(){
 }function drawPlayer(){
  const x=player.x-camera+player.w/2,y=player.y+player.h/2;
  if(player.invincible>0&&Math.floor(elapsed*16)%2===0)return;
+ if(selectedCharacterId!=='sonic'){
+  const phase=player.spinDashCharging||player.spinDashRolling?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
+  drawVectorCharacter(selectedCharacterId,x,y,{facing:player.facing,moving:player.onGround&&Math.abs(player.vx)>25,rolling:Boolean(player.spin),falling:!player.onGround&&!player.spin,phase,spinAngle:player.spinAngle});
+  return;
+ }
  if(!sonicAnimations.ready){drawFallbackPlayer();return}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  const groundGap=terrainHeight(player.x+player.w/2)-(player.y+player.h);
@@ -1559,7 +1650,7 @@ function draw(){
   ["EXPLOSIONES",drawEnemyExplosions],
   ["DISPAROS DE ABEJAS",()=>beeProjectiles.forEach(drawBeeProjectile)],
   ["OTROS JUGADORES",drawRemotePlayers],
-  ["SONIC",drawPlayer],
+  ["PERSONAJE",drawPlayer],
   ["NOMBRE",drawPlayerName]
  ];
  let copied=false;

@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1688ef">
   <title>Blue Rush — Green Island Act 1</title>
-  <link rel="stylesheet" href="style.css?v=score-system-1">
+  <link rel="stylesheet" href="style.css?v=character-select-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=online-multiplayer-3"></script>
-  <script src="game.js?v=ring-floor-fix-1" defer></script>
+  <script src="game.js?v=character-select-1" defer></script>
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-label="Inicio de sesión de Blue Rush">
@@ -71,7 +71,18 @@
           <div class="start-orb" aria-hidden="true"><img src="./assets/sonic/0cb93f9fd5a16519c7d711854a8fb862.svg" alt=""></div>
           <p class="start-kicker">BLUE RUSH · GREEN ISLAND</p>
           <h2>¡Vamos, Sonic!</h2>
-          <p>Escribe tu nombre para comenzar la aventura.</p>
+          <p>Elige tu personaje y escribe el nombre que aparecerá sobre él.</p>
+          <section class="character-select" aria-label="Selecciona un personaje">
+            <p class="character-select-title">ELIGE TU PERSONAJE</p>
+            <div class="character-grid" id="characterGrid">
+              <button type="button" class="character-option is-selected" data-character="sonic" aria-pressed="true"><span class="character-avatar avatar-sonic">S</span><span class="character-option-copy"><b>Sonic</b><small>Velocidad</small></span></button>
+              <button type="button" class="character-option" data-character="tails" aria-pressed="false"><span class="character-avatar avatar-tails">T</span><span class="character-option-copy"><b>Tails</b><small>Agilidad</small></span></button>
+              <button type="button" class="character-option" data-character="knuckles" aria-pressed="false"><span class="character-avatar avatar-knuckles">K</span><span class="character-option-copy"><b>Knuckles</b><small>Fuerza</small></span></button>
+              <button type="button" class="character-option" data-character="amy" aria-pressed="false"><span class="character-avatar avatar-amy">A</span><span class="character-option-copy"><b>Amy</b><small>Equilibrio</small></span></button>
+              <button type="button" class="character-option" data-character="shadow" aria-pressed="false"><span class="character-avatar avatar-shadow">SH</span><span class="character-option-copy"><b>Shadow</b><small>Velocidad</small></span></button>
+            </div>
+            <p id="characterSelectNote" class="character-select-note">Sonic · personaje original del juego.</p>
+          </section>
           <label class="player-name-label" for="playerName">TU NOMBRE</label>
           <input id="playerName" class="player-name-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Escribe tu nombre" aria-label="Tu nombre de jugador">
           <label class="player-name-label room-label" for="roomCode">CÓDIGO DE SALA</label>
