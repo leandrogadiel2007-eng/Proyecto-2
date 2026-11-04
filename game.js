@@ -141,6 +141,7 @@ const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),
 const greenIsland=new Image();greenIsland.src='./assets/green-island/free_edition.png';let greenIslandReady=false;greenIsland.onload=()=>{greenIslandReady=true};
 // Acto largo, pensado para durar aproximadamente 1,5–2 minutos a velocidad normal.
 const worldWidth=60000;
+const RING_VERTICAL_RADIUS=18;
 const terrainSections=[
  [0,530],[350,530],[700,520],[1050,493],[1400,464],[1750,475],[2100,515],[2450,549],[2800,558],[3150,530],
  [3500,493],[3850,450],[4200,440],[4550,473],[4900,520],[5250,569],[5600,578],[5950,535],[6300,490],[6650,468],
@@ -238,14 +239,16 @@ function buildLevel(){
  for(let x=220;x<worldWidth-280;x+=820,group++){
   const zone=sectionAt(x),pattern=(group+(Math.floor(x/5000)*2))%5,count=2+(group%2);
   for(let i=0;i<count;i++){
-   const rx=x+i*38,base=terrainHeight(rx);
+   const rx=x+i*38,base=groundSurfaceAt(rx);
    let offset;
    if(pattern===0)offset=44;
    else if(pattern===1)offset=52+Math.sin(i/(count-1)*Math.PI)*54;
    else if(pattern===2)offset=zone.kind==="ruins"?110:86;
    else if(pattern===3)offset=46+Math.sin(i/(count-1)*Math.PI)*34;
    else offset=zone.kind==="finish"?70:42;
-   rings.push({id:group+"-"+i,x:rx,y:Math.max(118,base-offset),got:false});
+   // Mantiene el anillo por encima de la superficie incluso en los picos altos.
+   const ringY=Math.min(base-36,Math.max(26,base-offset));
+   rings.push({id:group+"-"+i,x:rx,y:ringY,got:false});
   }
  }
  const enemyPositions=[980,2180,3700,5050,6550,8150,9550,11050,13900,15100,17450,19350,21100,23850,25500,27600,29450,31250,32950,34600,36080,38800,39480,41850,44580,47520,48900,51050,53200,55100,58000,59200];
@@ -471,7 +474,9 @@ function applyPlayerDamage(){
   r.got=false;
   // Los anillos salen desde Sonic hacia ambos lados y con un impulso hacia arriba.
   r.x=player.x+player.w/2+side*(8+Math.floor(index/2)*8);
-  r.y=player.y+player.h/2-8;
+  const dropFloor=inUnderground?undergroundPathY(r.x):groundSurfaceAt(r.x);
+  r.y=Math.min(player.y+player.h/2-8,dropFloor-RING_VERTICAL_RADIUS);
+  r.underground=inUnderground;
   r.vx=side*(150+Math.random()*250)+player.vx*.12;
   r.vy=-(260+Math.random()*300);
   r.bouncing=true;
@@ -628,14 +633,15 @@ function update(dt){
    r.vx=(r.vx||0)*Math.pow(.62,dt);
    if(r.x<10){r.x=10;r.vx=Math.abs(r.vx)*.7}
    if(r.x>worldWidth-10){r.x=worldWidth-10;r.vx=-Math.abs(r.vx)*.7}
-   const ringFloor=groundSurfaceAt(r.x);
-   if(r.y+12>=ringFloor&&r.vy>0){
-    r.y=ringFloor-12;
-    if((r.bounceCount||0)<4&&r.vy>100){
+   const ringFloor=r.underground?undergroundPathY(r.x):groundSurfaceAt(r.x);
+   // La elipse y su borde ocupan 18 px desde el centro; evita que atraviese el césped.
+   if(r.y+RING_VERTICAL_RADIUS>=ringFloor){
+    r.y=ringFloor-RING_VERTICAL_RADIUS;
+    if(r.vy>100&&(r.bounceCount||0)<4){
      r.vy=-r.vy*.46;
      r.vx*=.72;
      r.bounceCount=(r.bounceCount||0)+1;
-    }else{
+    }else if(r.vy>=0){
      r.vy=0;r.vx=0;r.bouncing=false;
     }
    }
