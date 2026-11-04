@@ -2,7 +2,77 @@
 'use strict';
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const startScreen=document.getElementById('startScreen'),startButton=document.getElementById('startButton'),onlineButton=document.getElementById('onlineButton'),roomCodeInput=document.getElementById('roomCode'),resetButton=document.getElementById('resetButton'),status=document.getElementById('status'),playerNameInput=document.getElementById('playerName');
+const authGate=document.getElementById('authGate'),loginForm=document.getElementById('loginForm'),loginEmailInput=document.getElementById('loginEmail'),loginPasswordInput=document.getElementById('loginPassword'),authMessage=document.getElementById('authMessage'),logoutButton=document.getElementById('logoutButton');
+const DEMO_ACCOUNTS=[
+ {id:'sonic',email:'sonic@bluerush.demo',password:'RUSH2026!',name:'Sonic'},
+ {id:'tails',email:'tails@bluerush.demo',password:'FLY2026!',name:'Tails'},
+ {id:'amy',email:'amy@bluerush.demo',password:'AMY2026!',name:'Amy'}
+];
+const AUTH_SESSION_KEY='blueRushDemoSession';
+let authenticatedUser=null;
 let playerName='';
+function showAuthMessage(message,isError=false){
+ authMessage.textContent=message;
+ authMessage.classList.toggle('is-error',isError);
+}
+function setAuthenticatedUser(user,saveSession=true){
+ authenticatedUser=user?{email:user.email,name:user.name}:null;
+ const loggedIn=Boolean(authenticatedUser);
+ authGate.classList.toggle('hidden',loggedIn);
+ document.body.classList.toggle('auth-locked',!loggedIn);
+ logoutButton.hidden=!loggedIn;
+ if(loggedIn){
+  playerName=authenticatedUser.name;
+  playerNameInput.value=authenticatedUser.name;
+  logoutButton.textContent='SALIR · '+authenticatedUser.name.toUpperCase();
+  status.textContent='SESIÓN ACTIVA · '+authenticatedUser.name.toUpperCase();
+  if(saveSession){
+   try{localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(authenticatedUser))}
+   catch(_){showAuthMessage('Sesión iniciada, pero este navegador no permite guardarla. Deberás volver a entrar al recargar.',true)}
+  }
+ }else{
+  logoutButton.hidden=true;
+  if(loginPasswordInput)loginPasswordInput.value='';
+ }
+}
+function restoreDemoSession(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)||'null');
+  const account=DEMO_ACCOUNTS.find(item=>item.email===String(saved&&saved.email||'').toLowerCase());
+  if(account){setAuthenticatedUser(account,false);return}
+ }catch(_){}
+ setAuthenticatedUser(null,false);
+}
+function handleDemoLogin(event){
+ event.preventDefault();
+ const email=String(loginEmailInput.value||'').trim().toLowerCase();
+ const password=String(loginPasswordInput.value||'');
+ const account=DEMO_ACCOUNTS.find(item=>item.email===email&&item.password===password);
+ if(!account){showAuthMessage('Correo o contraseña incorrectos. Prueba con una de las cuentas ficticias.',true);loginPasswordInput.select();return}
+ setAuthenticatedUser(account,true);
+ showAuthMessage('¡Bienvenido, '+account.name+'! Ya puedes jugar.');
+}
+loginForm.addEventListener('submit',handleDemoLogin);
+document.querySelectorAll('[data-demo-account]').forEach(button=>{
+ button.addEventListener('click',()=>{
+  const account=DEMO_ACCOUNTS.find(item=>item.id===button.dataset.demoAccount);
+  if(!account)return;
+  loginEmailInput.value=account.email;loginPasswordInput.value=account.password;
+  showAuthMessage('Datos de '+account.name+' cargados. Pulsa INICIAR SESIÓN.');
+  loginPasswordInput.focus();
+ });
+});
+logoutButton.addEventListener('click',()=>{
+ if(onlineMode)leaveOnlineRoom();
+ running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=false;
+ resetPlayer();startScreen.classList.remove('hidden');draw();
+ try{localStorage.removeItem(AUTH_SESSION_KEY)}catch(_){}
+ setAuthenticatedUser(null,false);
+ loginEmailInput.value='';
+ showAuthMessage('Sesión cerrada. Elige una cuenta para volver a entrar.');
+ loginEmailInput.focus();
+});
+restoreDemoSession();
 const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():('br-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
 const remotePlayers=new Map();
@@ -204,6 +274,7 @@ function showLobbyMessage(title,message){
  startScreen.classList.remove('hidden');
 }
 function startGame(){
+ if(!authenticatedUser){authGate.classList.remove('hidden');document.body.classList.add('auth-locked');showAuthMessage('Inicia sesión para comenzar a jugar.',true);return}
  if(!running){
   if(levelCompleted)resetPlayer();
   startScreen.querySelector('h2').textContent='¡Vamos, Sonic!';
@@ -216,6 +287,7 @@ function startGame(){
  }
 }
 async function startOnlineGame(){
+ if(!authenticatedUser){authGate.classList.remove('hidden');document.body.classList.add('auth-locked');showAuthMessage('Inicia sesión para jugar online.',true);return}
  const config=window.BLUE_RUSH_SUPABASE||{},url=String(config.url||'').trim(),key=String(config.publishableKey||config.key||'').trim();
  if(!url||!key){showLobbyMessage('Configura Supabase','Añade la URL del proyecto y la publishable key en supabase-config.js y vuelve a cargar la página.');status.textContent='FALTA CONFIGURAR SUPABASE';return}
  if(!window.supabase||typeof window.supabase.createClient!=='function'){showLobbyMessage('No se cargó Supabase','No se pudo cargar la librería online. Revisa tu conexión a internet y recarga la página.');status.textContent='SUPABASE NO DISPONIBLE';return}

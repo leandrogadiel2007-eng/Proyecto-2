@@ -5,16 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1688ef">
   <title>Blue Rush — Green Island Act 1</title>
-  <link rel="stylesheet" href="style.css?v=spin-dash-controls-1">
+  <link rel="stylesheet" href="style.css?v=demo-login-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=online-multiplayer-3"></script>
-  <script src="game.js?v=online-enemy-sync-1" defer></script>
+  <script src="game.js?v=demo-login-1" defer></script>
 </head>
 <body>
+  <section class="auth-gate" id="authGate" aria-label="Inicio de sesión de Blue Rush">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark">B</span><span>BLUE <b>RUSH</b></span></div>
+      <p class="auth-kicker">GREEN ISLAND · ACCESO DE JUGADOR</p>
+      <h1>Inicia sesión</h1>
+      <p class="auth-description">Entra con una de las cuentas de prueba para acceder a la aventura.</p>
+      <form id="loginForm" class="login-form" autocomplete="on">
+        <label for="loginEmail">CORREO ELECTRÓNICO</label>
+        <input id="loginEmail" type="email" required maxlength="80" autocomplete="username" placeholder="tu@correo.demo">
+        <label for="loginPassword">CONTRASEÑA</label>
+        <input id="loginPassword" type="password" required maxlength="80" autocomplete="current-password" placeholder="Escribe tu contraseña">
+        <button class="primary-button login-submit" type="submit">INICIAR SESIÓN</button>
+      </form>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite">Selecciona una cuenta de prueba o escribe sus datos.</p>
+      <div class="demo-accounts">
+        <p class="demo-title">CUENTAS FICTICIAS DE PRUEBA</p>
+        <button type="button" class="demo-account" data-demo-account="sonic">
+          <span><b>SONIC</b><small>sonic@bluerush.demo</small><small>Contraseña: RUSH2026!</small></span><strong>USAR</strong>
+        </button>
+        <button type="button" class="demo-account" data-demo-account="tails">
+          <span><b>TAILS</b><small>tails@bluerush.demo</small><small>Contraseña: FLY2026!</small></span><strong>USAR</strong>
+        </button>
+        <button type="button" class="demo-account" data-demo-account="amy">
+          <span><b>AMY</b><small>amy@bluerush.demo</small><small>Contraseña: AMY2026!</small></span><strong>USAR</strong>
+        </button>
+      </div>
+      <p class="auth-disclaimer">Modo demostración: estas cuentas son ficticias y el acceso se valida en este navegador. No uses contraseñas personales.</p>
+    </div>
+  </section>
   <main class="page">
     <header class="topbar">
       <a class="brand" href="#" aria-label="Blue Rush inicio"><span class="brand-mark">B</span><span>BLUE <b>RUSH</b></span></a>
-      <span class="phase">ACTO 1 · GREEN ISLAND</span>
+      <div class="topbar-actions"><span class="phase">ACTO 1 · GREEN ISLAND</span><button id="logoutButton" class="logout-button" type="button" hidden>CERRAR SESIÓN</button></div>
     </header>
     <section class="intro">
       <p class="eyebrow">AVENTURA TROPICAL · ACTO 1</p>
