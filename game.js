@@ -1890,8 +1890,14 @@ function loadTailsSheetFrame(sheet,frameIndex){
  const probe=document.createElement("canvas");probe.width=sw;probe.height=sh;const pctx=probe.getContext("2d",{willReadFrequently:true});if(!pctx)return null;
  try{pctx.drawImage(sheet,sx,sy,sw,sh,0,0,sw,sh);const px=pctx.getImageData(0,0,sw,sh).data;let l=sw,t=sh,r=-1,b=-1;
   for(let y=0;y<sh;y++)for(let x=0;x<sw;x++)if(px[(y*sw+x)*4+3]>18){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y;}
-  if(r<l||b<t)return null;return {img:sheet,bounds:{x:sx+l,y:sy+t,width:r-l+1,height:b-t+1}};
- }catch(error){console.warn("[Blue Rush] No se pudo recortar un sprite de Tails:",error);return {img:sheet,bounds:{x:sx,y:sy,width:sw,height:sh}};}
+  if(r<l||b<t)return null;
+  // Conserva la celda original: el recorte transparente no debe cambiar el pivote
+  // del personaje entre fotogramas de una misma animación.
+  return {img:sheet,cell:{x:sx,y:sy,width:sw,height:sh},bounds:{x:sx+l,y:sy+t,width:r-l+1,height:b-t+1}};
+ }catch(error){
+  console.warn("[Blue Rush] No se pudo recortar un sprite de Tails:",error);
+  return {img:sheet,cell:{x:sx,y:sy,width:sw,height:sh},bounds:{x:sx,y:sy,width:sw,height:sh}};
+ }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
 function loadTailsSprites(){
@@ -1907,7 +1913,7 @@ function loadTailsSprites(){
   console.info("[Blue Rush] Sprites de Tails cargados",{width:sheet.naturalWidth,height:sheet.naturalHeight,run:tailsAnimations.run.length,fly:tailsAnimations.fly.length,swim:tailsAnimations.swim.length,attack:tailsAnimations.tailsAttack.length});
  };
  sheet.onerror=()=>{tailsAnimations.ready=false;console.error("[Blue Rush] No se pudo cargar la hoja de sprites de Tails:",TAILS_SHEET_PATH)};
- sheet.src=TAILS_SHEET_PATH+"?v=tails-abilities-1";
+ sheet.src=TAILS_SHEET_PATH+"?v=tails-pivot-alignment-2";
 }
 function drawTailsCharacter(screenX,screenY,options={}){
  const animation=options.animation||"idle",phase=Number(options.phase)||0,frames=tailsAnimations[animation]&&tailsAnimations[animation].length?tailsAnimations[animation]:tailsAnimations.idle;
@@ -1916,8 +1922,16 @@ function drawTailsCharacter(screenX,screenY,options={}){
  if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:animation==="run",falling:["jump","fall","tired","fly","swim"].includes(animation),phase,spinAngle:options.spinAngle});return}
  const targetW=animation==="fly"?70:animation==="swim"?61:animation==="tailsAttack"?64:58,targetH=animation==="fly"?66:animation==="swim"?54:animation==="tailsAttack"?60:56;
  const scale=Math.min(targetW/b.width,targetH/b.height),dw=b.width*scale,dh=b.height*scale,smoothing=g.imageSmoothingEnabled;
+ const cell=entry.cell||{x:b.x,y:b.y,width:b.width,height:b.height};
+ const groundPose=animation==="idle"||animation==="run"||animation==="tailsAttack";
+ // El pivote se calcula desde la celda completa, no desde el borde variable
+ // del recorte transparente. Así Tails no salta entre fotogramas.
+ const anchorX=-cell.width*scale/2;
+ const anchorY=groundPose?player.h/2-cell.height*scale-1:-cell.height*scale/2;
+ const drawX=anchorX+(b.x-cell.x)*scale;
+ const drawY=anchorY+(b.y-cell.y)*scale;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));if(animation==="spin")g.rotate(Number(options.spinAngle)||phase*8);else if(Number(options.facing)<0)g.scale(-1,1);
- g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,-dh/2,dw,dh);g.imageSmoothingEnabled=smoothing;g.restore();
+ g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,drawX,drawY,dw,dh);g.imageSmoothingEnabled=smoothing;g.restore();
 }
 loadTailsSprites();
 
