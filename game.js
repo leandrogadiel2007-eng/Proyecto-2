@@ -2122,47 +2122,43 @@ function loadTailsSheetFrame(sheet,frameIndex){
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
 // Atlas de Knuckles de Sonic Advance 3, reorganizado en celdas de 66 × 66.
-const KNUCKLES_ATLAS_PATH='./assets/knuckles/knuckles-advance3.png';
-const KNUCKLES_BALL_PATH='./assets/knuckles/knuckles-ball.png';
-const KNUCKLES_CELL=66,KNUCKLES_BALL_CELL_W=74,KNUCKLES_BALL_CELL_H=43;
-const KNUCKLES_FRAME_CELLS={
- idle:[[0,0],[66,0],[132,0],[198,0],[264,0],[330,0],[396,0]],
- run:[[198,396],[264,396],[330,396],[198,66],[264,66],[330,66],[396,66],[462,66]],
- glide:[[198,66],[264,66],[330,66],[396,66],[462,66]],
- punch:[[0,132],[66,132],[132,132],[198,132],[264,132]],
- wait:[[396,198],[462,198],[0,264],[66,264],[132,264],[198,264],[264,264],[330,264],[396,264]],
- spin:[[0,0],[0,0],[0,0],[0,0]]
+// Hoja de sprites original que ya existía en Blue Rush. Es una cuadrícula 9 × 9.
+const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
+const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
+const KNUCKLES_FRAME_MAP={
+ idle:[0,1,2,3,4],
+ spin:[5,6,7,8,9,10],
+ run:[11,12,13,14,15,16,17,18,19],
+ // Las poses especiales reutilizan celdas individuales del mismo atlas local.
+ glide:[69,70,71],
+ climb:[69,70,71],
+ punch:[21,22,23,24,25,26]
 };
-let knucklesAnimations={idle:[],run:[],glide:[],climb:[],punch:[],spin:[],ready:false};
-function makeKnucklesFrames(sheet,cells,width=KNUCKLES_CELL,height=KNUCKLES_CELL){
- return cells.map(([x,y])=>({img:sheet,cell:{x,y,width,height},bounds:{x,y,width,height}}));
+let knucklesAnimations={idle:[],run:[],spin:[],glide:[],climb:[],punch:[],ready:false};
+function loadKnucklesFrames(sheet,indices){
+ const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS;
+ if(Math.round(cw)!==KNUCKLES_CELL_SIZE||Math.round(ch)!==KNUCKLES_CELL_SIZE){
+  console.warn('[Blue Rush] Dimensiones inesperadas para knucklesheet.png:',sheet.naturalWidth,sheet.naturalHeight);
+ }
+ return indices.map(index=>{
+  const col=index%KNUCKLES_ATLAS_COLUMNS,row=Math.floor(index/KNUCKLES_ATLAS_COLUMNS);
+  const x=Math.round(col*cw),y=Math.round(row*ch),width=Math.round((col+1)*cw)-x,height=Math.round((row+1)*ch)-y;
+  return {img:sheet,cell:{x,y,width,height},bounds:{x,y,width,height},index};
+ });
 }
 function loadKnucklesSprites(){
- const atlas=new Image(),ball=new Image();let atlasReady=false,ballReady=false;
- const finish=()=>{
-  if(!atlasReady||!ballReady)return;
-  knucklesAnimations={
-   idle:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.idle),
-   run:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.run),
-   glide:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.glide),
-   climb:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.glide),
-   punch:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.punch),
-   wait:makeKnucklesFrames(atlas,KNUCKLES_FRAME_CELLS.wait),
-   spin:makeKnucklesFrames(ball,[[0,0],[74,0],[148,0],[222,0]],KNUCKLES_BALL_CELL_W,KNUCKLES_BALL_CELL_H),
-   ready:true
-  };
-  console.info('[Blue Rush] Atlas real de Knuckles cargado',{
-   atlas:[atlas.naturalWidth,atlas.naturalHeight],ball:[ball.naturalWidth,ball.naturalHeight],
-   idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,
-   glide:knucklesAnimations.glide.length,punch:knucklesAnimations.punch.length,spin:knucklesAnimations.spin.length
+ const sheet=new Image();
+ sheet.onload=()=>{
+  const frames=name=>loadKnucklesFrames(sheet,KNUCKLES_FRAME_MAP[name]);
+  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),climb:frames('climb'),punch:frames('punch'),ready:true};
+  console.info('[Blue Rush] Hoja original de Knuckles cargada:',{
+   size:[sheet.naturalWidth,sheet.naturalHeight],grid:KNUCKLES_ATLAS_COLUMNS+'x'+KNUCKLES_ATLAS_ROWS,
+   cell:[Math.round(sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS),Math.round(sheet.naturalHeight/KNUCKLES_ATLAS_ROWS)],
+   idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,spin:knucklesAnimations.spin.length
   });
  };
- atlas.onload=()=>{atlasReady=true;finish()};
- ball.onload=()=>{ballReady=true;finish()};
- atlas.onerror=()=>console.error('[Blue Rush] No se pudo cargar el atlas de Knuckles:',KNUCKLES_ATLAS_PATH);
- ball.onerror=()=>console.error('[Blue Rush] No se pudo cargar el atlas de bolita de Knuckles:',KNUCKLES_BALL_PATH);
- atlas.src=KNUCKLES_ATLAS_PATH+'?v=advance3-separated-atlas-1';
- ball.src=KNUCKLES_BALL_PATH+'?v=advance3-ball-atlas-1';
+ sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-original-9x9-2';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
@@ -2170,23 +2166,18 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
   drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run',rolling:animation==='spin',falling:animation==='jump',phase,spinAngle:options.spinAngle,gliding:animation==='glide',climbing:animation==='climb',punching:animation==='punch'});
   return;
  }
- const name=animation==='climb'?'climb':
-  animation==='glide'?'glide':
-  animation==='punch'?'punch':
-  animation==='spin'||animation==='jump'||animation==='fall'?'spin':
-  animation==='run'?'run':animation==='wait'?'wait':'idle';
+ const name=animation==='climb'?'climb':animation==='glide'?'glide':animation==='punch'?'punch':animation==='spin'||animation==='jump'||animation==='fall'?'spin':animation==='run'?'run':'idle';
  const frames=knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle;
- const fps=name==='idle'?8:name==='run'?18:name==='glide'?14:name==='punch'?16:name==='spin'?20:8;
- const frameIndex=Math.min(frames.length-1,Math.floor(phase*fps)%frames.length),entry=frames[frameIndex];
- const {img,cell,bounds}=entry;
- const scale=Math.min(88/cell.width,86/cell.height),dw=bounds.width*scale,dh=bounds.height*scale;
- // Cada recorte procede del atlas JSON y ocupa una sola celda transparente de 66 px.
- const dx=(bounds.x-cell.x-cell.width/2)*scale,dy=(bounds.y-cell.y-cell.height/2)*scale;
- const smoothing=g.imageSmoothingEnabled;
+ const fps=name==='idle'?7:name==='run'?12:name==='glide'?8:name==='punch'?14:name==='spin'?16:8;
+ const entry=frames[Math.floor(phase*fps)%frames.length],img=entry.img,c=entry.cell;
+ // Cada drawImage usa una sola celda 64x64; nunca incluye el sprite vecino.
+ const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale;
+ const dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
- if(Number(options.facing)<0)g.scale(-1,1);
- g.imageSmoothingEnabled=false;
- g.drawImage(img,bounds.x,bounds.y,bounds.width,bounds.height,dx,dy,dw,dh);
+ // La orientación base de la hoja local mira a la izquierda: invierte solo
+ // al desplazarse a la derecha, para que el personaje mire hacia delante.
+ if(Number(options.facing)>=0)g.scale(-1,1);
+ g.imageSmoothingEnabled=false;g.drawImage(img,c.x,c.y,c.width,c.height,dx,dy,dw,dh);
  g.imageSmoothingEnabled=smoothing;g.restore();
 }
 loadKnucklesSprites();

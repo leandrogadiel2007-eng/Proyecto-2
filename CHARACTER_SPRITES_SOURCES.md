@@ -36,9 +36,9 @@ El nado personalizado de Blue Rush reutiliza los fotogramas de propulsión de vu
 - Nado bajo los puentes (↓ para sumergirse y salto para impulsarse).
 - Spin Dash con las poses de carga y bola correspondientes a la hoja original.
 
-Blue Rush utiliza ahora los atlases individuales de Knuckles (`assets/knuckles/knuckles-advance3.png` y `assets/knuckles/knuckles-ball.png`) junto con el mapa de frames reorganizado del proyecto Sonic-Rogue. Cada celda del atlas principal mide 66 × 66 px y el atlas de bola contiene cuatro frames de 74 × 43 px. El mapeo de animaciones se basa en `knuckles_anims.json`: idle (7 frames), run (8), glide (5), punch (5) y spin (4). Fuente de los sprites: *Sonic Advance 3*, Sega/Sonic Team; rip de Ren “Foxx” Ramos. Reorganización de atlas y mapa de animaciones consultados en [DuncanDoSomething/Sonic-Rogue](https://github.com/DuncanDoSomething/Sonic-Rogue/tree/main/src/assets).
+Blue Rush utiliza la hoja de sprites que ya estaba en el repositorio: `assets/knuckles/knucklesheet.png` (576 × 576 px). Su distribución compacta es de 9 columnas × 9 filas, con celdas de 64 × 64 px. El juego ahora recorta exactamente una celda por fotograma y refleja horizontalmente la imagen para que Knuckles mire hacia la dirección de movimiento. Los sprites de reposo, carrera y bola proceden de esta hoja local; las poses especiales de planeo, escalada y puñetazo se muestran con el mismo personaje y sus estados de animación.
 
-La hoja original de The Spriters Resource mide 1048 × 1667 px y está organizada de forma irregular; por eso no se usa como si fuera una cuadrícula uniforme.
+Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippeados por Ren “Foxx” Ramos, [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/).
 
 ## Habilidades de Knuckles en Blue Rush
 - Salto más bajo que Sonic.
@@ -48,6 +48,5 @@ La hoja original de The Spriters Resource mide 1048 × 1667 px y está organizad
 - Spin Dash sigue disponible con X.
 - Los muros rotos se sincronizan entre jugadores de una misma sala online.
 
-La cuadrícula del atlas de Knuckles se interpreta de izquierda a derecha y de arriba abajo; los fotogramas 0–4 se reservan para reposo, 5–9 para bola y 10–15 para carrera.
 
 Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
