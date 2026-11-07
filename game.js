@@ -509,7 +509,7 @@ function sendOnlineState(now){
   if(selectedCharacterId==='knuckles'&&player.knucklesGliding)animation='knucklesGlide';
   else if(selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0)animation='knucklesPunch';
   else if(selectedCharacterId==='knuckles'&&(player.spinDashCharging||player.spinDashRolling||player.rolling))animation='spin';
-  else if(selectedCharacterId==='knuckles'&&!player.onGround)animation=player.knucklesGliding?'knucklesGlide':'jump';
+  else if(selectedCharacterId==='knuckles'&&!player.onGround)animation=player.vy<0?'jump':'fall';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD)animation='knucklesMaxSpeed';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)/Math.max(1,player.speed)>=.58)animation='dash';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>25)animation='run';
@@ -552,8 +552,7 @@ function sendOnlineState(now){
   if(animation==='knucklesGlide'||animation==='jump'||animation==='fall')phase=player.fallPhase;
   else if(animation==='knucklesPunch'){const duration=player.knucklesPunchStage===3?.4:.25;phase=1-Math.max(0,player.knucklesPunchTimer)/duration;}
   else if(animation==='spin')phase=player.spinPhase;
-  else if(animation==='idle')phase=elapsed;
-  else phase=player.runPhase;
+  else phase=elapsed;
  }else if(!animation.startsWith('peelout')){
   phase=animation==='spin'||animation==='tailsAttack'?player.spinPhase:
    (animation==='fall'||animation==='jump'||animation==='fly'||animation==='swim'||animation==='tired'?player.fallPhase:player.runPhase);
@@ -2148,7 +2147,8 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
  // Duraciones tomadas de las animaciones originales: stance 0.56s, run 0.9s,
  // dash 0.6s, dash max 0.3s, glide 0.3s, ball/jump 0.2s.
  const fps=name==='idle'?10.7:name==='run'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:name==='glide'?6.7:name==='spin'||name==='jump'?20:name==='fall'?13.3:name==='punch'?20:8;
- const entry=frames[Math.floor(phase*fps)%frames.length],img=entry.img,c=entry.cell;
+ const frameIndex=animation==='punch'?Math.min(frames.length-1,Math.floor(phase*frames.length)):Math.floor(phase*fps)%frames.length;
+ const entry=frames[frameIndex],img=entry.img,c=entry.cell;
  const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale,dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
  // La hoja local conserva la orientación original; refleja solo si mira a la izquierda.
@@ -2403,11 +2403,11 @@ function drawPlayer(){
   }else if(!spriteGrounded){
    animation=player.vy<0?'jump':'fall';phase=player.fallPhase;
   }else if(Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){
-   animation='maxSpeed';phase=player.runPhase;
+   animation='maxSpeed';phase=elapsed;
   }else if(Math.abs(player.vx)/Math.max(1,player.speed)>=.58){
-   animation='dash';phase=player.runPhase;
+   animation='dash';phase=elapsed;
   }else if(Math.abs(player.vx)>25){
-   animation='run';phase=player.runPhase;
+   animation='run';phase=elapsed;
   }else{
    animation='idle';phase=elapsed;
   }
