@@ -199,7 +199,7 @@ const multiplayerId=(window.crypto&&typeof window.crypto.randomUUID==='function'
 let multiplayerClient=null,multiplayerChannel=null,multiplayerRoom='',onlineMode=false,lastNetworkSend=0;
 const remotePlayers=new Map();
 const NETWORK_SEND_INTERVAL=120;
-const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false,spindash:false,peelout:false,homing:false};
+const W=canvas.width,H=canvas.height,GROUND=530,keys={left:false,right:false,jump:false,down:false,up:false,spindash:false,peelout:false,homing:false};
 // Cámara de primer plano: muestra menos escenario y mantiene a Sonic como foco.
 const GAME_ZOOM=1.7,VIEW_W=Math.ceil(W/GAME_ZOOM),VIEW_H=Math.ceil(H/GAME_ZOOM),CAMERA_FILL_MARGIN=65;
 // Spritesheet Green Island (edición gratuita).
@@ -424,7 +424,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesClinging:false,knucklesWallId:null,knucklesWallSide:1,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesClinging:false,knucklesWallId:null,knucklesWallSide:1,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -1146,7 +1146,7 @@ function update(dt){
   if(!wall){player.knucklesClinging=false;player.knucklesWallId=null;player.vy=100;}
   else{const side=player.knucklesWallSide||1,top=knucklesWallTopY(wall),base=knucklesWallBaseY(wall);player.x=side>0?wall.x-player.w:wall.x+wall.w;player.vx=0;player.vy=0;player.onGround=false;player.platformId=null;player.knucklesGliding=false;
    if(keys.up)player.y-=205*dt;else if(keys.down)player.y+=205*dt;
-   if(player.y+player.h<=top+2){player.knucklesClinging=false;player.knucklesWallId=null;player.y=top-player.h;player.x=side>0?wall.x+wall.w+5:wall.x-player.w-5;player.vx=side*180;player.onGround=true;player.facing=side;status.textContent='KNUCKLES · SUBIÓ EL MURO';}
+   if(player.y+player.h<=top+2){player.knucklesClinging=false;player.knucklesWallId=null;player.y=top-player.h;player.x=side>0?wall.x+wall.w+5:wall.x-player.w-5;player.vx=side*180;player.vy=80;player.onGround=false;player.facing=side;status.textContent='KNUCKLES · SUBIÓ EL MURO';}
    else if(player.y>=base-player.h-2){player.knucklesClinging=false;player.knucklesWallId=null;player.y=base-player.h;player.onGround=true;status.textContent='KNUCKLES · EN LA BASE DEL MURO';}
    else player.y=Math.max(top+2,Math.min(base-player.h,player.y));
   }
