@@ -549,9 +549,7 @@ function sendOnlineState(now){
   else if(animation==='fall'||animation==='jump'||animation==='swim'||animation==='tired')phase=player.fallPhase;
   else phase=player.runPhase;
  }else if(!animation.startsWith('peelout')&&selectedCharacterId==='knuckles'){
-  if(animation==='knucklesGlide'||animation==='jump'||animation==='fall')phase=player.fallPhase;
-  else if(animation==='knucklesPunch'){const duration=player.knucklesPunchStage===3?.4:.25;phase=1-Math.max(0,player.knucklesPunchTimer)/duration;}
-  else if(animation==='spin')phase=player.spinPhase;
+  if(animation==='knucklesPunch'){const duration=player.knucklesPunchStage===3?.4:.25;phase=1-Math.max(0,player.knucklesPunchTimer)/duration;}
   else phase=elapsed;
  }else if(!animation.startsWith('peelout')){
   phase=animation==='spin'||animation==='tailsAttack'?player.spinPhase:
@@ -2397,11 +2395,11 @@ function drawPlayer(){
    animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;
    phase=1-Math.max(0,player.knucklesPunchTimer)/duration;
   }else if(player.knucklesGliding){
-   animation='glide';phase=player.fallPhase;
+   animation='glide';phase=elapsed;
   }else if(player.spinDashCharging||player.spinDashRolling||player.rolling){
-   animation='spin';phase=player.spinPhase;
+   animation='spin';phase=elapsed;
   }else if(!spriteGrounded){
-   animation=player.vy<0?'jump':'fall';phase=player.fallPhase;
+   animation=player.vy<0?'jump':'fall';phase=elapsed;
   }else if(Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){
    animation='maxSpeed';phase=elapsed;
   }else if(Math.abs(player.vx)/Math.max(1,player.speed)>=.58){
