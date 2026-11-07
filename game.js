@@ -2038,7 +2038,8 @@ function drawTailsCharacter(screenX,screenY,options={}){
  // Igual que Sprite2D en Tails.tscn: centro de la celda y escala constante.
  // Tails necesitaba mayor presencia visual: aumenta el tamaño un 35 % aprox.,
  // conservando la escala uniforme y el centro de cada celda.
- const scale=Math.min(78/cell.width,76/cell.height),dw=b.width*scale,dh=b.height*scale;
+ // Aumenta ligeramente la escala de Tails conservando el centro de cada fotograma.
+ const scale=Math.min(88/cell.width,86/cell.height),dw=b.width*scale,dh=b.height*scale;
  const drawX=(b.x-cell.x-cell.width/2)*scale;
  const drawY=(b.y-cell.y-cell.height/2)*scale;
  const smoothing=g.imageSmoothingEnabled;
