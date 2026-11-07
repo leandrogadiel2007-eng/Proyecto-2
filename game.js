@@ -1292,7 +1292,7 @@ function update(dt){
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
   if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
  if(selectedCharacterId==='tails'){
-  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
+  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
  }
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
