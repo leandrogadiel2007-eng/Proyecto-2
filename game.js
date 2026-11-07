@@ -655,9 +655,17 @@ function jump(){
  if(!running)startGame();if(inUnderground)return;
  if(selectedCharacterId==='tails'){
   if(player.tailsSwimming){if(player.tailsSwimStrokeCooldown<=0){player.vy=-410;player.tailsSwimStrokeCooldown=.2;}return;}
-  if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;return;}
-  if(!player.tailsFlying&&!player.tailsTired){player.tailsFlying=true;player.tailsFlightTime=0;player.vy=Math.min(player.vy,-360);player.spin=0;player.spinAngle=0;player.spinAttack=false;}
-  else if(player.tailsFlying){player.vy=Math.max(-470,player.vy-185);}
+  if(player.onGround){
+   player.vy=-player.jump;player.onGround=false;player.platformId=null;
+   player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;
+   player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;
+   return;
+  }
+  // En el aire, el despegue se activa con la misma tecla que se mantiene pulsada.
+  if(!player.tailsTired){
+   player.tailsFlying=true;
+   player.spin=0;player.spinAngle=0;player.spinAttack=false;
+  }
   return;
  }
  if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}
@@ -963,9 +971,14 @@ document.querySelectorAll('[data-control]').forEach(b=>{
  b.addEventListener('pointercancel',release);
  b.addEventListener('pointerleave',release);
 });
-// Al mantener salto en el aire, Sonic obtiene empuje vertical; al soltarlo actúa la gravedad normal.
+// Mientras Espacio permanece pulsado, Tails compensa la gravedad y mantiene el vuelo.
 function applyAirMotion(dt){
- if(selectedCharacterId==='tails'&&player.tailsFlying){player.vy=Math.min(125,player.vy+230*dt);player.y+=player.vy*dt;return}
+ if(selectedCharacterId==='tails'&&player.tailsFlying){
+  const flightLift=-360;
+  player.vy+=(flightLift-player.vy)*Math.min(1,9*dt);
+  player.y+=player.vy*dt;
+  return;
+ }
  if(selectedCharacterId==='tails'&&player.tailsTired){player.vy=Math.min(1180,player.vy+900*dt);player.y+=player.vy*dt;return}
  player.vy+=1550*dt;player.y+=player.vy*dt;
 }
@@ -975,7 +988,18 @@ function update(dt){
  if(player.tailsAttackTimer>0)player.tailsAttackTimer=Math.max(0,player.tailsAttackTimer-dt);
  if(player.tailsAttackCooldown>0)player.tailsAttackCooldown=Math.max(0,player.tailsAttackCooldown-dt);
  if(player.tailsSwimStrokeCooldown>0)player.tailsSwimStrokeCooldown=Math.max(0,player.tailsSwimStrokeCooldown-dt);
- if(selectedCharacterId==='tails'&&player.tailsFlying){player.tailsFlightTime=(player.tailsFlightTime||0)+dt;if(player.tailsFlightTime>=9){player.tailsFlying=false;player.tailsTired=true;status.textContent='TAILS CANSADO · DESCENDIENDO';}}
+ if(selectedCharacterId==='tails'&&!player.onGround&&!player.tailsSwimming&&!player.tailsTired){
+  // Un salto mantenido despega automáticamente; al soltar la tecla se corta el vuelo.
+  if(keys.jump)player.tailsFlying=true;
+  else player.tailsFlying=false;
+ }
+ if(selectedCharacterId==='tails'&&player.tailsFlying){
+  player.tailsFlightTime=(player.tailsFlightTime||0)+dt;
+  if(player.tailsFlightTime>=9){
+   player.tailsFlightTime=9;player.tailsFlying=false;player.tailsTired=true;
+   status.textContent='TAILS CANSADO · DESCENDIENDO';
+  }
+ }
 
  if(player.spinDashRolling){
   player.spinDashRollTime=Math.max(0,(player.spinDashRollTime||0)-dt);
@@ -1268,7 +1292,7 @@ function update(dt){
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
   if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
  if(selectedCharacterId==='tails'){
-  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
+  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
  }
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
