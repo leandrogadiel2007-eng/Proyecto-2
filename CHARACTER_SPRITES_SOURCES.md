@@ -41,12 +41,12 @@ Blue Rush utiliza la hoja de sprites que ya estaba en el repositorio: `assets/kn
 Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippeados por Ren “Foxx” Ramos, [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/).
 
 ## Habilidades de Knuckles en Blue Rush
-- Salto más bajo que Sonic.
-- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento.
-- Al planear contra un muro de roca se aferra a él. ↑/W sube, ↓/S baja y Espacio salta para soltarse.
-- Z ejecuta un combo de tres puñetazos; el último es un uppercut. Los golpes eliminan enemigos y rompen los muros de roca del recorrido.
+- Salto un poco más bajo que Sonic.
+- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento. Durante el planeo se muestran cinco fotogramas de planeo del atlas local.
+- Al alcanzar 640 unidades/s, Knuckles reproduce más rápido el ciclo de carrera y muestra estelas de velocidad.
+- Z ejecuta un combo de tres puñetazos dirigido al jugador rival que esté delante y cerca en la sala online. El rival alcanzado pierde velocidad durante 1,35 segundos y recibe un breve destello visual.
+- El puñetazo ya no destruye enemigos ni objetos. Se retiraron los muros de roca y la escalada.
 - Spin Dash sigue disponible con X.
-- Los muros rotos se sincronizan entre jugadores de una misma sala online.
 
 
 Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
