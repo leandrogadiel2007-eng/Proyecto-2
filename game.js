@@ -2179,7 +2179,7 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
   });
   return;
  }
- const fps=name==='idle'?10.7:name==='run'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:20;
+ const fps=name==='idle'?10.7:name==='run'||name==='glide'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:20;
  const frameIndex=Math.floor(phase*fps)%frames.length;
  const entry=frames[frameIndex],img=entry.img,c=entry.cell,b=entry.bounds||c;
  const scale=Math.min(88/c.width,86/c.height);
