@@ -41,13 +41,12 @@ Blue Rush utiliza la hoja de sprites que ya estaba en el repositorio: `assets/kn
 Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippeados por Ren “Foxx” Ramos, [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/).
 
 ## Habilidades de Knuckles en Blue Rush
-- Salto un poco más bajo que Sonic.
-- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento. El planeo usa los fotogramas 21–26 de la hoja local.
-- La hoja original del repositorio mide 576 × 576 px y se recorta en 9 × 9 celdas de 64 × 64 px.
-- Al alcanzar 640 unidades/s, Knuckles reproduce el ciclo de carrera de los fotogramas 11–17 a mayor ritmo y muestra estelas de velocidad. La hoja no contiene un ciclo independiente de velocidad máxima.
-- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. El golpe reduce la velocidad del rival al 28%; el tercer golpe la reduce al 20%. El efecto dura entre 1,55 y 1,8 segundos.
-- El puñetazo no destruye enemigos ni objetos. No hay paredes de roca ni escalada.
-- Spin Dash sigue disponible con X.
-
+- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento.
+- El archivo original de la escena Knuckles usa una cuadrícula de 10 × 9. El PNG que está en Blue Rush mide 576 × 576 y conserva las primeras 9 columnas; por eso se convierten los índices de la escena original al atlas recortado antes de dibujarlos.
+- Mapeo basado en la escena original de Knuckles de Sonic Escape V: reposo (0–4), carrera (11–16), Dash (21–28), Dash max (47–49), bola (7–10), planeo/fly (58–59), salto (29–32), caída (81–82) y swipe (70–73).
+- En Blue Rush se usan solo los frames que existen en el PNG local; la columna décima, que falta en ese archivo, se omite sin desplazar los fotogramas de las filas siguientes.
+- Al alcanzar 640 unidades/s, Knuckles utiliza los fotogramas originales de Dash max y estelas de velocidad.
+- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. El golpe reduce la velocidad del rival al 28%; el tercer golpe la reduce al 20%.
+- No hay muros de roca ni escalada. Spin Dash sigue disponible con X.
 
 Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.

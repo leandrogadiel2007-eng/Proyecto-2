@@ -511,6 +511,7 @@ function sendOnlineState(now){
   else if(selectedCharacterId==='knuckles'&&(player.spinDashCharging||player.spinDashRolling||player.rolling))animation='spin';
   else if(selectedCharacterId==='knuckles'&&!player.onGround)animation=player.knucklesGliding?'knucklesGlide':'jump';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD)animation='knucklesMaxSpeed';
+  else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)/Math.max(1,player.speed)>=.58)animation='dash';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>25)animation='run';
   else if(selectedCharacterId==='knuckles')animation='idle';
   else if(selectedCharacterId==='tails'&&player.tailsSwimming)animation='swim';
@@ -620,7 +621,7 @@ function drawRemotePlayers(){
   if(other.characterId==='tails'){
    drawTailsCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation,phase:other.phase,spinAngle:other.spinAngle});
   }else if(other.characterId==='knuckles'){
-   const kAnimation=animation==='knucklesGlide'?'glide':animation==='knucklesPunch'?'punch':animation==='knucklesMaxSpeed'?'maxSpeed':animation==='spin'||animation==='spindash'?'spin':animation==='run'||animation==='dash'||animation==='speeddash'?'run':animation==='jump'||animation==='fall'?'jump':'idle';
+   const kAnimation=animation==='knucklesGlide'?'glide':animation==='knucklesPunch'?'punch':animation==='knucklesMaxSpeed'?'maxSpeed':animation==='spin'||animation==='spindash'?'spin':animation==='dash'?'dash':animation==='run'||animation==='speeddash'?'run':animation==='jump'?'jump':animation==='fall'?'fall':'idle';
    drawKnucklesCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation:kAnimation,phase:other.phase,spinAngle:other.spinAngle});
   }else if(other.characterId&&other.characterId!=='sonic'){
    drawVectorCharacter(other.characterId,Math.round(sx),Math.round(sy),{facing:other.facing,moving:['run','dash','speeddash'].includes(animation),rolling:['spin','spindash'].includes(animation),falling:['fall','jump'].includes(animation),phase:other.phase,spinAngle:other.spinAngle});
@@ -2084,25 +2085,37 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// Hoja original del repositorio: 576 × 576 px, 9 columnas × 9 filas.
-// Cada celda mide 64 × 64 px. Los índices avanzan de izquierda a derecha.
-// Grupos visualmente coherentes revisados sobre la hoja original:
-// 0–4 reposo, 5–10 bolita, 11–17 carrera y 21–26 planeo.
-// La hoja no contiene una animación independiente de máxima velocidad ni
-// una secuencia normal de puñetazos: se reutiliza carrera acelerada y pose vectorial.
+// La fuente original de Knuckles usa 10x9 frames (640x576). El PNG de Blue Rush
+// conserva las primeras 9 columnas de cada fila (576x576), por lo que convertimos
+// cada frame original a la columna correcta del atlas local y omitimos la columna 10.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
 const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_FRAME_MAP={
- idle:[0,1,2,3,4],
- spin:[5,6,7,8,9,10],
- run:[11,12,13,14,15,16,17],
- glide:[21,22,23,24,25,26]
+const KNUCKLES_SOURCE_COLUMNS=10;
+const KNUCKLES_SOURCE_FRAME_MAP={
+ idle:[0,1,2,3,4,0],              // stance, Knuckles.tscn
+ spin:[7,8,9,10],                 // ball
+ run:[11,12,13,14,15,16],         // run
+ dash:[21,22,23,24,25,26,27,28],  // Dash
+ maxSpeed:[47,48,49],             // Dash max (49 is in the cropped column)
+ glide:[58,59],                   // fly animation used by the Glide component
+ jump:[29,30,31,32],              // jump
+ fall:[81,82],                    // falling
+ punch:[70,71,72,73,19]           // swipe
 };
-let knucklesAnimations={idle:[],run:[],spin:[],glide:[],ready:false};
+function knucklesSourceFrameToLocal(index){
+ const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
+ if(col>=KNUCKLES_ATLAS_COLUMNS)return -1;
+ return row*KNUCKLES_ATLAS_COLUMNS+col;
+}
+const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
+ name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
+]));
+let knucklesAnimations={idle:[],run:[],dash:[],maxSpeed:[],spin:[],glide:[],jump:[],fall:[],punch:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
  const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS;
- if(Math.round(cw)!==KNUCKLES_CELL_SIZE||Math.round(ch)!==KNUCKLES_CELL_SIZE){
-  console.warn('[Blue Rush] Dimensiones inesperadas para knucklesheet.png:',sheet.naturalWidth,sheet.naturalHeight);
+ if(sheet.naturalWidth!==576||sheet.naturalHeight!==576){
+  console.error('[Blue Rush] El atlas local de Knuckles debe medir 576 × 576:',sheet.naturalWidth,sheet.naturalHeight);
+  return [];
  }
  return indices.map(index=>{
   const col=index%KNUCKLES_ATLAS_COLUMNS,row=Math.floor(index/KNUCKLES_ATLAS_COLUMNS);
@@ -2113,38 +2126,32 @@ function loadKnucklesFrames(sheet,indices){
 function loadKnucklesSprites(){
  const sheet=new Image();
  sheet.onload=()=>{
-  if(sheet.naturalWidth!==576||sheet.naturalHeight!==576){console.error('[Blue Rush] El atlas de Knuckles no mide 576 × 576:',sheet.naturalWidth,sheet.naturalHeight);knucklesAnimations.ready=false;return;}
   const frames=name=>loadKnucklesFrames(sheet,KNUCKLES_FRAME_MAP[name]);
-  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),ready:true};
-  console.info('[Blue Rush] Hoja original de Knuckles cargada:',{
-   size:[sheet.naturalWidth,sheet.naturalHeight],grid:KNUCKLES_ATLAS_COLUMNS+'x'+KNUCKLES_ATLAS_ROWS,
-   cell:[Math.round(sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS),Math.round(sheet.naturalHeight/KNUCKLES_ATLAS_ROWS)],
-   idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,glide:knucklesAnimations.glide.length,spin:knucklesAnimations.spin.length
+  knucklesAnimations={idle:frames('idle'),run:frames('run'),dash:frames('dash'),maxSpeed:frames('maxSpeed'),spin:frames('spin'),glide:frames('glide'),jump:frames('jump'),fall:frames('fall'),punch:frames('punch'),ready:true};
+  console.info('[Blue Rush] Sprites Knuckles: mapeo original de SonicEscapeV aplicado al atlas recortado',{
+   size:[sheet.naturalWidth,sheet.naturalHeight],sourceGrid:'10x9',localGrid:'9x9',cell:[64,64],
+   animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length])),
+   sourceFrames:KNUCKLES_SOURCE_FRAME_MAP,localFrames:KNUCKLES_FRAME_MAP
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-sheet-9x9-real-frame-groups-5';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-source-10x9-local-crop-map-8';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
- if(animation==='punch'){
-  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:false,rolling:false,falling:false,phase,punching:true});
-  return;
- }
  if(!knucklesAnimations.ready){
-  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run'||animation==='maxSpeed',rolling:animation==='spin',falling:animation==='jump',phase,spinAngle:options.spinAngle,gliding:animation==='glide'});
+  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run'||animation==='dash'||animation==='maxSpeed',rolling:animation==='spin',falling:animation==='jump'||animation==='fall',phase,spinAngle:options.spinAngle,gliding:animation==='glide',punching:animation==='punch'});
   return;
  }
- const name=animation==='glide'?'glide':animation==='spin'||animation==='jump'||animation==='fall'?'spin':animation==='run'||animation==='maxSpeed'?'run':'idle';
+ const name=['idle','run','dash','maxSpeed','spin','glide','jump','fall','punch'].includes(animation)?animation:'idle';
  const frames=knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle;
- // Máxima velocidad: mismo ciclo real de carrera, acelerado y sin mezclar celdas.
- const fps=name==='idle'?6:name==='run'?7:name==='glide'?5:name==='spin'?10:7;
+ // Duraciones tomadas de las animaciones originales: stance 0.56s, run 0.9s,
+ // dash 0.6s, dash max 0.3s, glide 0.3s, ball/jump 0.2s.
+ const fps=name==='idle'?10.7:name==='run'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:name==='glide'?6.7:name==='spin'||name==='jump'?20:name==='fall'?13.3:name==='punch'?20:8;
  const entry=frames[Math.floor(phase*fps)%frames.length],img=entry.img,c=entry.cell;
- // Cada drawImage usa una sola celda 64x64; nunca incluye el sprite vecino.
- const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale;
- const dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
+ const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale,dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
- // La hoja original mira a la derecha. Refleja únicamente cuando avanza a la izquierda.
+ // La hoja local conserva la orientación original; refleja solo si mira a la izquierda.
  if(Number(options.facing)<0)g.scale(-1,1);
  if(animation==='maxSpeed'){
   g.save();g.strokeStyle='#c9f4ff';g.lineWidth=2;g.globalAlpha=.72;g.beginPath();
@@ -2383,16 +2390,27 @@ function drawPlayer(){
   drawTailsCharacter(x,y,{facing:player.facing,animation,phase});return;
  }
  if(selectedCharacterId==='knuckles'){
-  let animation='idle',phase=player.runPhase;
+  let animation='idle',phase=elapsed;
   const floorY=player.platformId!==null&&platformById(player.platformId)?aerialPlatformY(platformById(player.platformId)):groundSurfaceAt(player.x+player.w/2);
   const spriteGrounded=player.onGround||(player.platformId===null&&!inUnderground&&player.vy>=0&&player.y+player.h>=floorY-3);
-  if(player.knucklesPunchTimer>0){animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;phase=1-Math.max(0,player.knucklesPunchTimer)/duration;}
-  else if(player.knucklesGliding){animation='glide';phase=player.fallPhase;}
-  else if(player.spinDashCharging||player.spinDashRolling||player.rolling||(!spriteGrounded&&player.spin)){animation='spin';phase=player.spinPhase||player.fallPhase;}
-  else if(!spriteGrounded){animation='jump';phase=player.fallPhase;}
-  else if(Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){animation='maxSpeed';phase=player.runPhase;}
-  else if(Math.abs(player.vx)>25){animation='run';phase=player.runPhase;}
-  else{animation='idle';phase=elapsed;}
+  if(player.knucklesPunchTimer>0){
+   animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;
+   phase=1-Math.max(0,player.knucklesPunchTimer)/duration;
+  }else if(player.knucklesGliding){
+   animation='glide';phase=player.fallPhase;
+  }else if(player.spinDashCharging||player.spinDashRolling||player.rolling){
+   animation='spin';phase=player.spinPhase;
+  }else if(!spriteGrounded){
+   animation=player.vy<0?'jump':'fall';phase=player.fallPhase;
+  }else if(Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD){
+   animation='maxSpeed';phase=player.runPhase;
+  }else if(Math.abs(player.vx)/Math.max(1,player.speed)>=.58){
+   animation='dash';phase=player.runPhase;
+  }else if(Math.abs(player.vx)>25){
+   animation='run';phase=player.runPhase;
+  }else{
+   animation='idle';phase=elapsed;
+  }
   drawKnucklesCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
  }
  if(selectedCharacterId!=='sonic'){
