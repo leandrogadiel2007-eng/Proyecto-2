@@ -995,8 +995,8 @@ function update(dt){
  }
  if(selectedCharacterId==='tails'&&player.tailsFlying){
   player.tailsFlightTime=(player.tailsFlightTime||0)+dt;
-  if(player.tailsFlightTime>=9){
-   player.tailsFlightTime=9;player.tailsFlying=false;player.tailsTired=true;
+  if(player.tailsFlightTime>=7){
+   player.tailsFlightTime=7;player.tailsFlying=false;player.tailsTired=true;
    status.textContent='TAILS CANSADO · DESCENDIENDO';
   }
  }
@@ -1292,7 +1292,7 @@ function update(dt){
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
   if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
  if(selectedCharacterId==='tails'){
-  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
+  if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,9-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
  }
  }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
@@ -2024,7 +2024,9 @@ function drawTailsCharacter(screenX,screenY,options={}){
  if(!img||!img.naturalWidth||!b||!b.width||!b.height){drawVectorCharacter("tails",screenX,screenY,{facing:options.facing,moving:["run","dash","speeddash"].includes(animation),falling:["jump","fall","tired","fly","swim"].includes(animation),phase});return}
  const cell=entry.cell||{x:b.x,y:b.y,width:b.width,height:b.height};
  // Igual que Sprite2D en Tails.tscn: centro de la celda y escala constante.
- const scale=Math.min(58/cell.width,56/cell.height),dw=b.width*scale,dh=b.height*scale;
+ // Tails necesitaba mayor presencia visual: aumenta el tamaño un 35 % aprox.,
+ // conservando la escala uniforme y el centro de cada celda.
+ const scale=Math.min(78/cell.width,76/cell.height),dw=b.width*scale,dh=b.height*scale;
  const drawX=(b.x-cell.x-cell.width/2)*scale;
  const drawY=(b.y-cell.y-cell.height/2)*scale;
  const smoothing=g.imageSmoothingEnabled;
