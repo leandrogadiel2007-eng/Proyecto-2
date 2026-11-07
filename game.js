@@ -15,7 +15,7 @@ const bestScoreValue=document.getElementById('bestScoreValue'),totalScoreValue=d
 const CHARACTER_STORAGE_KEY='blueRushSelectedCharacter:';
 const CHARACTER_DATA={
  sonic:{name:'Sonic',description:'El erizo azul original de Blue Rush.'},
- tails:{name:'Tails',description:'Puede volar hasta 9 segundos, nadar bajo los puentes y atacar con sus dos colas. Pulsa salto otra vez en el aire para volar, ↓ en un puente para bucear y Z para atacar.'},
+ tails:{name:'Tails',description:'Salta con el primer toque y pulsa salto una segunda vez en el aire para volar. Mantén el botón para impulsarte; tiene 7 segundos de resistencia acumulada. Se cansa y planea hasta aterrizar. También nada bajo los puentes y ataca con sus dos colas.'},
  knuckles:{name:'Knuckles',description:'Equidna rojo de puños fuertes · diseño vectorial provisional.'},
  amy:{name:'Amy',description:'Eriza rosa de vestido rojo · diseño vectorial provisional.'},
  shadow:{name:'Shadow',description:'Erizo oscuro con detalles rojos · diseño vectorial provisional.'}
@@ -89,7 +89,7 @@ function setSelectedCharacter(value,save=true){
  if(note)note.textContent=CHARACTER_DATA[selectedCharacterId].description;
  const jumpHelp=document.querySelector('[data-binding-label="jump"]');
  const jumpCaption=jumpHelp&&jumpHelp.parentElement?jumpHelp.parentElement.querySelector('small'):null;
- if(jumpCaption)jumpCaption.textContent=selectedCharacterId==='tails'?'SALTO / VUELO':'SPIN ATTACK';
+ if(jumpCaption)jumpCaption.textContent=selectedCharacterId==='tails'?'2 TOQUES: SALTO / VUELO':'SPIN ATTACK';
  const downHelp=document.querySelector('[data-binding-label="down"]');
  const downCaption=downHelp&&downHelp.parentElement?downHelp.parentElement.querySelector('small'):null;
  if(downCaption)downCaption.textContent=selectedCharacterId==='tails'?'BUCEAR / RODAR':'RODAR';
@@ -661,7 +661,7 @@ function jump(){
    player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;
    return;
   }
-  // En el aire, el despegue se activa con la misma tecla que se mantiene pulsada.
+  // El primer toque inicia el salto; el segundo toque en el aire activa el vuelo.
   if(!player.tailsTired){
    player.tailsFlying=true;
    player.spin=0;player.spinAngle=0;player.spinAttack=false;
@@ -971,7 +971,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
  b.addEventListener('pointercancel',release);
  b.addEventListener('pointerleave',release);
 });
-// Mientras Espacio permanece pulsado, Tails compensa la gravedad y mantiene el vuelo.
+// Tras el segundo toque, mantener salto permite a Tails compensar la gravedad y mantener el vuelo.
 function applyAirMotion(dt){
  if(selectedCharacterId==='tails'&&player.tailsFlying){
   const flightLift=-360;
@@ -995,10 +995,9 @@ function update(dt){
  if(player.tailsAttackTimer>0)player.tailsAttackTimer=Math.max(0,player.tailsAttackTimer-dt);
  if(player.tailsAttackCooldown>0)player.tailsAttackCooldown=Math.max(0,player.tailsAttackCooldown-dt);
  if(player.tailsSwimStrokeCooldown>0)player.tailsSwimStrokeCooldown=Math.max(0,player.tailsSwimStrokeCooldown-dt);
- if(selectedCharacterId==='tails'&&!player.onGround&&!player.tailsSwimming&&!player.tailsTired){
-  // Un salto mantenido despega automáticamente; al soltar la tecla se corta el vuelo.
-  if(keys.jump)player.tailsFlying=true;
-  else player.tailsFlying=false;
+ if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
+  // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
+  player.tailsFlying=false;
  }
  if(selectedCharacterId==='tails'&&player.tailsFlying){
   player.tailsFlightTime=(player.tailsFlightTime||0)+dt;
