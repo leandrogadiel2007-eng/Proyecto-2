@@ -42,10 +42,11 @@ Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippea
 
 ## Habilidades de Knuckles en Blue Rush
 - Salto un poco más bajo que Sonic.
-- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento. Durante el planeo se muestran cinco fotogramas de planeo del atlas local.
-- Al alcanzar 640 unidades/s, Knuckles reproduce más rápido el ciclo de carrera y muestra estelas de velocidad.
-- Z ejecuta un combo de tres puñetazos dirigido al jugador rival que esté delante y cerca en la sala online. El rival alcanzado pierde velocidad durante 1,35 segundos y recibe un breve destello visual.
-- El puñetazo ya no destruye enemigos ni objetos. Se retiraron los muros de roca y la escalada.
+- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento. El planeo usa los fotogramas 42–46 del atlas local.
+- La hoja original del repositorio mide 576 × 576 px y se recorta en 8 × 8 celdas de 72 × 72 px.
+- Al alcanzar 640 unidades/s, Knuckles reproduce el ciclo de carrera de los fotogramas 10–17 a mayor ritmo y muestra estelas de velocidad.
+- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. El golpe reduce la velocidad del rival al 28%; el tercer golpe la reduce al 20%. El efecto dura entre 1,55 y 1,8 segundos.
+- El puñetazo no destruye enemigos ni objetos. No hay paredes de roca ni escalada.
 - Spin Dash sigue disponible con X.
 
 

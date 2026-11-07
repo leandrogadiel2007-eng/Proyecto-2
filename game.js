@@ -110,8 +110,7 @@ function setSelectedCharacter(value,save=true){
  const jumpTouch=document.querySelector('[data-control="jump"]');
  if(jumpTouch){jumpTouch.textContent=selectedCharacterId==='tails'?'VOLAR':selectedCharacterId==='knuckles'?'PLANEAR':'SPIN ATTACK';jumpTouch.setAttribute('aria-label',selectedCharacterId==='tails'?'Saltar y volar':selectedCharacterId==='knuckles'?'Saltar y planear':'Saltar y hacer Spin Attack')}
  const downTouch=document.querySelector('[data-control="down"]');
- if(downTouch){downTouch.textContent=selectedCharacterId==='knuckles'?'BAJAR ↓':'RODAR ↓';downTouch.setAttribute('aria-label',selectedCharacterId==='knuckles'?'Bajar por la pared':'Rodar o bajar al túnel')}
- const upTouch=document.querySelector('[data-control="up"]');if(upTouch)upTouch.classList.toggle('hidden',selectedCharacterId!=='knuckles');
+ if(downTouch){downTouch.textContent='RODAR ↓';downTouch.setAttribute('aria-label','Rodar o bajar al túnel')}
  const attackTouch=document.querySelector('[data-control="homing"]');
  if(attackTouch){attackTouch.textContent=selectedCharacterId==='tails'?'COLAS':selectedCharacterId==='knuckles'?'PUÑO':'HOMING';attackTouch.setAttribute('aria-label',selectedCharacterId==='knuckles'?'Dar un puñetazo':'Activar ataque del personaje')}
  if(save&&authenticatedUser){
@@ -403,7 +402,7 @@ function destroyEnemy(enemy){
 
 function resetPlayer(){
  keys.left=keys.right=keys.jump=keys.down=keys.up=keys.spindash=keys.peelout=keys.homing=false;
- player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,hitSlowTimer:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+ player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,hitSlowTimer:0,hitSlowFactor:1,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -456,10 +455,15 @@ async function startOnlineGame(){
     const remoteTarget=remotePlayers.get(targetId);
     if(remoteTarget)remoteTarget.hitFlashUntil=performance.now()+420;
     if(targetId!==multiplayerId||!running||!player)return;
-    player.hitSlowTimer=Math.max(player.hitSlowTimer||0,1.35);
-    const limit=player.speed*.36;
-    player.vx=Math.max(-limit,Math.min(limit,player.vx*.18+direction*125));
-    status.textContent='¡TE GOLPEARON! · VELOCIDAD REDUCIDA';
+    const stage=Math.max(1,Math.min(3,Math.floor(Number(payload.stage)||1)));
+    player.hitSlowFactor=stage===3?.2:.28;
+    player.hitSlowTimer=Math.max(player.hitSlowTimer||0,stage===3?1.8:1.55);
+    player.speedCharge=0;
+    player.spin=0;player.spinAttack=false;player.rolling=false;player.spinDashRolling=false;player.spinDashCharging=false;
+    player.peelOutCharging=false;player.peelOutBurst=0;player.homingActive=false;player.homingTargetId=null;
+    const limit=player.speed*player.hitSlowFactor;
+    player.vx=Math.max(-limit,Math.min(limit,player.vx*.12+direction*110));
+    status.textContent='¡TE GOLPEARON! · VELOCIDAD AL '+Math.round(player.hitSlowFactor*100)+'%';
    });
    roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
    if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
@@ -725,7 +729,7 @@ function jump(){
   return;
  }
  if(player.onGround){player.vy=-player.jump*(selectedCharacterId==='knuckles' ? 0.86 : 1);player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false;player.knucklesGliding=false;return;}
- if(selectedCharacterId==='knuckles'&&!player.knucklesGliding){player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;status.textContent='KNUCKLES · PLANEO · ↑/↓ EN LOS MUROS';}
+ if(selectedCharacterId==='knuckles'&&!player.knucklesGliding){player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;status.textContent='KNUCKLES · PLANEANDO · MANTÉN SALTO · ←/→ PARA DIRIGIR';}
 }
 
 function beginSpinDash(){
@@ -804,14 +808,14 @@ function knucklesPunch(){
  const now=elapsed,stage=now-(player.knucklesPunchComboAge||0)<.72?((player.knucklesPunchStage||0)%3)+1:1;
  player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.2;
  player.knucklesGliding=false;player.rolling=false;player.spin=0;player.spinAttack=false;
- const facing=player.facing||1,reach=stage===3?132:102,centerX=player.x+player.w/2,centerY=player.y+player.h/2;
+ const facing=player.facing||1,reach=stage===3?166:132,centerX=player.x+player.w/2,centerY=player.y+player.h/2;
  const target=[...remotePlayers.values()]
   .filter(other=>performance.now()-(other.lastSeen||0)<1800)
   .map(other=>({other,dx:(Number(other.targetX??other.x)+player.w/2-centerX)*facing,dy:Math.abs(Number(other.targetY??other.y)+player.h/2-centerY)}))
-  .filter(item=>item.dx>=-6&&item.dx<=reach&&item.dy<72)
+  .filter(item=>item.dx>=-12&&item.dx<=reach+28&&item.dy<86)
   .sort((a,b)=>a.dx-b.dx)[0];
  if(onlineMode&&multiplayerChannel&&target){
-  const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now()};
+  const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now(),slowDuration:stage===3?1.8:1.55,slowFactor:stage===3?.2:.28};
   multiplayerChannel.send({type:'broadcast',event:'player-punched',payload})
    .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el golpe al rival:',error));
   target.other.hitFlashUntil=performance.now()+420;
@@ -1079,7 +1083,7 @@ function update(dt){
  if(player.tailsSwimStrokeCooldown>0)player.tailsSwimStrokeCooldown=Math.max(0,player.tailsSwimStrokeCooldown-dt);
  if(player.knucklesPunchTimer>0)player.knucklesPunchTimer=Math.max(0,player.knucklesPunchTimer-dt);
  if(player.knucklesPunchCooldown>0)player.knucklesPunchCooldown=Math.max(0,player.knucklesPunchCooldown-dt);
- if(player.hitSlowTimer>0)player.hitSlowTimer=Math.max(0,player.hitSlowTimer-dt);
+ if(player.hitSlowTimer>0){player.hitSlowTimer=Math.max(0,player.hitSlowTimer-dt);if(player.hitSlowTimer===0)player.hitSlowFactor=1;}
  if(selectedCharacterId==='knuckles'&&player.knucklesGliding&&!keys.jump)player.knucklesGliding=false;
  if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
   // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
@@ -1188,7 +1192,7 @@ function update(dt){
    const slope=(terrainHeight(player.x+42)-terrainHeight(player.x-42))/84;
    player.vx+=Math.max(-230,Math.min(230,slope*720))*dt;
   }
-  const speedLimit=player.hitSlowTimer>0?player.speed*.36:player.speed;
+  const speedLimit=player.hitSlowTimer>0?player.speed*(Number(player.hitSlowFactor)||.28):player.speed;
   player.vx=Math.max(-speedLimit,Math.min(speedLimit,player.vx));
   player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
   if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
@@ -1318,13 +1322,12 @@ function update(dt){
   const enemyY=e.y+(e.kind===2?-7:0);
   const bodyHit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   const tailsSwipeHit=selectedCharacterId==='tails'&&player.tailsAttackTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*34))<48&&Math.abs(enemyY-(player.y+player.h/2))<54;
-  const knucklesPunchHit=selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*48))<58&&Math.abs(enemyY-(player.y+player.h/2))<64;
   const knucklesGlideHit=selectedCharacterId==='knuckles'&&player.knucklesGliding&&bodyHit;
-  const hit=bodyHit||tailsSwipeHit||knucklesPunchHit;
+  const hit=bodyHit||tailsSwipeHit;
   if(hit){
    const rollingHit=player.rolling&&Math.abs(player.vx)>160;
    const tailsFlightHit=selectedCharacterId==='tails'&&player.tailsFlying&&!player.tailsTired&&bodyHit;
-   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit||knucklesPunchHit||knucklesGlideHit;
+   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit||knucklesGlideHit;
    if(attackHit){
     const homingHit=player.homingActive;
     destroyEnemy(e);
@@ -2081,18 +2084,19 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// Atlas de Knuckles de Sonic Advance 3, reorganizado en celdas de 66 × 66.
-// Hoja de sprites original que ya existía en Blue Rush. Es una cuadrícula 9 × 9.
+// Hoja original del repositorio: 576 × 576 px, 8 columnas × 8 filas.
+// Cada fotograma ocupa exactamente una celda de 72 × 72 px.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
-const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
+const KNUCKLES_ATLAS_COLUMNS=8,KNUCKLES_ATLAS_ROWS=8,KNUCKLES_CELL_SIZE=72;
 const KNUCKLES_FRAME_MAP={
  idle:[0,1,2,3,4],
- spin:[5,6,7,8,9,10],
- run:[51,52,53,12,13,14,15,16],
- glide:[12,13,14,15,16],
- punch:[21,22,23,24,25,26]
+ spin:[5,6,7,8,9],
+ run:[10,11,12,13,14,15,16,17],
+ glide:[42,43,44,45,46],
+ maxSpeed:[10,11,12,13,14,15,16,17],
+ punch:[19,20,21,22,23,24,25]
 };
-let knucklesAnimations={idle:[],run:[],spin:[],glide:[],punch:[],ready:false};
+let knucklesAnimations={idle:[],run:[],spin:[],glide:[],maxSpeed:[],punch:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
  const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS;
  if(Math.round(cw)!==KNUCKLES_CELL_SIZE||Math.round(ch)!==KNUCKLES_CELL_SIZE){
@@ -2108,7 +2112,7 @@ function loadKnucklesSprites(){
  const sheet=new Image();
  sheet.onload=()=>{
   const frames=name=>loadKnucklesFrames(sheet,KNUCKLES_FRAME_MAP[name]);
-  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),punch:frames('punch'),ready:true};
+  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),maxSpeed:frames('maxSpeed'),punch:frames('punch'),ready:true};
   console.info('[Blue Rush] Hoja original de Knuckles cargada:',{
    size:[sheet.naturalWidth,sheet.naturalHeight],grid:KNUCKLES_ATLAS_COLUMNS+'x'+KNUCKLES_ATLAS_ROWS,
    cell:[Math.round(sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS),Math.round(sheet.naturalHeight/KNUCKLES_ATLAS_ROWS)],
@@ -2116,7 +2120,7 @@ function loadKnucklesSprites(){
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-original-9x9-2';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-original-8x8-glide-maxspeed-3';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
@@ -2125,10 +2129,12 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
   return;
  }
  const name=animation==='maxSpeed'?'maxSpeed':animation==='glide'?'glide':animation==='punch'?'punch':animation==='spin'||animation==='jump'||animation==='fall'?'spin':animation==='run'?'run':'idle';
- const frames=name==='maxSpeed'?knucklesAnimations.run:(knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle);
- const fps=name==='idle'?7:name==='run'?12:name==='maxSpeed'?25:name==='glide'?14:name==='punch'?14:name==='spin'?16:8;
+ const frames=knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle;
+ // runPhase ya aumenta con la velocidad: el ciclo de máxima velocidad usa
+ // el mismo grupo de carrera a otro ritmo, con estelas detrás del personaje.
+ const fps=name==='idle'?7:name==='run'?8:name==='maxSpeed'?5:name==='glide'?6:name==='punch'?14:name==='spin'?16:8;
  const entry=frames[Math.floor(phase*fps)%frames.length],img=entry.img,c=entry.cell;
- // Cada drawImage usa una sola celda 64x64; nunca incluye el sprite vecino.
+ // Cada drawImage usa una sola celda 72x72; nunca incluye el sprite vecino.
  const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale;
  const dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
