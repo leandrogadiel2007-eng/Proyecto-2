@@ -2174,9 +2174,8 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
  const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale;
  const dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
- // La orientación base de la hoja local mira a la izquierda: invierte solo
- // al desplazarse a la derecha, para que el personaje mire hacia delante.
- if(Number(options.facing)>=0)g.scale(-1,1);
+ // La hoja original mira a la derecha. Refleja únicamente cuando avanza a la izquierda.
+ if(Number(options.facing)<0)g.scale(-1,1);
  g.imageSmoothingEnabled=false;g.drawImage(img,c.x,c.y,c.width,c.height,dx,dy,dw,dh);
  g.imageSmoothingEnabled=smoothing;g.restore();
 }
