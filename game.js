@@ -1941,7 +1941,7 @@ const TAILS_ANIMATION_TIMINGS={
  run:{times:[0,.142857,.285714,.428571,.571429,.714286],duration:.9,loop:true},
  dash:{times:[0,.1,.2,.3,.4,.5,.6],duration:.7,loop:true},
  speeddash:{times:[0,.1,.2],duration:.3,loop:true},
- jump:{times:[0,.05,.1,.15],duration:.2,loop:false},
+ jump:{times:[0,.05,.1,.15],duration:.2,loop:true},
  fall:{times:[0],duration:.15,loop:true},
  tired:{times:[0],duration:.15,loop:true},
  fly:{times:[0,.1,.2],duration:.3,loop:true},
@@ -1996,8 +1996,8 @@ function loadTailsSprites(){
    run:tailsSheetFrames(sheet,[11,12,13,14,15,16]),         // run
    dash:tailsSheetFrames(sheet,[21,22,23,24,26,27,28]),     // Dash
    speeddash:tailsSheetFrames(sheet,[47,48,49]),            // Dash max
-   jump:tailsSheetFrames(sheet,[29,30,31,32]),              // jump
-   fall:tailsSheetFrames(sheet,[80]),                       // falling (81 is outside 9 × 9)
+   jump:tailsSheetFrames(sheet,[7,8,9,10]),               // jump: Tails se encoge en una bolita
+   fall:tailsSheetFrames(sheet,[7,8,9,10]),                  // mantiene la bolita durante toda la caída
    tired:tailsSheetFrames(sheet,[80]),
    fly:tailsSheetFrames(sheet,[76,77,78]),                  // fly
    swim:tailsSheetFrames(sheet,[76,77,78]),                 // custom swim reuses tail-propeller frames
@@ -2026,7 +2026,7 @@ function loadTailsSprites(){
   console.info("[Blue Rush] Sprites de Tails cargados",{width:sheet.naturalWidth,height:sheet.naturalHeight,run:tailsAnimations.run.length,fly:tailsAnimations.fly.length,swim:tailsAnimations.swim.length,attack:tailsAnimations.tailsAttack.length});
  };
  sheet.onerror=()=>{tailsAnimations.ready=false;console.error("[Blue Rush] No se pudo cargar la hoja de sprites de Tails:",TAILS_SHEET_PATH)};
- sheet.src=TAILS_SHEET_PATH+"?v=tails-run-jump-animation-3";
+ sheet.src=TAILS_SHEET_PATH+"?v=tails-ball-jump-4";
 }
 function drawTailsCharacter(screenX,screenY,options={}){
  const animation=options.animation||"idle",phase=Number(options.phase)||0;
