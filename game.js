@@ -860,6 +860,9 @@ function loadControlBindings(){
    const used=new Set();
    for(const action of Object.keys(DEFAULT_CONTROL_BINDINGS)){
     const code=String(saved[action]||'');
+    // Shift ya no puede activar Spin Dash por accidente; los datos guardados
+    // de versiones anteriores también se normalizan a la tecla X.
+    if(action==='spindash'&&(code==='ShiftLeft'||code==='ShiftRight'))continue;
     if(isUsableControlCode(code)&&!used.has(code)){controlBindings[action]=code;used.add(code)}
    }
   }
@@ -1110,7 +1113,7 @@ function update(dt){
  // El segundo toque activa el planeo; mantener salto también lo activa
  // cuando ya está en el aire, sin exigir un toque con precisión de un frame.
  if(selectedCharacterId==='knuckles'&&!player.onGround&&!player.knucklesGliding&&keys.jump&&
-    elapsed-(Number(player.knucklesJumpStartedAt)||elapsed)>=.16)startKnucklesGlide();
+    elapsed-(Number.isFinite(Number(player.knucklesJumpStartedAt))?Number(player.knucklesJumpStartedAt):elapsed)>=.16)startKnucklesGlide();
   if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
   // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
   player.tailsFlying=false;
