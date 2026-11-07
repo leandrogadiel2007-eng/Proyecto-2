@@ -42,9 +42,9 @@ Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippea
 
 ## Habilidades de Knuckles en Blue Rush
 - Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento.
-- El archivo original de la escena Knuckles usa una cuadrícula de 10 × 9. El PNG que está en Blue Rush mide 576 × 576 y conserva las primeras 9 columnas; por eso se convierten los índices de la escena original al atlas recortado antes de dibujarlos.
+- La escena de referencia organiza los fotogramas de Knuckles en 10 × 9. El PNG original de Blue Rush mide 576 × 576 (9 × 9 celdas): se eliminó la sexta columna de la cuadrícula de referencia (índice 5) y las columnas posteriores se compactaron una posición a la izquierda. El mapeo convierte cada índice original a esa posición local; no debe tratarse como si simplemente faltara la última columna.
 - Mapeo basado en la escena original de Knuckles de Sonic Escape V: reposo (0–4), carrera (11–16), Dash (21–28), Dash max (47–49), bola (7–10), planeo/fly (58–59), salto (29–32), caída (81–82) y swipe (70–73).
-- En Blue Rush se usan solo los frames que existen en el PNG local; la columna décima, que falta en ese archivo, se omite sin desplazar los fotogramas de las filas siguientes.
+- En Blue Rush se omite únicamente la columna original 5 y se desplaza una posición a la izquierda todo lo que viene después, fila por fila. Se mantienen los fotogramas originales que sí existen en `knucklesheet.png`.
 - Al alcanzar 640 unidades/s, Knuckles utiliza los fotogramas originales de Dash max y estelas de velocidad.
 - Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. El golpe reduce la velocidad del rival al 28%; el tercer golpe la reduce al 20%.
 - No hay muros de roca ni escalada. Spin Dash sigue disponible con X.

@@ -2082,27 +2082,30 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// La fuente original de Knuckles usa 10x9 frames (640x576). El PNG de Blue Rush
-// conserva las primeras 9 columnas de cada fila (576x576), por lo que convertimos
-// cada frame original a la columna correcta del atlas local y omitimos la columna 10.
+// La escena original organiza Knuckles en 10x9 celdas de 64 px.
+// El PNG local del repositorio (576x576) conserva 9 columnas, pero elimina
+// la sexta columna original (índice 5) de cada fila. Las columnas posteriores
+// se desplazan una celda a la izquierda; no se debe eliminar la columna 10.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
 const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_SOURCE_COLUMNS=10;
+const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=5;
 const KNUCKLES_SOURCE_FRAME_MAP={
- idle:[0,1,2,3,4,0],              // stance, Knuckles.tscn
+ idle:[0,1,2,3,4,0],              // stance
  spin:[7,8,9,10],                 // ball
  run:[11,12,13,14,15,16],         // run
  dash:[21,22,23,24,25,26,27,28],  // Dash
- maxSpeed:[47,48,49],             // Dash max (49 is in the cropped column)
- glide:[58,59],                   // fly animation used by the Glide component
+ maxSpeed:[47,48,49],             // Dash max
+ glide:[58,59],                   // fly
  jump:[29,30,31,32],              // jump
  fall:[81,82],                    // falling
  punch:[70,71,72,73,19]           // swipe
 };
 function knucklesSourceFrameToLocal(index){
+ if(!Number.isInteger(index)||index<0)return -1;
  const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
- if(col>=KNUCKLES_ATLAS_COLUMNS)return -1;
- return row*KNUCKLES_ATLAS_COLUMNS+col;
+ if(row>=KNUCKLES_ATLAS_ROWS||col===KNUCKLES_REMOVED_SOURCE_COLUMN)return -1;
+ const localCol=col>KNUCKLES_REMOVED_SOURCE_COLUMN?col-1:col;
+ return row*KNUCKLES_ATLAS_COLUMNS+localCol;
 }
 const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
  name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
@@ -2132,7 +2135,7 @@ function loadKnucklesSprites(){
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-source-10x9-local-crop-map-8';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-local-column-5-map-9';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
