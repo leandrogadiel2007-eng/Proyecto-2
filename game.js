@@ -20,6 +20,8 @@ const CHARACTER_DATA={
  amy:{name:'Amy',description:'Eriza rosa de vestido rojo · diseño vectorial provisional.'},
  shadow:{name:'Shadow',description:'Erizo oscuro con detalles rojos · diseño vectorial provisional.'}
 };
+// El estado del jugador debe existir antes de restaurar la sesión guardada.
+let running=false,lastTime=0,elapsed=0,camera=0,cameraY=0,score=0,lives=3,player=null;
 let selectedCharacterId='sonic';
 let authenticatedUser=null;
 let playerName='';
@@ -271,7 +273,7 @@ const levelSections=[
 ];
 function sectionAt(x){return levelSections.find(section=>x>=section.start&&x<section.end)||levelSections[levelSections.length-1]}
 
-let running=false,lastTime=0,elapsed=0,camera=0,cameraY=0,score=0,lives=3,player;
+
 const bridgeSpecs=[{x:12650,w:390,label:"LAGUNA"},{x:22630,w:420,label:"VIENTO"}];
 // Los tramos de puente sustituyen la superficie del terreno por una pasarela sólida.
 function bridgeAt(x){return bridgeSpecs.find(bridge=>x>=bridge.x&&x<=bridge.x+bridge.w)||null}
@@ -433,7 +435,9 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesClinging:false,knucklesWallId:null,knucklesWallSide:1,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){
+ keys.left=keys.right=keys.jump=keys.down=keys.up=keys.spindash=keys.peelout=keys.homing=false;
+ player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesClinging:false,knucklesWallId:null,knucklesWallSide:1,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
