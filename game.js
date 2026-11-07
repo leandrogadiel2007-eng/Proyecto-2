@@ -79,7 +79,16 @@ function recordRun(outcome){
 }
 function normalizeCharacterId(value){return Object.prototype.hasOwnProperty.call(CHARACTER_DATA,String(value||''))?String(value):'sonic'}
 function setSelectedCharacter(value,save=true){
+ const previousCharacterId=selectedCharacterId;
  selectedCharacterId=normalizeCharacterId(value);
+ if(previousCharacterId!==selectedCharacterId&&player){
+  player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;
+  player.homingActive=false;player.homingTargetId=null;player.homingTimer=0;
+  player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.spinDashRollTime=0;
+  player.knucklesGliding=false;player.knucklesClinging=false;player.knucklesWallId=null;player.knucklesPunchTimer=0;
+  player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;player.tailsSwimming=false;player.tailsAttackTimer=0;
+  if(!running){player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;player.y=groundSurfaceAt(player.x+player.w/2)-player.h;}
+ }
  document.querySelectorAll('[data-character]').forEach(button=>{
   const active=button.dataset.character===selectedCharacterId;
   button.classList.toggle('is-selected',active);
@@ -519,6 +528,9 @@ function sendOnlineState(now){
   if(selectedCharacterId==='knuckles'&&player.knucklesClinging)animation='knucklesClimb';
   else if(selectedCharacterId==='knuckles'&&player.knucklesGliding)animation='knucklesGlide';
   else if(selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0)animation='knucklesPunch';
+  else if(selectedCharacterId==='knuckles'&&(player.spinDashCharging||player.spinDashRolling||player.rolling||!player.onGround))animation='spin';
+  else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>25)animation='run';
+  else if(selectedCharacterId==='knuckles')animation='idle';
   else if(selectedCharacterId==='tails'&&player.tailsSwimming)animation='swim';
   else if(selectedCharacterId==='tails'&&player.tailsFlying)animation='fly';
   else if(selectedCharacterId==='tails'&&player.tailsTired&&!player.onGround)animation='tired';
@@ -2109,7 +2121,7 @@ function knucklesSheetFrames(sheet,indices){return indices.map(index=>loadKnuckl
 function loadKnucklesSprites(){const sheet=new Image();sheet.onload=()=>{knucklesAnimations={
    // Atlas compacto de 8 × 8: índices en orden de lectura, empezando en cero.
    // 0–4: reposo; 5–9: secuencia de bola; 10–15: ciclo de carrera.
-   idle:knucklesSheetFrames(sheet,[0,1,2,3,4]),
+   idle:knucklesSheetFrames(sheet,[0]),
    spin:knucklesSheetFrames(sheet,[5,6,7,8,9]),
    run:knucklesSheetFrames(sheet,[10,11,12,13,14,15]),
    ready:true
@@ -2359,10 +2371,15 @@ function drawPlayer(){
   drawTailsCharacter(x,y,{facing:player.facing,animation,phase});return;
  }
  if(selectedCharacterId==='knuckles'){
-  let animation='idle',phase=elapsed;
-  if(player.knucklesClinging)animation='climb';else if(player.knucklesPunchTimer>0)animation='punch';else if(player.knucklesGliding)animation='glide';
-  else if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.spin||!player.onGround)animation='spin';else if(Math.abs(player.vx)>25)animation='run';
-  if(animation==='spin')phase=player.spinPhase||player.fallPhase;
+  let animation='idle',phase=0;
+  const floorY=player.platformId!==null&&platformById(player.platformId)?aerialPlatformY(platformById(player.platformId)):groundSurfaceAt(player.x+player.w/2);
+  const spriteGrounded=player.onGround||(player.platformId===null&&!inUnderground&&player.vy>=0&&player.y+player.h>=floorY-3);
+  if(player.knucklesClinging)animation='climb';
+  else if(player.knucklesPunchTimer>0)animation='punch';
+  else if(player.knucklesGliding)animation='glide';
+  else if(player.spinDashCharging||player.spinDashRolling||player.rolling||!spriteGrounded){animation='spin';phase=player.spinPhase||player.fallPhase;}
+  else if(Math.abs(player.vx)>25){animation='run';phase=player.runPhase;}
+  else{animation='idle';phase=0;}
   drawKnucklesCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
  }
  if(selectedCharacterId!=='sonic'){
