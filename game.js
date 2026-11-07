@@ -2084,19 +2084,21 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// Hoja original del repositorio: 576 × 576 px, 8 columnas × 8 filas.
-// Cada fotograma ocupa exactamente una celda de 72 × 72 px.
+// Hoja original del repositorio: 576 × 576 px, 9 columnas × 9 filas.
+// Cada celda mide 64 × 64 px. Los índices avanzan de izquierda a derecha.
+// Grupos visualmente coherentes revisados sobre la hoja original:
+// 0–4 reposo, 5–10 bolita, 11–17 carrera y 21–26 planeo.
+// La hoja no contiene una animación independiente de máxima velocidad ni
+// una secuencia normal de puñetazos: se reutiliza carrera acelerada y pose vectorial.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
-const KNUCKLES_ATLAS_COLUMNS=8,KNUCKLES_ATLAS_ROWS=8,KNUCKLES_CELL_SIZE=72;
+const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
 const KNUCKLES_FRAME_MAP={
  idle:[0,1,2,3,4],
- spin:[5,6,7,8,9],
- run:[10,11,12,13,14,15,16,17],
- glide:[42,43,44,45,46],
- maxSpeed:[10,11,12,13,14,15,16,17],
- punch:[19,20,21,22,23,24,25]
+ spin:[5,6,7,8,9,10],
+ run:[11,12,13,14,15,16,17],
+ glide:[21,22,23,24,25,26]
 };
-let knucklesAnimations={idle:[],run:[],spin:[],glide:[],maxSpeed:[],punch:[],ready:false};
+let knucklesAnimations={idle:[],run:[],spin:[],glide:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
  const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS;
  if(Math.round(cw)!==KNUCKLES_CELL_SIZE||Math.round(ch)!==KNUCKLES_CELL_SIZE){
@@ -2111,36 +2113,40 @@ function loadKnucklesFrames(sheet,indices){
 function loadKnucklesSprites(){
  const sheet=new Image();
  sheet.onload=()=>{
+  if(sheet.naturalWidth!==576||sheet.naturalHeight!==576){console.error('[Blue Rush] El atlas de Knuckles no mide 576 × 576:',sheet.naturalWidth,sheet.naturalHeight);knucklesAnimations.ready=false;return;}
   const frames=name=>loadKnucklesFrames(sheet,KNUCKLES_FRAME_MAP[name]);
-  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),maxSpeed:frames('maxSpeed'),punch:frames('punch'),ready:true};
+  knucklesAnimations={idle:frames('idle'),run:frames('run'),spin:frames('spin'),glide:frames('glide'),ready:true};
   console.info('[Blue Rush] Hoja original de Knuckles cargada:',{
    size:[sheet.naturalWidth,sheet.naturalHeight],grid:KNUCKLES_ATLAS_COLUMNS+'x'+KNUCKLES_ATLAS_ROWS,
    cell:[Math.round(sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS),Math.round(sheet.naturalHeight/KNUCKLES_ATLAS_ROWS)],
-   idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,spin:knucklesAnimations.spin.length
+   idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,glide:knucklesAnimations.glide.length,spin:knucklesAnimations.spin.length
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-original-8x8-glide-maxspeed-3';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=repository-sheet-9x9-real-frame-groups-5';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
- if(!knucklesAnimations.ready){
-  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run',rolling:animation==='spin',falling:animation==='jump',phase,spinAngle:options.spinAngle,gliding:animation==='glide',climbing:animation==='climb',punching:animation==='punch'});
+ if(animation==='punch'){
+  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:false,rolling:false,falling:false,phase,punching:true});
   return;
  }
- const name=animation==='maxSpeed'?'maxSpeed':animation==='glide'?'glide':animation==='punch'?'punch':animation==='spin'||animation==='jump'||animation==='fall'?'spin':animation==='run'?'run':'idle';
+ if(!knucklesAnimations.ready){
+  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run'||animation==='maxSpeed',rolling:animation==='spin',falling:animation==='jump',phase,spinAngle:options.spinAngle,gliding:animation==='glide'});
+  return;
+ }
+ const name=animation==='glide'?'glide':animation==='spin'||animation==='jump'||animation==='fall'?'spin':animation==='run'||animation==='maxSpeed'?'run':'idle';
  const frames=knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle;
- // runPhase ya aumenta con la velocidad: el ciclo de máxima velocidad usa
- // el mismo grupo de carrera a otro ritmo, con estelas detrás del personaje.
- const fps=name==='idle'?7:name==='run'?8:name==='maxSpeed'?5:name==='glide'?6:name==='punch'?14:name==='spin'?16:8;
+ // Máxima velocidad: mismo ciclo real de carrera, acelerado y sin mezclar celdas.
+ const fps=name==='idle'?6:name==='run'?7:name==='glide'?5:name==='spin'?10:7;
  const entry=frames[Math.floor(phase*fps)%frames.length],img=entry.img,c=entry.cell;
- // Cada drawImage usa una sola celda 72x72; nunca incluye el sprite vecino.
+ // Cada drawImage usa una sola celda 64x64; nunca incluye el sprite vecino.
  const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale;
  const dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
  // La hoja original mira a la derecha. Refleja únicamente cuando avanza a la izquierda.
  if(Number(options.facing)<0)g.scale(-1,1);
- if(name==='maxSpeed'){
+ if(animation==='maxSpeed'){
   g.save();g.strokeStyle='#c9f4ff';g.lineWidth=2;g.globalAlpha=.72;g.beginPath();
   for(let i=0;i<3;i++){const yy=-14+i*12;g.moveTo(-42,yy);g.lineTo(-23,yy-2);}
   g.stroke();g.restore();
