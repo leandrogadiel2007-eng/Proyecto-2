@@ -619,7 +619,7 @@ function drawRemotePlayers(){
    drawTailsCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation,phase:other.phase,spinAngle:other.spinAngle});
   }else if(other.characterId==='knuckles'){
    const kAnimation=animation==='knucklesGlide'?'glide':animation==='knucklesPunch'?'punch':animation==='knucklesMaxSpeed'?'maxSpeed':animation==='spin'||animation==='spindash'?'spin':animation==='dash'?'dash':animation==='run'||animation==='speeddash'?'run':animation==='jump'?'jump':animation==='fall'?'fall':'idle';
-   drawKnucklesCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation:kAnimation,phase:other.phase,spinAngle:other.spinAngle});
+   drawKnucklesCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation:kAnimation,phase:other.phase,spinAngle:other.spinAngle,anchorOffsetY:player.h/2});
   }else if(other.characterId&&other.characterId!=='sonic'){
    drawVectorCharacter(other.characterId,Math.round(sx),Math.round(sy),{facing:other.facing,moving:['run','dash','speeddash'].includes(animation),rolling:['spin','spindash'].includes(animation),falling:['fall','jump'].includes(animation),phase:other.phase,spinAngle:other.spinAngle});
   }else{
@@ -2082,21 +2082,34 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// El PNG local de Knuckles se consulta directamente como cuadrícula 9x9.
-// No se debe desplazar una columna: eso mezclaba carrera, bola y poses especiales.
+// La escena original de Knuckles usa 10 columnas. El PNG del repositorio
+// mide 576x576 y conserva 9 celdas por fila: se quitó la columna fuente 5.
+// Convertimos cada frame fuente a su índice local; nunca usamos el índice fuente
+// directamente sobre el atlas compacto porque desplaza las poses.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
 const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_FRAME_MAP={
+const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=5;
+const KNUCKLES_SOURCE_FRAME_MAP={
  idle:[0,1,2,3,4,0],
  spin:[7,8,9,10],
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
  maxSpeed:[47,48,49],
- glide:[],
+ glide:[58,59],
  jump:[29,30,31,32],
- fall:[32],
- punch:[]
+ fall:[81,82],
+ punch:[70,71,72,73,19]
 };
+function knucklesSourceFrameToLocal(index){
+ if(!Number.isInteger(index)||index<0)return -1;
+ const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
+ if(row>=KNUCKLES_ATLAS_ROWS||col===KNUCKLES_REMOVED_SOURCE_COLUMN)return -1;
+ const localCol=col>KNUCKLES_REMOVED_SOURCE_COLUMN?col-1:col;
+ return row*KNUCKLES_ATLAS_COLUMNS+localCol;
+}
+const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
+ name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
+]));
 let knucklesAnimations={idle:[],run:[],dash:[],maxSpeed:[],spin:[],glide:[],jump:[],fall:[],punch:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
  const columns=KNUCKLES_ATLAS_COLUMNS,rows=KNUCKLES_ATLAS_ROWS,size=KNUCKLES_CELL_SIZE;
@@ -2137,12 +2150,12 @@ function loadKnucklesSprites(){
    punch:frames('punch'),ready:true
   };
   console.info('[Blue Rush] Atlas local de Knuckles cargado',{
-   size:[sheet.naturalWidth,sheet.naturalHeight],grid:'9x9',cell:[64,64],
-   animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length]))
+   size:[sheet.naturalWidth,sheet.naturalHeight],grid:'source 10x9 -> local 9x9',cell:[64,64],
+   sourceFrames:KNUCKLES_SOURCE_FRAME_MAP,localFrames:KNUCKLES_FRAME_MAP,animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length]))
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-direct-9x9-alpha-crop-13';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-correct-local-map-foot-anchor-glide-14';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
@@ -2170,8 +2183,11 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
  const frameIndex=Math.floor(phase*fps)%frames.length;
  const entry=frames[frameIndex],img=entry.img,c=entry.cell,b=entry.bounds||c;
  const scale=Math.min(88/c.width,86/c.height);
- const anchorX=b.x+b.width/2,anchorY=b.y+b.height/2;
- const dx=-(anchorX-c.x)*scale,dy=-(anchorY-c.y)*scale,dw=b.width*scale,dh=b.height*scale;
+ const dw=b.width*scale,dh=b.height*scale;
+ // screenY es el centro de la caja física; anclar el borde inferior visible
+ // al borde inferior del jugador mantiene los pies sobre el suelo/plataforma.
+ const anchorOffsetY=Number.isFinite(Number(options.anchorOffsetY))?Number(options.anchorOffsetY):21.5;
+ const dx=-dw/2,dy=anchorOffsetY-dh;
  const smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
  if(Number(options.facing)<0)g.scale(-1,1);
@@ -2434,7 +2450,7 @@ function drawPlayer(){
   }else{
    animation='idle';phase=elapsed;
   }
-  drawKnucklesCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
+  drawKnucklesCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle,anchorOffsetY:player.h/2});return;
  }
  if(selectedCharacterId!=='sonic'){
   const phase=player.spinDashCharging||player.spinDashRolling?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
