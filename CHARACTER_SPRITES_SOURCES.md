@@ -36,7 +36,9 @@ El nado personalizado de Blue Rush reutiliza los fotogramas de propulsión de vu
 - Nado bajo los puentes (↓ para sumergirse y salto para impulsarse).
 - Spin Dash con las poses de carga y bola correspondientes a la hoja original.
 
-La hoja local `assets/knuckles/knucklesheet.png` de 576 × 576 px no corresponde a una cuadrícula de fotogramas fiable: recortarla por celdas provoca que una misma imagen contenga varias poses. La hoja de referencia de *Sonic Advance 3* atribuida a Ren Ramos en The Spriters Resource mide 1048 × 1667 px y está organizada de forma irregular; además, la ficha indica que faltan sprites de Spin Dash y rodar. Por eso Blue Rush evita mezclar recortes y representa a Knuckles como una sola figura vectorial animada por estado (reposo, carrera, salto, planeo, escalada y puñetazo) hasta disponer de un atlas correctamente separado.
+Blue Rush utiliza ahora los atlases individuales de Knuckles (`assets/knuckles/knuckles-advance3.png` y `assets/knuckles/knuckles-ball.png`) junto con el mapa de frames reorganizado del proyecto Sonic-Rogue. Cada celda del atlas principal mide 66 × 66 px y el atlas de bola contiene cuatro frames de 74 × 43 px. El mapeo de animaciones se basa en `knuckles_anims.json`: idle (7 frames), run (8), glide (5), punch (5) y spin (4). Fuente de los sprites: *Sonic Advance 3*, Sega/Sonic Team; rip de Ren “Foxx” Ramos. Reorganización de atlas y mapa de animaciones consultados en [DuncanDoSomething/Sonic-Rogue](https://github.com/DuncanDoSomething/Sonic-Rogue/tree/main/src/assets).
+
+La hoja original de The Spriters Resource mide 1048 × 1667 px y está organizada de forma irregular; por eso no se usa como si fuera una cuadrícula uniforme.
 
 ## Habilidades de Knuckles en Blue Rush
 - Salto más bajo que Sonic.
