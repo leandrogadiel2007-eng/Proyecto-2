@@ -383,7 +383,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,spriteTargetW:56,spriteTargetH:54,spriteScaleTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -578,11 +578,8 @@ function drawRemotePlayers(){
      const img=frame.img,b=frame.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
      const rolling=animation==='spin';
      const falling=animation==='fall'||animation==='jump';
-     const fast=animation==='speeddash'||animation==='peeloutBurst';
-     const peelOutPose=animation==='peeloutCharge'||animation==='peeloutLoop';
-     const targetW=peelOutPose?64:(falling?66:(rolling?46:(fast?74:56)));
-     const targetH=peelOutPose?62:(falling?66:(rolling?46:(fast?59:54)));
-     const scale=Math.min(targetW/Math.max(1,b.width),targetH/Math.max(1,b.height)),dw=b.width*scale,dh=b.height*scale;
+     const cell=frame.cell||{width:img.naturalWidth/SONIC_ATLAS_COLUMNS,height:img.naturalHeight/SONIC_ATLAS_ROWS};
+     const scale=Math.min(88/Math.max(1,cell.width),86/Math.max(1,cell.height)),dw=b.width*scale,dh=b.height*scale;
      g.save();g.translate(Math.round(sx),Math.round(sy));
      if(rolling)g.rotate(other.spinAngle||0);else if(other.facing<0)g.scale(-1,1);
      g.imageSmoothingEnabled=false;g.drawImage(img,b.x,b.y,b.width,b.height,-dw/2,(rolling||falling)?-dh/2:player.h/2-dh-1,dw,dh);g.restore();
@@ -1998,7 +1995,7 @@ function loadTailsSprites(){
    speeddash:tailsSheetFrames(sheet,[47,48,49]),            // Dash max
    jump:tailsSheetFrames(sheet,[7,8,9,10]),               // jump: Tails se encoge en una bolita
    fall:tailsSheetFrames(sheet,[7,8,9,10]),                  // mantiene la bolita durante toda la caída
-   tired:tailsSheetFrames(sheet,[80]),
+   tired:tailsSheetFrames(sheet,[69]),                 // pose hurt del atlas: Tails agotado
    fly:tailsSheetFrames(sheet,[76,77,78]),                  // fly
    swim:tailsSheetFrames(sheet,[76,77,78]),                 // custom swim reuses tail-propeller frames
    tailsAttack:tailsSheetFrames(sheet,[70,71,72,73,19]),    // swipe
@@ -2083,7 +2080,7 @@ function loadSonicSheetFrame(sheet,frameIndex){
    }
   }
   if(right<left||bottom<top)return null;
-  return {file:"frame-"+frameIndex,img:sheet,bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}};
+  return {file:"frame-"+frameIndex,img:sheet,cell:{x:sx,y:sy,width:sw,height:sh},bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}};
  }catch(error){
   console.warn("[Blue Rush] No se pudo recortar el fotograma "+frameIndex,error);
   return {file:"frame-"+frameIndex,img:sheet,bounds:{x:sx,y:sy,width:sw,height:sh}};
@@ -2283,20 +2280,9 @@ function drawPlayer(){
  if(!img||!img.naturalWidth||!img.naturalHeight){drawFallbackPlayer();return}
  const b=entry.bounds||{x:0,y:0,width:img.naturalWidth,height:img.naturalHeight};
  const airbornePose=rolling||falling||jumping;
- const maxSpeedPose=moving&&!rolling&&!peelOutPose&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD;
- const targetW=peelOutPose?64:((falling||jumping)?66:(rolling?46:(maxSpeedPose?74:56)));
- const targetH=peelOutPose?62:((falling||jumping)?66:(rolling?46:(maxSpeedPose?59:54)));
- // Suaviza el tamaño al pasar de Spin Dash a carrera de máxima velocidad.
- // Así se conserva el sprite grande de velocidad sin que aparezca de golpe.
- const scaleTime=Math.max(0,Math.min(.1,elapsed-(player.spriteScaleTime??elapsed)));
- player.spriteScaleTime=elapsed;
- if(!Number.isFinite(player.spriteTargetW)||!Number.isFinite(player.spriteTargetH)){
-  player.spriteTargetW=targetW;player.spriteTargetH=targetH;
- }
- const sizeBlend=1-Math.exp(-18*scaleTime);
- player.spriteTargetW+=(targetW-player.spriteTargetW)*sizeBlend;
- player.spriteTargetH+=(targetH-player.spriteTargetH)*sizeBlend;
- const scale=Math.min(player.spriteTargetW/Math.max(1,b.width),player.spriteTargetH/Math.max(1,b.height));
+ const cell=entry.cell||{width:img.naturalWidth/SONIC_ATLAS_COLUMNS,height:img.naturalHeight/SONIC_ATLAS_ROWS};
+ // Sonic y Tails usan exactamente la misma escala de celda: 88 × 86.
+ const scale=Math.min(88/Math.max(1,cell.width),86/Math.max(1,cell.height));
  const dw=b.width*scale,dh=b.height*scale;
  g.save();g.translate(Math.round(x),Math.round(y));
  if(rolling)g.rotate(player.spinAngle||0);
