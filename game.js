@@ -402,7 +402,7 @@ function destroyEnemy(enemy){
 
 function resetPlayer(){
  keys.left=keys.right=keys.jump=keys.down=keys.up=keys.spindash=keys.peelout=keys.homing=false;
- player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,knucklesPunchInputAt:-1e9,hitSlowTimer:0,hitSlowFactor:1,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+ player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesJumpStartedAt:0,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,knucklesPunchInputAt:-1e9,hitSlowTimer:0,hitSlowFactor:1,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -709,6 +709,12 @@ function applyPlayerDamage(){
  player.onGround=false;
  player.vx=-player.facing*180;
 }
+function startKnucklesGlide(){
+ if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding)return false;
+ player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
+ status.textContent='KNUCKLES · PLANEANDO · ←/→ PARA DIRIGIR';
+ return true;
+}
 function jump(){
  if(!running)startGame();if(inUnderground)return;
  if(selectedCharacterId==='tails'){
@@ -719,15 +725,22 @@ function jump(){
    player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;
    return;
   }
-  // El primer toque inicia el salto; el segundo toque en el aire activa el vuelo.
   if(!player.tailsTired){
    player.tailsFlying=true;
    player.spin=0;player.spinAngle=0;player.spinAttack=false;
   }
   return;
  }
- if(player.onGround){player.vy=-player.jump*(selectedCharacterId==='knuckles' ? 0.86 : 1);player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false;player.knucklesGliding=false;return;}
- if(selectedCharacterId==='knuckles'&&!player.knucklesGliding){player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;status.textContent='KNUCKLES · PLANEANDO · MANTÉN SALTO · ←/→ PARA DIRIGIR';}
+ if(player.onGround){
+  player.vy=-player.jump*(selectedCharacterId==='knuckles'?0.86:1);
+  player.onGround=false;player.platformId=null;
+  player.spin=selectedCharacterId==='knuckles'?0:1;player.spinAngle=0;player.rolling=false;
+  player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false;
+  player.knucklesGliding=false;
+  if(selectedCharacterId==='knuckles')player.knucklesJumpStartedAt=elapsed;
+  return;
+ }
+ if(selectedCharacterId==='knuckles')startKnucklesGlide();
 }
 
 function beginSpinDash(){
@@ -801,27 +814,31 @@ function tailsAttack(){
  player.tailsAttackTimer=.34;player.tailsAttackCooldown=.48;player.spinAttack=false;player.rolling=false;player.homingActive=false;player.homingTargetId=null;status.textContent='ATAQUE DE COLAS';return true;
 }
 function knucklesPunch(){
- // Solo una entrada explícita del jugador puede iniciar el golpe.
- if(!running||selectedCharacterId!=='knuckles'||(player.knucklesPunchCooldown||0)>0)return false;
+ // El puñetazo solo se ejecuta en online y con un rival real al alcance.
+ if(!running||selectedCharacterId!=='knuckles'||!onlineMode||!multiplayerChannel||
+    (player.knucklesPunchCooldown||0)>0)return false;
  const inputNow=performance.now();
- if(inputNow-(player.knucklesPunchInputAt||-1e9)<170)return false;
- player.knucklesPunchInputAt=inputNow;
+ if(inputNow-(player.knucklesPunchInputAt||-1e9)<240)return false;
  const now=elapsed,stage=now-(player.knucklesPunchComboAge||0)<.72?((player.knucklesPunchStage||0)%3)+1:1;
- player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.2;
- player.knucklesGliding=false;player.rolling=false;player.spin=0;player.spinAttack=false;
  const facing=player.facing||1,reach=stage===3?166:132,centerX=player.x+player.w/2,centerY=player.y+player.h/2;
  const target=[...remotePlayers.values()]
   .filter(other=>performance.now()-(other.lastSeen||0)<1800)
   .map(other=>({other,dx:(Number(other.targetX??other.x)+player.w/2-centerX)*facing,dy:Math.abs(Number(other.targetY??other.y)+player.h/2-centerY)}))
   .filter(item=>item.dx>=-12&&item.dx<=reach+28&&item.dy<86)
   .sort((a,b)=>a.dx-b.dx)[0];
- if(onlineMode&&multiplayerChannel&&target){
-  const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now(),slowDuration:stage===3?1.8:1.55,slowFactor:stage===3?.2:.28};
-  multiplayerChannel.send({type:'broadcast',event:'player-punched',payload})
-   .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el golpe al rival:',error));
-  target.other.hitFlashUntil=performance.now()+420;
-  status.textContent='¡GOLPEASTE A '+String(target.other.name||'TU RIVAL').toUpperCase()+'! · PIERDE VELOCIDAD';
- }else status.textContent=onlineMode?'ACÉRCATE A TU RIVAL Y MÍRALO PARA GOLPEAR':'EL PUÑETAZO DE KNUCKLES GOLPEA RIVALES ONLINE';
+ if(!target){
+  status.textContent='ACÉRCATE A TU RIVAL Y MÍRALO PARA GOLPEAR';
+  return false;
+ }
+ // No se reproduce la animación hasta confirmar que el golpe tiene objetivo.
+ player.knucklesPunchInputAt=inputNow;player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;
+ player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.2;
+ player.knucklesGliding=false;player.rolling=false;player.spin=0;player.spinAttack=false;
+ const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now(),slowDuration:stage===3?1.8:1.55,slowFactor:stage===3?.2:.28};
+ multiplayerChannel.send({type:'broadcast',event:'player-punched',payload})
+  .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el golpe al rival:',error));
+ target.other.hitFlashUntil=performance.now()+420;
+ status.textContent='¡GOLPEASTE A '+String(target.other.name||'TU RIVAL').toUpperCase()+'! · PIERDE VELOCIDAD';
  return true;
 }
 function activateCharacterAttack(){return selectedCharacterId==='tails'?tailsAttack():selectedCharacterId==='knuckles'?knucklesPunch():homingAttack()}
@@ -971,7 +988,7 @@ document.getElementById('restoreControlsButton').addEventListener('click',()=>{
 controlsPanel.querySelectorAll('[data-rebind]').forEach(button=>{
  button.addEventListener('click',()=>beginControlCapture(button.dataset.rebind));
 });
-const DEFAULT_CONTROL_ALIASES={left:['KeyA'],right:['KeyD'],down:['KeyS'],jump:['ArrowUp','KeyW'],spindash:['ShiftLeft','ShiftRight']};
+const DEFAULT_CONTROL_ALIASES={left:['KeyA'],right:['KeyD'],down:['KeyS'],jump:['ArrowUp','KeyW']};
 function resolveControlAction(code){
  const direct=Object.keys(controlBindings).find(action=>controlBindings[action]===code);
  if(direct)return direct;
@@ -1090,6 +1107,10 @@ function update(dt){
  if(player.knucklesPunchTimer>0)player.knucklesPunchTimer=Math.max(0,player.knucklesPunchTimer-dt);
  if(player.knucklesPunchCooldown>0)player.knucklesPunchCooldown=Math.max(0,player.knucklesPunchCooldown-dt);
  if(player.hitSlowTimer>0){player.hitSlowTimer=Math.max(0,player.hitSlowTimer-dt);if(player.hitSlowTimer===0)player.hitSlowFactor=1;}
+ // El segundo toque activa el planeo; mantener salto también lo activa
+ // cuando ya está en el aire, sin exigir un toque con precisión de un frame.
+ if(selectedCharacterId==='knuckles'&&!player.onGround&&!player.knucklesGliding&&keys.jump&&
+    elapsed-(Number(player.knucklesJumpStartedAt)||elapsed)>=.16)startKnucklesGlide();
   if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
   // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
   player.tailsFlying=false;
@@ -1258,7 +1279,7 @@ function update(dt){
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
  if(selectedCharacterId==='tails'&&player.onGround){player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;}
- if(selectedCharacterId==='knuckles'&&player.onGround)player.knucklesGliding=false;
+ if(selectedCharacterId==='knuckles'&&player.onGround){player.knucklesGliding=false;player.knucklesJumpStartedAt=0;}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(selectedCharacterId==='tails'){
   if(player.onGround){
