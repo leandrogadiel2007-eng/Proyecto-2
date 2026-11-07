@@ -2082,84 +2082,106 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// La escena original organiza Knuckles en 10x9 celdas de 64 px.
-// El PNG local del repositorio (576x576) conserva 9 columnas, pero elimina
-// la sexta columna original (índice 5) de cada fila. Las columnas posteriores
-// se desplazan una celda a la izquierda; no se debe eliminar la columna 10.
+// El PNG local de Knuckles se consulta directamente como cuadrícula 9x9.
+// No se debe desplazar una columna: eso mezclaba carrera, bola y poses especiales.
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
 const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=5;
-const KNUCKLES_SOURCE_FRAME_MAP={
- idle:[0,1,2,3,4,0],              // stance
- spin:[7,8,9,10],                 // ball
- run:[11,12,13,14,15,16],         // run
- dash:[21,22,23,24,25,26,27,28],  // Dash
- maxSpeed:[47,48,49],             // Dash max
- glide:[58,59],                   // fly
- jump:[29,30,31,32],              // jump
- fall:[81,82],                    // falling
- punch:[70,71,72,73,19]           // swipe
+const KNUCKLES_FRAME_MAP={
+ idle:[0,1,2,3,4,0],
+ spin:[7,8,9,10],
+ run:[11,12,13,14,15,16],
+ dash:[21,22,23,24,25,26,27,28],
+ maxSpeed:[47,48,49],
+ glide:[],
+ jump:[29,30,31,32],
+ fall:[32],
+ punch:[]
 };
-function knucklesSourceFrameToLocal(index){
- if(!Number.isInteger(index)||index<0)return -1;
- const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
- if(row>=KNUCKLES_ATLAS_ROWS||col===KNUCKLES_REMOVED_SOURCE_COLUMN)return -1;
- const localCol=col>KNUCKLES_REMOVED_SOURCE_COLUMN?col-1:col;
- return row*KNUCKLES_ATLAS_COLUMNS+localCol;
-}
-const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
- name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
-]));
 let knucklesAnimations={idle:[],run:[],dash:[],maxSpeed:[],spin:[],glide:[],jump:[],fall:[],punch:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
- const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS;
- if(sheet.naturalWidth!==576||sheet.naturalHeight!==576){
+ const columns=KNUCKLES_ATLAS_COLUMNS,rows=KNUCKLES_ATLAS_ROWS,size=KNUCKLES_CELL_SIZE;
+ if(sheet.naturalWidth!==columns*size||sheet.naturalHeight!==rows*size){
   console.error('[Blue Rush] El atlas local de Knuckles debe medir 576 × 576:',sheet.naturalWidth,sheet.naturalHeight);
   return [];
  }
+ const scan=document.createElement('canvas');scan.width=size;scan.height=size;
+ const scanCtx=scan.getContext('2d',{willReadFrequently:true});
  return indices.map(index=>{
-  const col=index%KNUCKLES_ATLAS_COLUMNS,row=Math.floor(index/KNUCKLES_ATLAS_COLUMNS);
-  const x=Math.round(col*cw),y=Math.round(row*ch),width=Math.round((col+1)*cw)-x,height=Math.round((row+1)*ch)-y;
-  return {img:sheet,cell:{x,y,width,height},bounds:{x,y,width,height},index};
- });
+  if(!Number.isInteger(index)||index<0||index>=columns*rows)return null;
+  const col=index%columns,row=Math.floor(index/columns),x=col*size,y=row*size;
+  const cell={x,y,width:size,height:size};
+  // Recorta transparencia y centra el contenido real de cada fotograma.
+  scanCtx.clearRect(0,0,size,size);
+  scanCtx.drawImage(sheet,x,y,size,size,0,0,size,size);
+  const pixels=scanCtx.getImageData(0,0,size,size).data;
+  let minX=size,minY=size,maxX=-1,maxY=-1;
+  for(let py=0;py<size;py++)for(let px=0;px<size;px++){
+   if(pixels[(py*size+px)*4+3]>18){
+    if(px<minX)minX=px;if(px>maxX)maxX=px;
+    if(py<minY)minY=py;if(py>maxY)maxY=py;
+   }
+  }
+  const bounds=maxX>=minX&&maxY>=minY
+   ?{x:x+minX,y:y+minY,width:maxX-minX+1,height:maxY-minY+1}
+   :cell;
+  return {img:sheet,cell,bounds,index};
+ }).filter(Boolean);
 }
 function loadKnucklesSprites(){
  const sheet=new Image();
  sheet.onload=()=>{
   const frames=name=>loadKnucklesFrames(sheet,KNUCKLES_FRAME_MAP[name]);
-  knucklesAnimations={idle:frames('idle'),run:frames('run'),dash:frames('dash'),maxSpeed:frames('maxSpeed'),spin:frames('spin'),glide:frames('glide'),jump:frames('jump'),fall:frames('fall'),punch:frames('punch'),ready:true};
-  console.info('[Blue Rush] Sprites Knuckles: mapeo original de SonicEscapeV aplicado al atlas recortado',{
-   size:[sheet.naturalWidth,sheet.naturalHeight],sourceGrid:'10x9',localGrid:'9x9',cell:[64,64],
-   animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length])),
-   sourceFrames:KNUCKLES_SOURCE_FRAME_MAP,localFrames:KNUCKLES_FRAME_MAP
+  knucklesAnimations={
+   idle:frames('idle'),run:frames('run'),dash:frames('dash'),maxSpeed:frames('maxSpeed'),
+   spin:frames('spin'),glide:frames('glide'),jump:frames('jump'),fall:frames('fall'),
+   punch:frames('punch'),ready:true
+  };
+  console.info('[Blue Rush] Atlas local de Knuckles cargado',{
+   size:[sheet.naturalWidth,sheet.naturalHeight],grid:'9x9',cell:[64,64],
+   animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length]))
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-local-column-5-map-9';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-direct-9x9-alpha-crop-13';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
  if(!knucklesAnimations.ready){
-  drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run'||animation==='dash'||animation==='maxSpeed',rolling:animation==='spin',falling:animation==='jump'||animation==='fall',phase,spinAngle:options.spinAngle,gliding:animation==='glide',punching:animation==='punch'});
+  drawVectorCharacter('knuckles',screenX,screenY,{
+   facing:options.facing,moving:animation==='run'||animation==='dash'||animation==='maxSpeed',
+   rolling:animation==='spin',falling:animation==='jump'||animation==='fall',
+   phase,spinAngle:options.spinAngle,gliding:animation==='glide',punching:animation==='punch'
+  });
   return;
  }
  const name=['idle','run','dash','maxSpeed','spin','glide','jump','fall','punch'].includes(animation)?animation:'idle';
- const frames=knucklesAnimations[name]&&knucklesAnimations[name].length?knucklesAnimations[name]:knucklesAnimations.idle;
- // Duraciones tomadas de las animaciones originales: stance 0.56s, run 0.9s,
- // dash 0.6s, dash max 0.3s, glide 0.3s, ball/jump 0.2s.
- const fps=name==='idle'?10.7:name==='run'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:name==='glide'?6.7:name==='spin'||name==='jump'?20:name==='fall'?13.3:name==='punch'?20:8;
- const frameIndex=animation==='punch'?Math.min(frames.length-1,Math.floor(phase*frames.length)):Math.floor(phase*fps)%frames.length;
- const entry=frames[frameIndex],img=entry.img,c=entry.cell;
- const scale=Math.min(88/c.width,86/c.height),dw=c.width*scale,dh=c.height*scale,dx=-dw/2,dy=-dh/2,smoothing=g.imageSmoothingEnabled;
+ const frames=knucklesAnimations[name]||[];
+ // Para planeo y puñetazo se usa el vector de Knuckles: el atlas local no
+ // tiene secuencias confirmadas para esas acciones y no debe mostrar sprites ajenos.
+ if(!frames.length){
+  drawVectorCharacter('knuckles',screenX,screenY,{
+   facing:options.facing,moving:animation==='run'||animation==='dash'||animation==='maxSpeed',
+   rolling:animation==='spin',falling:animation==='jump'||animation==='fall',
+   phase,spinAngle:options.spinAngle,gliding:animation==='glide',punching:animation==='punch'
+  });
+  return;
+ }
+ const fps=name==='idle'?10.7:name==='run'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:20;
+ const frameIndex=Math.floor(phase*fps)%frames.length;
+ const entry=frames[frameIndex],img=entry.img,c=entry.cell,b=entry.bounds||c;
+ const scale=Math.min(88/c.width,86/c.height);
+ const anchorX=b.x+b.width/2,anchorY=b.y+b.height/2;
+ const dx=-(anchorX-c.x)*scale,dy=-(anchorY-c.y)*scale,dw=b.width*scale,dh=b.height*scale;
+ const smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
- // La hoja local conserva la orientación original; refleja solo si mira a la izquierda.
  if(Number(options.facing)<0)g.scale(-1,1);
  if(animation==='maxSpeed'){
   g.save();g.strokeStyle='#c9f4ff';g.lineWidth=2;g.globalAlpha=.72;g.beginPath();
   for(let i=0;i<3;i++){const yy=-14+i*12;g.moveTo(-42,yy);g.lineTo(-23,yy-2);}
   g.stroke();g.restore();
  }
- g.imageSmoothingEnabled=false;g.drawImage(img,c.x,c.y,c.width,c.height,dx,dy,dw,dh);
+ g.imageSmoothingEnabled=false;
+ g.drawImage(img,b.x,b.y,b.width,b.height,dx,dy,dw,dh);
  g.imageSmoothingEnabled=smoothing;g.restore();
 }
 loadKnucklesSprites();
