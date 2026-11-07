@@ -979,7 +979,14 @@ function applyAirMotion(dt){
   player.y+=player.vy*dt;
   return;
  }
- if(selectedCharacterId==='tails'&&player.tailsTired){player.vy=Math.min(1180,player.vy+900*dt);player.y+=player.vy*dt;return}
+ if(selectedCharacterId==='tails'&&player.tailsTired){
+  // Al agotarse, Tails entra en planeo: su velocidad vertical converge
+  // a una caída moderada en vez de desplomarse a velocidad máxima.
+  const tiredGlideSpeed=280;
+  player.vy+=(tiredGlideSpeed-player.vy)*Math.min(1,2.1*dt);
+  player.y+=player.vy*dt;
+  return;
+ }
  player.vy+=1550*dt;player.y+=player.vy*dt;
 }
 function update(dt){
@@ -997,7 +1004,7 @@ function update(dt){
   player.tailsFlightTime=(player.tailsFlightTime||0)+dt;
   if(player.tailsFlightTime>=7){
    player.tailsFlightTime=7;player.tailsFlying=false;player.tailsTired=true;
-   status.textContent='TAILS CANSADO · DESCENDIENDO';
+   status.textContent='TAILS CANSADO · PLANEANDO HACIA EL SUELO';
   }
  }
 
@@ -1073,7 +1080,13 @@ function update(dt){
  }else{
   const homingSteering=Boolean(homingTarget);
   const dir=Number(keys.right)-Number(keys.left);
-  if(homingSteering){
+  if(selectedCharacterId==='tails'&&player.tailsTired){
+   // Ya no puede impulsarse ni acelerar en el aire; pierde velocidad
+   // horizontal progresivamente mientras planea hacia el suelo.
+   player.vx*=Math.pow(.42,dt);
+   player.speedCharge=Math.max(0,player.speedCharge-1.8*dt);
+   if(Math.abs(player.vx)<12)player.vx=0;
+  }else if(homingSteering){
    player.speedCharge=Math.max(player.speedCharge,.7);
   }else if(dir){
    if(player.vx!==0&&Math.sign(player.vx)!==dir)player.speedCharge=Math.max(0,player.speedCharge-2.4*dt);
