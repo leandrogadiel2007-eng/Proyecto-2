@@ -16,7 +16,7 @@ const CHARACTER_STORAGE_KEY='blueRushSelectedCharacter:';
 const CHARACTER_DATA={
  sonic:{name:'Sonic',description:'El erizo azul original de Blue Rush.'},
  tails:{name:'Tails',description:'Salta con el primer toque y pulsa salto una segunda vez en el aire para volar. Mantén el botón para impulsarte; tiene 7 segundos de resistencia acumulada. Se cansa y planea hasta aterrizar. También nada bajo los puentes y ataca con sus dos colas.'},
- knuckles:{name:'Knuckles',description:'Equidna rojo de puños fuertes · diseño vectorial provisional.'},
+ knuckles:{name:'Knuckles',description:'Salta menos que Sonic. Pulsa salto otra vez en el aire y mantenlo para planear; dirige con ←/→. Al chocar planeando contra un muro se aferra y trepa con ↑/↓. Usa Z para encadenar tres puñetazos, derrotar enemigos y romper muros de roca.'},
  amy:{name:'Amy',description:'Eriza rosa de vestido rojo · diseño vectorial provisional.'},
  shadow:{name:'Shadow',description:'Erizo oscuro con detalles rojos · diseño vectorial provisional.'}
 };
@@ -89,13 +89,22 @@ function setSelectedCharacter(value,save=true){
  if(note)note.textContent=CHARACTER_DATA[selectedCharacterId].description;
  const jumpHelp=document.querySelector('[data-binding-label="jump"]');
  const jumpCaption=jumpHelp&&jumpHelp.parentElement?jumpHelp.parentElement.querySelector('small'):null;
- if(jumpCaption)jumpCaption.textContent=selectedCharacterId==='tails'?'2 TOQUES: SALTO / VUELO':'SPIN ATTACK';
+ if(jumpCaption)jumpCaption.textContent=selectedCharacterId==='tails'?'2 TOQUES: SALTO / VUELO':selectedCharacterId==='knuckles'?'2 TOQUES: SALTO / PLANEO':'SPIN ATTACK';
  const downHelp=document.querySelector('[data-binding-label="down"]');
  const downCaption=downHelp&&downHelp.parentElement?downHelp.parentElement.querySelector('small'):null;
- if(downCaption)downCaption.textContent=selectedCharacterId==='tails'?'BUCEAR / RODAR':'RODAR';
+ if(downCaption)downCaption.textContent=selectedCharacterId==='tails'?'BUCEAR / RODAR':selectedCharacterId==='knuckles'?'BAJAR POR MURO':'RODAR';
  const attackHelp=document.querySelector('[data-binding-label="homing"]');
  const attackCaption=attackHelp&&attackHelp.parentElement?attackHelp.parentElement.querySelector('small'):null;
- if(attackCaption)attackCaption.textContent=selectedCharacterId==='tails'?'ATAQUE COLAS':'HOMING';
+ if(attackCaption)attackCaption.textContent=selectedCharacterId==='tails'?'ATAQUE COLAS':selectedCharacterId==='knuckles'?'PUÑETAZO':'HOMING';
+ const climbHelp=document.getElementById('knucklesClimbHelp');
+ if(climbHelp)climbHelp.classList.toggle('hidden',selectedCharacterId!=='knuckles');
+ const jumpTouch=document.querySelector('[data-control="jump"]');
+ if(jumpTouch){jumpTouch.textContent=selectedCharacterId==='tails'?'VOLAR':selectedCharacterId==='knuckles'?'PLANEAR':'SPIN ATTACK';jumpTouch.setAttribute('aria-label',selectedCharacterId==='tails'?'Saltar y volar':selectedCharacterId==='knuckles'?'Saltar y planear':'Saltar y hacer Spin Attack')}
+ const downTouch=document.querySelector('[data-control="down"]');
+ if(downTouch){downTouch.textContent=selectedCharacterId==='knuckles'?'BAJAR ↓':'RODAR ↓';downTouch.setAttribute('aria-label',selectedCharacterId==='knuckles'?'Bajar por la pared':'Rodar o bajar al túnel')}
+ const upTouch=document.querySelector('[data-control="up"]');if(upTouch)upTouch.classList.toggle('hidden',selectedCharacterId!=='knuckles');
+ const attackTouch=document.querySelector('[data-control="homing"]');
+ if(attackTouch){attackTouch.textContent=selectedCharacterId==='tails'?'COLAS':selectedCharacterId==='knuckles'?'PUÑO':'HOMING';attackTouch.setAttribute('aria-label',selectedCharacterId==='knuckles'?'Dar un puñetazo':'Activar ataque del personaje')}
  if(save&&authenticatedUser){
   try{localStorage.setItem(CHARACTER_STORAGE_KEY+authenticatedUser.id,selectedCharacterId)}
   catch(error){console.warn('[Blue Rush] No se pudo guardar el personaje elegido:',error)}
@@ -171,7 +180,7 @@ document.querySelectorAll('[data-demo-account]').forEach(button=>{
 function switchDemoAccount(){
  if(onlineMode)leaveOnlineRoom();
  running=false;
- keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;keys.up=false;
  resetPlayer();
  startScreen.classList.remove('hidden');
  try{sessionStorage.removeItem(AUTH_SESSION_KEY);localStorage.removeItem(AUTH_SESSION_KEY)}catch(error){console.warn('[Blue Rush] No se pudo limpiar la sesión guardada:',error)}
@@ -285,11 +294,19 @@ function platformById(id){return id===null||id===undefined?null:aerialPlatforms.
 function springTopY(){return groundSurfaceAt(aerialSpring.x+aerialSpring.w/2)-8}
 let rings=[],enemies=[],beeProjectiles=[],enemyExplosions=[],collected=new Set(),checkpoints=[];
 const destroyedEnemyIds=new Set();
+const KNUCKLES_WALL_SPECS=[
+ {id:'rock-wall-1',x:2480,w:64,h:116},{id:'rock-wall-2',x:6120,w:64,h:112},
+ {id:'rock-wall-3',x:10850,w:64,h:118},{id:'rock-wall-4',x:19480,w:64,h:116},
+ {id:'rock-wall-5',x:26500,w:64,h:120},{id:'rock-wall-6',x:34250,w:64,h:116},
+ {id:'rock-wall-7',x:42600,w:64,h:120},{id:'rock-wall-8',x:53600,w:64,h:116}
+];
+let knucklesWalls=[],destroyedKnucklesWalls=new Set();
 let checkpointX=90,levelCompleted=false;
 let raceFinished=false,raceWinner=null;
 function buildLevel(){
  rings=[];collected=new Set();enemyExplosions=[];
- if(!onlineMode)destroyedEnemyIds.clear();
+ if(!onlineMode){destroyedEnemyIds.clear();destroyedKnucklesWalls.clear()}
+ knucklesWalls=KNUCKLES_WALL_SPECS.map(wall=>({...wall,broken:destroyedKnucklesWalls.has(wall.id)}));
  let group=0;
  // Anillos repartidos por el recorrido principal.
  for(let x=220;x<worldWidth-280;x+=820,group++){
@@ -320,6 +337,30 @@ function buildLevel(){
  checkpoints=[9000,18000,27000,36000,42000,51000,57000].map((x,index)=>({x,y:terrainHeight(x),active:false,index}));
 }
 
+function knucklesWallBaseY(wall){return groundSurfaceAt(wall.x+wall.w/2)}
+function knucklesWallTopY(wall){return knucklesWallBaseY(wall)-wall.h}
+function knucklesWallById(id){return knucklesWalls.find(wall=>wall.id===id&&!wall.broken)||null}
+function findKnucklesWallCollision(fromX,toX){
+ const direction=Math.sign(toX-fromX);if(!direction)return null;
+ for(const wall of knucklesWalls){if(wall.broken)continue;
+  const top=knucklesWallTopY(wall),base=knucklesWallBaseY(wall);
+  if(player.y+player.h<=top+3||player.y>=base-2)continue;
+  if(direction>0&&fromX+player.w<=wall.x+2&&toX+player.w>wall.x)return {wall,side:1};
+  if(direction<0&&fromX>=wall.x+wall.w-2&&toX<wall.x+wall.w)return {wall,side:-1};
+ }
+ return null;
+}
+function markKnucklesWallDestroyed(wallId,remote=false){
+ const id=String(wallId||''),wall=knucklesWalls.find(item=>item.id===id);
+ if(!wall||wall.broken||!/^rock-wall-[0-9]+$/.test(id))return false;
+ wall.broken=true;destroyedKnucklesWalls.add(id);
+ if(player&&player.knucklesClinging&&player.knucklesWallId===id){
+  const side=player.knucklesWallSide||1;player.knucklesClinging=false;player.knucklesWallId=null;player.knucklesGliding=false;
+  player.x=side>0?wall.x-player.w-3:wall.x+wall.w+3;player.vx=side*360;player.vy=-100;player.onGround=false;
+ }
+ if(!remote&&onlineMode&&multiplayerChannel){multiplayerChannel.send({type:'broadcast',event:'knuckles-wall-destroyed',payload:{wallId:id,by:multiplayerId,at:Date.now()}}).catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el muro roto:',error));trackOnlineEnemyPresence();}
+ return true;
+}
 function spawnEnemyExplosion(x,y,kind=0){
  const colors=kind===2?["#fff09a","#8feeff","#ffd35c","#ffffff"]:["#fff09a","#ff9858","#8feeff","#ffffff"];
  const particles=Array.from({length:14},(_,i)=>{
@@ -368,7 +409,7 @@ function markEnemyDestroyed(enemyId,x,y,kind,showEffect=true){
 }
 function trackOnlineEnemyPresence(){
  if(!onlineMode||!multiplayerChannel||!player)return;
- multiplayerChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)})
+ multiplayerChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds),destroyedKnucklesWalls:Array.from(destroyedKnucklesWalls)})
   .catch(error=>console.warn('[Blue Rush] No se pudo actualizar el estado de enemigos:',error));
 }
 function destroyEnemy(enemy){
@@ -383,7 +424,7 @@ function destroyEnemy(enemy){
 }
 
 
-function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+function resetPlayer(){player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesClinging:false,knucklesWallId:null,knucklesWallSide:1,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -430,33 +471,37 @@ async function startOnlineGame(){
     const enemyId=String(payload.enemyId||'');
     if(markEnemyDestroyed(enemyId,payload.x,payload.y,payload.kind,true))trackOnlineEnemyPresence();
    });
+   roomChannel.on('broadcast',{event:'knuckles-wall-destroyed'},({payload})=>{
+    if(payload&&payload.by!==multiplayerId&&markKnucklesWallDestroyed(payload.wallId,true))trackOnlineEnemyPresence();
+   });
    roomChannel.on('broadcast',{event:'player-state'},({payload})=>{
    if(!payload||payload.id===multiplayerId)return;const x=Number(payload.x),y=Number(payload.y);
    if(!Number.isFinite(x)||!Number.isFinite(y)||x< -200||x>worldWidth+200||y< -1000||y>5000)return;
    const id=String(payload.id||'');if(!id||id.length>100)return;let other=remotePlayers.get(id);
    if(!other){other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:'sonic',animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0,progress:0};remotePlayers.set(id,other)}else{other.targetX=x;other.targetY=y}
    other.name=String(payload.name||'Jugador').replace(/[<>]/g,'').slice(0,16)||'Jugador';other.characterId=normalizeCharacterId(payload.characterId);other.progress=Math.max(0,Math.min(100,Number(payload.progress)||0));other.facing=Number(payload.facing)<0?-1:1;
-   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall','fly','swim','tired','tailsAttack','peeloutCharge','peeloutLoop','peeloutBurst'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
+   const animations=['idle','run','dash','speeddash','jump','spin','spindash','fall','fly','swim','tired','tailsAttack','knucklesGlide','knucklesClimb','knucklesPunch','peeloutCharge','peeloutLoop','peeloutBurst'];other.animation=animations.includes(payload.animation)?payload.animation:'idle';
    other.phase=Number.isFinite(Number(payload.phase))?Number(payload.phase):0;other.spinAngle=Number.isFinite(Number(payload.spinAngle))?Number(payload.spinAngle):0;other.lastSeen=performance.now();
   });
   roomChannel.on('presence',{event:'sync'},()=>{
    const presence=roomChannel.presenceState(),seen=new Set();
-   let mergedEnemyState=false;
+   let mergedEnemyState=false,mergedWallState=false;
    for(const entries of Object.values(presence))for(const person of entries||[]){
     if(!person||!person.id||person.id===multiplayerId)continue;
     if(Array.isArray(person.destroyedEnemies))for(const enemyId of person.destroyedEnemies){if(markEnemyDestroyed(enemyId,NaN,NaN,NaN,true))mergedEnemyState=true;}
+    if(Array.isArray(person.destroyedKnucklesWalls))for(const wallId of person.destroyedKnucklesWalls){if(markKnucklesWallDestroyed(wallId,true))mergedWallState=true;}
     const id=String(person.id);seen.add(id);let other=remotePlayers.get(id);
     if(!other){const x=Number.isFinite(Number(person.x))?Number(person.x):90,y=Number.isFinite(Number(person.y))?Number(person.y):terrainHeight(x)-43;other={id,x,targetX:x,y,targetY:y,facing:1,name:'Jugador',characterId:normalizeCharacterId(person.characterId),animation:'idle',phase:0,lastSeen:performance.now(),spinAngle:0};remotePlayers.set(id,other)}
     if(person.name)other.name=String(person.name).replace(/[<>]/g,'').slice(0,16)||'Jugador';
     other.characterId=normalizeCharacterId(person.characterId);
    }
    for(const id of remotePlayers.keys())if(!seen.has(id))remotePlayers.delete(id);
-   if(mergedEnemyState)trackOnlineEnemyPresence();
+   if(mergedEnemyState||mergedWallState)trackOnlineEnemyPresence();
    if(onlineMode)status.textContent='ONLINE · SALA '+multiplayerRoom+' · '+(remotePlayers.size+1)+' JUGADOR(ES)';
   });
   multiplayerChannel=roomChannel;
   await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Se agotó el tiempo de conexión.')),12000);roomChannel.subscribe(state=>{if(state==='SUBSCRIBED'){clearTimeout(timeout);resolve()}else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED'){clearTimeout(timeout);reject(new Error('Supabase respondió: '+state))}})});
-  await roomChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds)});
+  await roomChannel.track({id:multiplayerId,name:playerName,characterId:selectedCharacterId,x:player.x,y:player.y,at:Date.now(),destroyedEnemies:Array.from(destroyedEnemyIds),destroyedKnucklesWalls:Array.from(destroyedKnucklesWalls)});
   onlineMode=true;trackOnlineEnemyPresence();lastNetworkSend=0;startGame();status.textContent='ONLINE · SALA '+multiplayerRoom+' · 1+ JUGADOR(ES)';
  }catch(error){
   console.error('[Blue Rush] Error de multijugador online:',error);onlineMode=false;const oldChannel=multiplayerChannel,oldClient=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;remotePlayers.clear();
@@ -465,13 +510,16 @@ async function startOnlineGame(){
  }finally{onlineButton.disabled=false;startButton.disabled=false;onlineButton.innerHTML='JUGAR ONLINE <span aria-hidden="true">↗</span>'}
 }
 function leaveOnlineRoom(){
- onlineMode=false;remotePlayers.clear();destroyedEnemyIds.clear();enemyExplosions=[];enemies.forEach(enemy=>enemy.alive=true);const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
+ onlineMode=false;remotePlayers.clear();destroyedEnemyIds.clear();destroyedKnucklesWalls.clear();knucklesWalls.forEach(wall=>wall.broken=false);enemyExplosions=[];enemies.forEach(enemy=>enemy.alive=true);const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
  if(channel&&client)client.removeChannel(channel).catch(error=>console.warn('[Blue Rush] No se pudo cerrar la sala:',error));
 }
 function sendOnlineState(now){
  if(!onlineMode||!multiplayerChannel||now-lastNetworkSend<NETWORK_SEND_INTERVAL)return;lastNetworkSend=now;const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);let animation='idle',phase=0;
  if(running){
-  if(selectedCharacterId==='tails'&&player.tailsSwimming)animation='swim';
+  if(selectedCharacterId==='knuckles'&&player.knucklesClinging)animation='knucklesClimb';
+  else if(selectedCharacterId==='knuckles'&&player.knucklesGliding)animation='knucklesGlide';
+  else if(selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0)animation='knucklesPunch';
+  else if(selectedCharacterId==='tails'&&player.tailsSwimming)animation='swim';
   else if(selectedCharacterId==='tails'&&player.tailsFlying)animation='fly';
   else if(selectedCharacterId==='tails'&&player.tailsTired&&!player.onGround)animation='tired';
   else if(selectedCharacterId==='tails'&&player.tailsAttackTimer>0)animation='tailsAttack';
@@ -517,6 +565,7 @@ function sendOnlineState(now){
 function drawVectorCharacter(characterId,screenX,screenY,options={}){
  const id=normalizeCharacterId(characterId),phase=Number(options.phase)||0;
  const moving=Boolean(options.moving),rolling=Boolean(options.rolling),falling=Boolean(options.falling);
+ const gliding=Boolean(options.gliding),climbing=Boolean(options.climbing),punching=Boolean(options.punching);
  const footSwing=moving?Math.sin(phase*6)*5:0;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
  if(rolling)g.rotate(Number(options.spinAngle)||phase*7);else{if(falling)g.rotate(-.16);if(Number(options.facing)<0)g.scale(-1,1)}
@@ -548,6 +597,9 @@ function drawVectorCharacter(characterId,screenX,screenY,options={}){
   ellipse(-8,26+footSwing*.18,10,4,'#d83243','#641d31',1.5);ellipse(9,26-footSwing*.18,10,4,'#d83243','#641d31',1.5);g.fillStyle='#f7d56e';g.fillRect(-14,23+footSwing*.18,7,2);g.fillRect(3,23-footSwing*.18,7,2);
   g.strokeStyle='#f1c84e';g.lineWidth=2;g.beginPath();g.ellipse(-18,7,4,6,0,0,Math.PI*2);g.stroke();g.beginPath();g.ellipse(19,8,4,6,0,0,Math.PI*2);g.stroke();
  }
+ if(id==='knuckles'&&gliding){g.strokeStyle='#fff';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(7,-2);g.lineTo(28,-8);g.moveTo(-7,1);g.lineTo(-28,-5);g.stroke();ellipse(30,-9,10,7,'#fff','#aebbc8',1);ellipse(-30,-6,10,7,'#fff','#aebbc8',1);}
+ if(id==='knuckles'&&climbing){g.strokeStyle='#fff';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(-5,-11);g.lineTo(17,-29);g.moveTo(7,-3);g.lineTo(23,-21);g.stroke();ellipse(18,-30,8,6,'#fff','#aebbc8',1);ellipse(24,-22,8,6,'#fff','#aebbc8',1);}
+ if(id==='knuckles'&&punching){g.strokeStyle='#d72d32';g.lineWidth=8;g.lineCap='round';g.beginPath();g.moveTo(10,-2);g.lineTo(29,-2);g.stroke();ellipse(34,-2,10,8,'#fff','#aebbc8',1);g.strokeStyle='#ffe68a';g.lineWidth=2;g.beginPath();g.moveTo(40,-13);g.lineTo(49,-18);g.moveTo(42,-2);g.lineTo(54,-2);g.stroke();}
  if(rolling){g.strokeStyle=id==='tails'?'#fff0d9':id==='knuckles'?'#ffbbbb':id==='amy'?'#ffd2e7':'#ff6575';g.lineWidth=3;g.beginPath();g.arc(0,0,25,.2,Math.PI*1.7);g.stroke()}
  g.restore();
 }
@@ -560,6 +612,9 @@ function drawRemotePlayers(){
   const animation=other.animation||'idle',sx=other.x-camera+player.w/2,sy=other.y+player.h/2;
   if(other.characterId==='tails'){
    drawTailsCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation,phase:other.phase,spinAngle:other.spinAngle});
+  }else if(other.characterId==='knuckles'){
+   const kAnimation=animation==='knucklesGlide'?'glide':animation==='knucklesClimb'?'climb':animation==='knucklesPunch'?'punch':animation==='spin'||animation==='spindash'?'spin':animation==='run'||animation==='dash'||animation==='speeddash'?'run':animation==='jump'||animation==='fall'?'spin':'idle';
+   drawKnucklesCharacter(Math.round(sx),Math.round(sy),{facing:other.facing,animation:kAnimation,phase:other.phase,spinAngle:other.spinAngle});
   }else if(other.characterId&&other.characterId!=='sonic'){
    drawVectorCharacter(other.characterId,Math.round(sx),Math.round(sy),{facing:other.facing,moving:['run','dash','speeddash'].includes(animation),rolling:['spin','spindash'].includes(animation),falling:['fall','jump'].includes(animation),phase:other.phase,spinAngle:other.spinAngle});
   }else{
@@ -590,7 +645,7 @@ function drawRemotePlayers(){
  }
 }
 function resetGame(){
- leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
+ leaveOnlineRoom();running=false;keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;keys.up=false;resetPlayer();startScreen.querySelector('h2').textContent='¡Vamos, '+CHARACTER_DATA[selectedCharacterId].name+'!';startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
  startButton.textContent='JUGAR SOLO';onlineButton.disabled=false;startButton.disabled=false;startScreen.classList.remove('hidden');status.textContent='PULSA JUGAR PARA EMPEZAR';draw();
 }
 function finishRunAfterDeath(){
@@ -665,7 +720,9 @@ function jump(){
   }
   return;
  }
- if(player.onGround){player.vy=-player.jump;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false}
+ if(player.knucklesClinging){const side=player.knucklesWallSide||1;player.knucklesClinging=false;player.knucklesWallId=null;player.knucklesGliding=false;player.vy=-520;player.vx=-side*330;player.facing=-side;player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;status.textContent='KNUCKLES · SALTO DESDE LA PARED';return;}
+ if(player.onGround){player.vy=-player.jump*(selectedCharacterId==='knuckles' ? 0.86 : 1);player.onGround=false;player.platformId=null;player.spin=1;player.spinAngle=0;player.rolling=false;player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false;player.knucklesGliding=false;return;}
+ if(selectedCharacterId==='knuckles'&&!player.knucklesGliding){player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;status.textContent='KNUCKLES · PLANEO · ↑/↓ EN LOS MUROS';}
 }
 
 function beginSpinDash(){
@@ -738,7 +795,24 @@ function tailsAttack(){
  if(!running||selectedCharacterId!=='tails'||player.tailsSwimming||(player.tailsAttackCooldown||0)>0)return false;
  player.tailsAttackTimer=.34;player.tailsAttackCooldown=.48;player.spinAttack=false;player.rolling=false;player.homingActive=false;player.homingTargetId=null;status.textContent='ATAQUE DE COLAS';return true;
 }
-function activateCharacterAttack(){return selectedCharacterId==='tails'?tailsAttack():homingAttack()}
+function knucklesPunch(){
+ if(!running)startGame();if(!running||selectedCharacterId!=='knuckles'||(player.knucklesPunchCooldown||0)>0)return false;
+ const now=elapsed,stage=now-(player.knucklesPunchComboAge||0)<.72?((player.knucklesPunchStage||0)%3)+1:1;
+ player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.18;
+ player.knucklesGliding=false;player.rolling=false;player.spin=0;
+ let wall=player.knucklesClinging?knucklesWallById(player.knucklesWallId):null;
+ if(!wall){const edge=player.facing>0?player.x+player.w:player.x;
+  wall=knucklesWalls.filter(item=>!item.broken&&Math.abs((player.facing>0?item.x:item.x+item.w)-edge)<=94&&player.y+player.h>knucklesWallTopY(item)&&player.y<knucklesWallBaseY(item))
+   .sort((a,b)=>Math.abs(a.x-(player.x+player.w/2))-Math.abs(b.x-(player.x+player.w/2)))[0]||null;
+ }
+ if(wall){markKnucklesWallDestroyed(wall.id,false);status.textContent='¡KNUCKLES ROMPIÓ EL MURO!';}
+ const cx=player.x+player.w/2,hitX=cx+(player.facing||1)*(stage===3?66:49),hitY=player.y+player.h/2;
+ const victims=enemies.filter(enemy=>enemy.alive&&Math.abs(enemy.x-hitX)<(stage===3?58:46)&&Math.abs((enemy.y-8)-hitY)<68);
+ victims.forEach(enemy=>{if(destroyEnemy(enemy))addScore(100)});
+ if(stage===3&&!player.onGround){player.vy=-250;player.spin=1;}
+ if(!wall&&!victims.length)status.textContent='KNUCKLES · '+(stage===3?'UPPERCUT':'PUÑETAZO '+stage+'/3');return true;
+}
+function activateCharacterAttack(){return selectedCharacterId==='tails'?tailsAttack():selectedCharacterId==='knuckles'?knucklesPunch():homingAttack()}
 
 const CONTROL_BINDINGS_STORAGE_KEY='blueRushControlBindingsV1';
 const DEFAULT_CONTROL_BINDINGS={left:'ArrowLeft',right:'ArrowRight',down:'ArrowDown',jump:'Space',spindash:'KeyX',peelout:'KeyC',homing:'KeyZ'};
@@ -808,7 +882,7 @@ function setControlMessage(message,isError=false){
  controlsCaptureMessage.classList.toggle('is-error',isError);
 }
 function stopGameInputForMenu(){
- keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;keys.up=false;
  if(player){
   if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
   if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
@@ -894,7 +968,9 @@ function resolveControlAction(code){
  )||null;
 }
 function setKey(key,down,code=''){
- const pressedCode=code||key,action=resolveControlAction(pressedCode);
+ const pressedCode=code||key;
+ if(selectedCharacterId==='knuckles'&&(pressedCode==='ArrowUp'||pressedCode==='KeyW')){keys.up=down;return}
+ const action=resolveControlAction(pressedCode);
  if(action==='left')keys.left=down;
  if(action==='right')keys.right=down;
  if(action==='down')keys.down=down;
@@ -938,7 +1014,7 @@ window.addEventListener('blur',()=>{
   setControlMessage('Asignación cancelada. Vuelve a pulsar CAMBIAR para intentarlo.');
   renderControlBindings();
  }
- keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;
+ keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;keys.up=false;
  if(player){
   if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
   if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
@@ -950,6 +1026,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
  const press=e=>{
   e.preventDefault();
   if(c==='jump'){keys.jump=true;jump()}
+  else if(c==='up'){if(!running)startGame();keys.up=true}
   else if(c==='spindash'){if(!running)startGame();keys.spindash=true;beginSpinDash()}
   else if(c==='peelout'){if(!running)startGame();keys.peelout=true;beginSuperPeelOut()}
   else if(c==='homing'){if(!running)startGame();activateCharacterAttack()}
@@ -958,6 +1035,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
  const release=e=>{
   e.preventDefault();
   if(c==='jump')keys.jump=false;
+  else if(c==='up')keys.up=false;
   else if(c==='spindash'){keys.spindash=false;releaseSpinDash()}
   else if(c==='peelout'){keys.peelout=false;releaseSuperPeelOut()}
   else if(c==='homing')keys.homing=false;
@@ -970,6 +1048,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
 });
 // Tras el segundo toque, mantener salto permite a Tails compensar la gravedad y mantener el vuelo.
 function applyAirMotion(dt){
+ if(selectedCharacterId==='knuckles'&&player.knucklesGliding){const descent=78;player.vy+=(descent-player.vy)*Math.min(1,5.2*dt);player.y+=player.vy*dt;return;}
  if(selectedCharacterId==='tails'&&player.tailsFlying){
   const flightLift=-360;
   player.vy+=(flightLift-player.vy)*Math.min(1,9*dt);
@@ -992,6 +1071,9 @@ function update(dt){
  if(player.tailsAttackTimer>0)player.tailsAttackTimer=Math.max(0,player.tailsAttackTimer-dt);
  if(player.tailsAttackCooldown>0)player.tailsAttackCooldown=Math.max(0,player.tailsAttackCooldown-dt);
  if(player.tailsSwimStrokeCooldown>0)player.tailsSwimStrokeCooldown=Math.max(0,player.tailsSwimStrokeCooldown-dt);
+ if(player.knucklesPunchTimer>0)player.knucklesPunchTimer=Math.max(0,player.knucklesPunchTimer-dt);
+ if(player.knucklesPunchCooldown>0)player.knucklesPunchCooldown=Math.max(0,player.knucklesPunchCooldown-dt);
+ if(selectedCharacterId==='knuckles'&&player.knucklesGliding&&!keys.jump)player.knucklesGliding=false;
  if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
   // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
   player.tailsFlying=false;
@@ -1059,6 +1141,15 @@ function update(dt){
    if(player.y<=shallowLimit){player.y=deckY-player.h;player.tailsSwimming=false;player.onGround=true;player.platformId=null;player.vy=0;player.vx*=.7;keys.down=false;}
    else{player.y=Math.min(deepLimit,player.y);player.onGround=false;player.platformId=null;player.spin=0;player.spinAngle=0;player.spinAttack=false;}
   }
+ }else if(player.knucklesClinging){
+  const wall=knucklesWallById(player.knucklesWallId);
+  if(!wall){player.knucklesClinging=false;player.knucklesWallId=null;player.vy=100;}
+  else{const side=player.knucklesWallSide||1,top=knucklesWallTopY(wall),base=knucklesWallBaseY(wall);player.x=side>0?wall.x-player.w:wall.x+wall.w;player.vx=0;player.vy=0;player.onGround=false;player.platformId=null;player.knucklesGliding=false;
+   if(keys.up)player.y-=205*dt;else if(keys.down)player.y+=205*dt;
+   if(player.y+player.h<=top+2){player.knucklesClinging=false;player.knucklesWallId=null;player.y=top-player.h;player.x=side>0?wall.x+wall.w+5:wall.x-player.w-5;player.vx=side*180;player.onGround=true;player.facing=side;status.textContent='KNUCKLES · SUBIÓ EL MURO';}
+   else if(player.y>=base-player.h-2){player.knucklesClinging=false;player.knucklesWallId=null;player.y=base-player.h;player.onGround=true;status.textContent='KNUCKLES · EN LA BASE DEL MURO';}
+   else player.y=Math.max(top+2,Math.min(base-player.h,player.y));
+  }
  }else if(player.spinDashCharging||player.peelOutCharging){
   if(player.spinDashCharging){
    player.spinDashCharge=Math.min(1,(player.spinDashCharge||0)+dt*.82);
@@ -1076,12 +1167,11 @@ function update(dt){
  }else{
   const homingSteering=Boolean(homingTarget);
   const dir=Number(keys.right)-Number(keys.left);
-  if(selectedCharacterId==='tails'&&player.tailsTired){
+  if(selectedCharacterId==='knuckles'&&player.knucklesGliding){const glideDirection=dir||(player.facing||1);player.facing=glideDirection;player.vx+=(glideDirection*430-player.vx)*Math.min(1,5.4*dt);player.speedCharge=Math.max(player.speedCharge,.55);
+  }else if(selectedCharacterId==='tails'&&player.tailsTired){
    // Ya no puede impulsarse ni acelerar en el aire; pierde velocidad
    // horizontal progresivamente mientras planea hacia el suelo.
-   player.vx*=Math.pow(.42,dt);
-   player.speedCharge=Math.max(0,player.speedCharge-1.8*dt);
-   if(Math.abs(player.vx)<12)player.vx=0;
+   player.vx*=Math.pow(.42,dt);player.speedCharge=Math.max(0,player.speedCharge-1.8*dt);if(Math.abs(player.vx)<12)player.vx=0;
   }else if(homingSteering){
    player.speedCharge=Math.max(player.speedCharge,.7);
   }else if(dir){
@@ -1102,9 +1192,15 @@ function update(dt){
   }
   player.vx=Math.max(-player.speed,Math.min(player.speed,player.vx));
   player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+player.vx*dt));
+  const wallImpact=findKnucklesWallCollision(oldX,player.x);
+  if(wallImpact){const {wall,side}=wallImpact;
+   if(selectedCharacterId==='knuckles'&&player.knucklesGliding&&keys.jump){player.x=side>0?wall.x-player.w:wall.x+wall.w;player.knucklesClinging=true;player.knucklesWallId=wall.id;player.knucklesWallSide=side;player.knucklesGliding=false;player.vx=0;player.vy=0;player.spin=0;player.spinAngle=0;player.onGround=false;player.platformId=null;player.y=Math.max(knucklesWallTopY(wall)+2,Math.min(player.y,knucklesWallBaseY(wall)-player.h));status.textContent='KNUCKLES · AGARRADO · ↑ SUBIR / ↓ BAJAR / ESPACIO SALTAR';}
+   else{player.x=side>0?wall.x-player.w:wall.x+wall.w;player.vx=0;}
+  }
   if(player.spin)player.spinAngle=(player.spinAngle||0)+player.vx*dt/45;
   const worldCenter=player.x+player.w/2,groundNow=groundSurfaceAt(worldCenter);
-  if(wasGrounded&&oldPlatformId!==null){
+  if(player.knucklesClinging){player.onGround=false;player.platformId=null;}
+  else if(wasGrounded&&oldPlatformId!==null){
    const oldPlatform=platformById(oldPlatformId);
    if(oldPlatform&&player.x+player.w>oldPlatform.x&&player.x<oldPlatform.x+oldPlatform.w){
     player.y=aerialPlatformY(oldPlatform)-player.h;player.vy=0;player.onGround=true;player.platformId=oldPlatform.id;
@@ -1160,6 +1256,7 @@ function update(dt){
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
  if(selectedCharacterId==='tails'&&player.onGround){player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;}
+ if(selectedCharacterId==='knuckles'&&player.onGround){player.knucklesGliding=false;player.knucklesClinging=false;player.knucklesWallId=null;}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(selectedCharacterId==='tails'){
   if(player.onGround){
@@ -1228,11 +1325,13 @@ function update(dt){
   const enemyY=e.y+(e.kind===2?-7:0);
   const bodyHit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   const tailsSwipeHit=selectedCharacterId==='tails'&&player.tailsAttackTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*34))<48&&Math.abs(enemyY-(player.y+player.h/2))<54;
-  const hit=bodyHit||tailsSwipeHit;
+  const knucklesPunchHit=selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*48))<58&&Math.abs(enemyY-(player.y+player.h/2))<64;
+  const knucklesGlideHit=selectedCharacterId==='knuckles'&&player.knucklesGliding&&bodyHit;
+  const hit=bodyHit||tailsSwipeHit||knucklesPunchHit;
   if(hit){
    const rollingHit=player.rolling&&Math.abs(player.vx)>160;
    const tailsFlightHit=selectedCharacterId==='tails'&&player.tailsFlying&&!player.tailsTired&&bodyHit;
-   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit;
+   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit||knucklesPunchHit||knucklesGlideHit;
    if(attackHit){
     const homingHit=player.homingActive;
     destroyEnemy(e);
@@ -1245,7 +1344,7 @@ function update(dt){
      player.vy=-370;player.onGround=false;player.spin=1;
     }else if(rollingHit){
      player.spin=1;player.spinAngle=(player.spinAngle||0)+.8;
-    }
+    }else if(knucklesGlideHit){player.vy=Math.min(player.vy,-80);player.knucklesGliding=true;}
    }else if(player.vy>100&&player.y+player.h<enemyY+12){
     destroyEnemy(e);player.vy=-370;player.onGround=false;addScore(100);
    }else if(player.invincible<=0){
@@ -1300,6 +1399,11 @@ function update(dt){
   status.textContent=raceFinished?'CARRERA TERMINADA · GANADOR: '+(raceWinner||playerName):'SALA '+multiplayerRoom+' · TÚ '+Math.min(100,Math.floor(player.x/(worldWidth-player.w-90)*100))+'%'+(rival?' · '+rival.name+' '+Math.floor(rival.progress||0)+'%':' · ESPERANDO RIVAL');
  }else status.textContent=(inUnderground?'ZONA SUBTERRÁNEA · ':zone.name+' · ')+'ANILLOS '+rings.filter(r=>r.got).length+' · '+score+' PTS · VIDAS '+lives;
   if(player.spinDashCharging)status.textContent='SPIN DASH '+Math.round(player.spinDashCharge*100)+'% · SUELTA SHIFT / X';
+ if(selectedCharacterId==='knuckles'){
+  if(player.knucklesClinging)status.textContent='KNUCKLES TREPANDO · ↑ SUBIR · ↓ BAJAR · ESPACIO SALTAR';
+  else if(player.knucklesGliding)status.textContent='KNUCKLES PLANEANDO · MANTÉN ESPACIO · FLECHAS PARA DIRIGIR';
+  else if(player.knucklesPunchTimer>0)status.textContent='KNUCKLES · COMBO DE PUÑETAZOS '+player.knucklesPunchStage+'/3';
+ }
  if(selectedCharacterId==='tails'){
   if(player.tailsSwimming)status.textContent='TAILS NADANDO · PULSA SALTO PARA SUBIR';else if(player.tailsFlying)status.textContent='TAILS VOLANDO · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S · SUELTA ESPACIO PARA DESCENDER';else if(player.tailsTired&&!player.onGround)status.textContent='TAILS CANSADO · DESCENDIENDO';else if(!player.onGround)status.textContent='MANTÉN ESPACIO PARA VOLAR · '+Math.ceil(Math.max(0,7-player.tailsFlightTime))+' S';else if(player.tailsAttackTimer>0)status.textContent='ATAQUE DE COLAS';
  }
@@ -1508,6 +1612,13 @@ function traceTerrain(){
  g.beginPath();
  g.moveTo(0,terrainHeight(camera));
  for(let x=4;x<=scene.width;x+=4)g.lineTo(x,terrainHeight(camera+x));
+}
+function drawKnucklesWalls(){
+ for(const wall of knucklesWalls){if(wall.broken)continue;const x=Math.round(wall.x-camera),top=Math.round(knucklesWallTopY(wall)),base=Math.round(knucklesWallBaseY(wall));
+  g.save();g.fillStyle='#68777a';g.fillRect(x,top,wall.w,base-top);g.fillStyle='#929b91';g.fillRect(x+3,top+3,wall.w-9,7);
+  for(let row=0,yy=top+13;yy<base-4;row++,yy+=21){const shift=row%2?13:0;for(let xx=x+4+shift;xx<x+wall.w-7;xx+=25){g.fillStyle=(row+Math.floor(xx/25))%3===0?'#59686c':(row+Math.floor(xx/25))%3===1?'#7c8883':'#a0a293';g.fillRect(xx,yy,Math.min(20,x+wall.w-xx-4),15);g.fillStyle='rgba(235,239,216,.24)';g.fillRect(xx+2,yy+2,10,2)}}
+  g.strokeStyle='#46565a';g.lineWidth=2;g.beginPath();g.moveTo(x+17,top+30);g.lineTo(x+29,top+46);g.lineTo(x+20,top+62);g.moveTo(x+46,top+69);g.lineTo(x+34,top+88);g.stroke();g.restore();
+ }
 }
 function drawGround(){
  // Suelo de estilo plataformas clásico: bloques de tierra cálida y una capa
@@ -1984,6 +2095,28 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
+const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
+const KNUCKLES_ATLAS_COLUMNS=8,KNUCKLES_ATLAS_ROWS=30;
+let knucklesAnimations={idle:[],run:[],spin:[],ready:false};
+function loadKnucklesSheetFrame(sheet,index){
+ const total=KNUCKLES_ATLAS_COLUMNS*KNUCKLES_ATLAS_ROWS;if(!Number.isInteger(index)||index<0||index>=total)return null;
+ const cw=sheet.naturalWidth/KNUCKLES_ATLAS_COLUMNS,ch=sheet.naturalHeight/KNUCKLES_ATLAS_ROWS,col=index%KNUCKLES_ATLAS_COLUMNS,row=Math.floor(index/KNUCKLES_ATLAS_COLUMNS);
+ const sx=Math.round(col*cw),sy=Math.round(row*ch),sw=Math.round((col+1)*cw)-sx,sh=Math.round((row+1)*ch)-sy,probe=document.createElement('canvas');probe.width=sw;probe.height=sh;
+ const pctx=probe.getContext('2d',{willReadFrequently:true});if(!pctx)return null;
+ try{pctx.drawImage(sheet,sx,sy,sw,sh,0,0,sw,sh);const pixels=pctx.getImageData(0,0,sw,sh).data;let left=sw,top=sh,right=-1,bottom=-1;for(let y=0;y<sh;y++)for(let x=0;x<sw;x++)if(pixels[(y*sw+x)*4+3]>18){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}if(right<left||bottom<top)return null;return {img:sheet,cell:{x:sx,y:sy,width:sw,height:sh},bounds:{x:sx+left,y:sy+top,width:right-left+1,height:bottom-top+1}};}catch(error){console.warn('[Blue Rush] No se pudo recortar un sprite de Knuckles',error);return null}
+}
+function knucklesSheetFrames(sheet,indices){return indices.map(index=>loadKnucklesSheetFrame(sheet,index)).filter(Boolean)}
+function loadKnucklesSprites(){const sheet=new Image();sheet.onload=()=>{knucklesAnimations={idle:knucklesSheetFrames(sheet,[0,1,2,3,4]),run:knucklesSheetFrames(sheet,[10,11,12,13,14,15]),spin:knucklesSheetFrames(sheet,[5,6,7,8,9]),ready:true};console.info('[Blue Rush] Sprites de Knuckles cargados',{width:sheet.naturalWidth,height:sheet.naturalHeight,idle:knucklesAnimations.idle.length,run:knucklesAnimations.run.length,spin:knucklesAnimations.spin.length});};sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar la hoja de Knuckles:',KNUCKLES_SHEET_PATH)};sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-sprites-1';}
+function drawKnucklesCharacter(screenX,screenY,options={}){
+ const animation=options.animation||'idle',phase=Number(options.phase)||0;
+ if(['glide','climb','punch'].includes(animation)){drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:false,rolling:false,falling:animation==='glide',phase,gliding:animation==='glide',climbing:animation==='climb',punching:animation==='punch'});return}
+ const frames=knucklesAnimations[animation]&&knucklesAnimations[animation].length?knucklesAnimations[animation]:knucklesAnimations.idle;
+ if(!frames.length){drawVectorCharacter('knuckles',screenX,screenY,{facing:options.facing,moving:animation==='run',rolling:animation==='spin',falling:animation==='spin',phase,spinAngle:options.spinAngle});return}
+ const rate=animation==='idle'?1.5:animation==='run'?9:8,entry=frames[Math.floor(Math.max(0,phase)*rate)%frames.length],b=entry.bounds,cell=entry.cell,scale=Math.min(88/cell.width,86/cell.height),dw=b.width*scale,dh=b.height*scale,dx=(b.x-cell.x-cell.width/2)*scale,dy=(b.y-cell.y-cell.height/2)*scale,smoothing=g.imageSmoothingEnabled;
+ g.save();g.translate(Math.round(screenX),Math.round(screenY));if(Number(options.facing)<0)g.scale(-1,1);if(animation==='spin')g.rotate(Number(options.spinAngle)||phase*7);g.imageSmoothingEnabled=false;g.drawImage(entry.img,b.x,b.y,b.width,b.height,dx,dy,dw,dh);g.imageSmoothingEnabled=smoothing;g.restore();
+}
+loadKnucklesSprites();
+
 function loadTailsSprites(){
  const sheet=new Image();sheet.onload=()=>{
   // Mapeo de las animaciones del proyecto original Sonic Escape de SauceK.
@@ -2210,6 +2343,13 @@ function drawPlayer(){
   else if(Math.abs(player.vx)>25){animation='run';phase=player.runPhase;}
   drawTailsCharacter(x,y,{facing:player.facing,animation,phase});return;
  }
+ if(selectedCharacterId==='knuckles'){
+  let animation='idle',phase=player.runPhase;
+  if(player.knucklesClinging)animation='climb';else if(player.knucklesPunchTimer>0)animation='punch';else if(player.knucklesGliding)animation='glide';
+  else if(player.spinDashCharging||player.spinDashRolling||player.rolling||player.spin||!player.onGround)animation='spin';else if(Math.abs(player.vx)>25)animation='run';
+  if(animation==='spin')phase=player.spinPhase||player.fallPhase;
+  drawKnucklesCharacter(x,y,{facing:player.facing,animation,phase,spinAngle:player.spinAngle});return;
+ }
  if(selectedCharacterId!=='sonic'){
   const phase=player.spinDashCharging||player.spinDashRolling?player.spinPhase:(player.onGround?player.runPhase:player.fallPhase);
   drawVectorCharacter(selectedCharacterId,x,y,{facing:player.facing,moving:player.onGround&&Math.abs(player.vx)>25,rolling:Boolean(player.spin),falling:!player.onGround&&!player.spin,phase,spinAngle:player.spinAngle});return;
@@ -2357,6 +2497,7 @@ function draw(){
  const stages=[
   ["FONDO",drawBackground],
   ["SUELO",drawGround],
+  ["MUROS DE ROCA",drawKnucklesWalls],
   ["CUMBRES ROCOSAS",drawMountainDetails],
   ["DECORACIÓN",drawDecorations],
   ["ANILLOS",()=>rings.forEach(drawRing)],

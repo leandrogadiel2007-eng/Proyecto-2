@@ -36,4 +36,14 @@ El nado personalizado de Blue Rush reutiliza los fotogramas de propulsión de vu
 - Nado bajo los puentes (↓ para sumergirse y salto para impulsarse).
 - Spin Dash con las poses de carga y bola correspondientes a la hoja original.
 
-Knuckles, Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
+Knuckles utiliza `assets/knuckles/knucklesheet.png`, una hoja de sprites de *Sonic Advance 3* atribuida a Ren Ramos en The Spriters Resource. Blue Rush recorta los fotogramas de reposo, carrera y bola; las poses de planeo, escalada y puñetazo usan el dibujo vectorial provisional.
+
+## Habilidades de Knuckles en Blue Rush
+- Salto más bajo que Sonic.
+- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento.
+- Al planear contra un muro de roca se aferra a él. ↑/W sube, ↓/S baja y Espacio salta para soltarse.
+- Z ejecuta un combo de tres puñetazos; el último es un uppercut. Los golpes eliminan enemigos y rompen los muros de roca del recorrido.
+- Spin Dash sigue disponible con X.
+- Los muros rotos se sincronizan entre jugadores de una misma sala online.
+
+Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
