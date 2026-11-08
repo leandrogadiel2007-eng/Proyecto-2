@@ -81,3 +81,7 @@ La corrección también cambia el parámetro de versión de `game.js` en `index.
 
 ### Animación del puñetazo de Knuckles
 Al pulsar el botón de ataque (Z por defecto o el control táctil), Blue Rush reproduce la secuencia de golpe de la hoja de Knuckles: cuadros 70, 71, 72, 73 y 19, con una duración ampliada de 0,35 s. Los cinco cuadros se distribuyen uniformemente durante todo el movimiento para que el último no quede congelado durante la mayor parte del tiempo. La pose se muestra también en modo individual o cuando no hay un rival dentro del alcance; el efecto de reducir velocidad se aplica únicamente al rival online alcanzado.
+
+
+### Golpe de Knuckles contra enemigos
+Mientras `knucklesPunchTimer` está activo, se calcula una zona de impacto delante del personaje (hasta 104 px en la dirección hacia la que mira y 54 px de tolerancia vertical). Si un enemigo entra en esa zona, se destruye mediante el mismo sistema de explosión y sincronización online que los demás ataques, y concede 100 puntos. Enemigos detrás de Knuckles no reciben el golpe.

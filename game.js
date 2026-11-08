@@ -1376,12 +1376,17 @@ function update(dt){
   const enemyY=e.y+(e.kind===2?-7:0);
   const bodyHit=player.x+player.w>e.x-28&&player.x<e.x+28&&player.y+player.h>enemyY-27&&player.y<enemyY+22;
   const tailsSwipeHit=selectedCharacterId==='tails'&&player.tailsAttackTimer>0&&Math.abs(e.x-(player.x+player.w/2+player.facing*34))<48&&Math.abs(enemyY-(player.y+player.h/2))<54;
+  // El puñetazo de Knuckles alcanza enemigos delante de él mientras dura la animación.
+  // La comprobación direccional evita golpear enemigos que estén detrás del personaje.
+  const punchOffset=(e.x-(player.x+player.w/2))*(player.facing||1);
+  const knucklesPunchHit=selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0&&
+   punchOffset>=-4&&punchOffset<=104&&Math.abs(enemyY-(player.y+player.h/2))<54;
   const knucklesGlideHit=selectedCharacterId==='knuckles'&&player.knucklesGliding&&bodyHit;
-  const hit=bodyHit||tailsSwipeHit;
+  const hit=bodyHit||tailsSwipeHit||knucklesPunchHit;
   if(hit){
    const rollingHit=player.rolling&&Math.abs(player.vx)>160;
    const tailsFlightHit=selectedCharacterId==='tails'&&player.tailsFlying&&!player.tailsTired&&bodyHit;
-   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit||knucklesGlideHit;
+   const attackHit=player.homingActive||player.spinAttack||rollingHit||tailsFlightHit||tailsSwipeHit||knucklesGlideHit||knucklesPunchHit;
    if(attackHit){
     const homingHit=player.homingActive;
     destroyEnemy(e);
@@ -1395,6 +1400,7 @@ function update(dt){
     }else if(rollingHit){
      player.spin=1;player.spinAngle=(player.spinAngle||0)+.8;
     }else if(knucklesGlideHit){player.vy=Math.min(player.vy,-80);player.knucklesGliding=true;}
+    else if(knucklesPunchHit){status.textContent='¡PUÑETAZO! · ENEMIGO DESTRUIDO · +100 PTS';}
    }else if(player.vy>100&&player.y+player.h<enemyY+12){
     destroyEnemy(e);player.vy=-370;player.onGround=false;addScore(100);
    }else if(player.invincible<=0){
