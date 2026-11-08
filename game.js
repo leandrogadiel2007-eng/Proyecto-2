@@ -834,7 +834,7 @@ function knucklesPunch(inputSource){
  // La animación siempre se muestra al pulsar ataque, incluso al practicar en solitario
  // o cuando no hay un rival dentro del alcance.
  player.knucklesPunchInputAt=inputNow;player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;
- player.knucklesPunchTimer=.25;player.knucklesPunchCooldown=.2;
+ player.knucklesPunchTimer=.35;player.knucklesPunchCooldown=.2;
  player.knucklesGliding=false;player.knucklesJumpTapPending=false;
  player.spinDashCharging=false;player.spinDashCharge=0;
  player.spinDashRolling=false;player.spinDashRollTime=0;
@@ -2228,7 +2228,7 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
  }
  const fps=name==='idle'?10:name==='run'||name==='glide'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:name==='fall'?13.3:name==='punch'?15:20;
  const frameIndex=name==='punch'
-  ?Math.min(frames.length-1,Math.floor(phase*fps))
+  ?Math.min(frames.length-1,Math.floor(phase*frames.length))
   :Math.floor(phase*fps)%frames.length;
  const entry=frames[frameIndex],img=entry.img,c=entry.cell,b=entry.bounds||c;
  const scale=Math.min(88/c.width,86/c.height);
@@ -2484,7 +2484,7 @@ function drawPlayer(){
    animation='glide';phase=elapsed;
   }else if(player.knucklesPunchTimer>0){
    animation='punch';
-   phase=1-Math.max(0,player.knucklesPunchTimer)/.25;
+   phase=1-Math.max(0,player.knucklesPunchTimer)/.35;
   }else if(player.onGround&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115){
    animation='spin';phase=player.spinPhase;
   }else if(!spriteGrounded){
