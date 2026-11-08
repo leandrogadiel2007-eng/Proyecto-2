@@ -32,7 +32,10 @@ let activeRunId=null,activeRunStartedAt=null;
 
 function makeRunId(){
  if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID();
- return 'br-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+ // Fallback con formato UUID v4 para la columna uuid de PostgreSQL.
+ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+  const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);
+ });
 }
 function getCloudSupabaseClient(){
  const config=window.BLUE_RUSH_SUPABASE||{};
