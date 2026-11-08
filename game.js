@@ -26,6 +26,122 @@ let selectedCharacterId='sonic';
 let authenticatedUser=null;
 let playerName='';
 let currentRunRecorded=true;
+let cloudSupabaseClient=null;
+let cloudLeaderboardCache=null;
+let activeRunId=null,activeRunStartedAt=null;
+
+function makeRunId(){
+ if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID();
+ return 'br-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+}
+function getCloudSupabaseClient(){
+ const config=window.BLUE_RUSH_SUPABASE||{};
+ const url=String(config.url||'').trim(),key=String(config.publishableKey||config.key||'').trim();
+ if(!url||!key||!window.supabase||typeof window.supabase.createClient!=='function')return null;
+ if(!cloudSupabaseClient)cloudSupabaseClient=window.supabase.createClient(url,key);
+ return cloudSupabaseClient;
+}
+function cloudStatsPayload(accountId,stats){
+ return {
+  account_id:accountId,best_score:Math.max(0,Math.floor(Number(stats.bestScore)||0)),
+  total_score:Math.max(0,Math.floor(Number(stats.totalScore)||0)),
+  games_played:Math.max(0,Math.floor(Number(stats.runs)||0)),
+  wins:Math.max(0,Math.floor(Number(stats.wins)||0)),
+  best_time:Number(stats.bestTime)>0?Number(stats.bestTime):null,
+  last_score:Math.max(0,Math.floor(Number(stats.lastScore)||0)),
+  last_outcome:String(stats.lastOutcome||'')||null
+ };
+}
+async function saveCloudProfile(user,characterId=selectedCharacterId){
+ const db=getCloudSupabaseClient();if(!db||!user)return;
+ const {error}=await db.from('br_profiles').upsert({
+  account_id:user.id,
+  display_name:String(user.name||user.id).slice(0,16),
+  selected_character:normalizeCharacterId(characterId)
+ },{onConflict:'account_id'});
+ if(error)throw error;
+}
+async function refreshCloudLeaderboard(){
+ const db=getCloudSupabaseClient();if(!db)return;
+ const [statsResult,profilesResult]=await Promise.all([
+  db.from('br_player_stats').select('account_id,best_score,total_score,games_played,wins,best_time,last_score,last_outcome').order('best_score',{ascending:false}).limit(10),
+  db.from('br_profiles').select('account_id,display_name')
+ ]);
+ if(statsResult.error)throw statsResult.error;
+ if(profilesResult.error)throw profilesResult.error;
+ const profiles=new Map((profilesResult.data||[]).map(item=>[item.account_id,item]));
+ cloudLeaderboardCache=(statsResult.data||[]).map(row=>{
+  const profile=profiles.get(row.account_id);
+  const account=DEMO_ACCOUNTS.find(item=>item.id===row.account_id)||{id:row.account_id,name:profile&&profile.display_name||row.account_id};
+  return {account,stats:cleanScoreStats({
+   bestScore:row.best_score,totalScore:row.total_score,runs:row.games_played,wins:row.wins,
+   bestTime:row.best_time,lastScore:row.last_score,lastOutcome:row.last_outcome
+  })};
+ });
+ renderScoreboard();
+}
+async function loadCloudAccountData(user){
+ const db=getCloudSupabaseClient();if(!db||!user)return;
+ try{
+  const [profileResult,statsResult]=await Promise.all([
+   db.from('br_profiles').select('account_id,display_name,selected_character').eq('account_id',user.id).maybeSingle(),
+   db.from('br_player_stats').select('account_id,best_score,total_score,games_played,wins,best_time,last_score,last_outcome').eq('account_id',user.id).maybeSingle()
+  ]);
+  if(profileResult.error)throw profileResult.error;
+  if(statsResult.error)throw statsResult.error;
+  if(!authenticatedUser||authenticatedUser.id!==user.id)return;
+  if(profileResult.data){
+   setSelectedCharacter(profileResult.data.selected_character,false);
+   try{localStorage.setItem(CHARACTER_STORAGE_KEY+user.id,selectedCharacterId)}catch(_){}
+  }else{
+   await saveCloudProfile(user,selectedCharacterId);
+  }
+  const localRecords=readScoreRecords(),localStats=cleanScoreStats(localRecords[user.id]);
+  const cloudRow=statsResult.data;
+  const cloudStats=cloudRow?cleanScoreStats({
+   bestScore:cloudRow.best_score,totalScore:cloudRow.total_score,runs:cloudRow.games_played,
+   wins:cloudRow.wins,bestTime:cloudRow.best_time,lastScore:cloudRow.last_score,lastOutcome:cloudRow.last_outcome
+  }):cleanScoreStats(null);
+  const merged={
+   bestScore:Math.max(localStats.bestScore,cloudStats.bestScore),
+   totalScore:Math.max(localStats.totalScore,cloudStats.totalScore),
+   runs:Math.max(localStats.runs,cloudStats.runs),
+   wins:Math.max(localStats.wins,cloudStats.wins),
+   bestTime:localStats.bestTime&&cloudStats.bestTime?Math.min(localStats.bestTime,cloudStats.bestTime):(localStats.bestTime||cloudStats.bestTime),
+   lastScore:cloudRow?cloudStats.lastScore:localStats.lastScore,
+   lastOutcome:cloudRow?cloudStats.lastOutcome:localStats.lastOutcome
+  };
+  localRecords[user.id]=merged;writeScoreRecords(localRecords);renderScoreboard();
+  const {error:statsUpsertError}=await db.from('br_player_stats').upsert(cloudStatsPayload(user.id,merged),{onConflict:'account_id'});
+  if(statsUpsertError)throw statsUpsertError;
+  await refreshCloudLeaderboard();
+ }catch(error){
+  console.warn('[Blue Rush] No se pudieron cargar los datos SQL de Supabase. Ejecuta supabase/schema.sql:',error);
+  if(authenticatedUser&&authenticatedUser.id===user.id&&/relation .* does not exist|could not find the table|schema cache/i.test(String(error.message||''))){
+   showAuthMessage('Cuenta iniciada. Falta crear las tablas SQL: ejecuta el archivo supabase/schema.sql en Supabase.',true);
+  }
+ }
+}
+async function persistRunToSupabase(user,stats,outcome,finalScore){
+ const db=getCloudSupabaseClient();if(!db||!user)return;
+ try{
+  await saveCloudProfile(user,selectedCharacterId);
+  const {error:statsError}=await db.from('br_player_stats').upsert(cloudStatsPayload(user.id,stats),{onConflict:'account_id'});
+  if(statsError)throw statsError;
+  const runId=activeRunId||makeRunId();
+  const {error:matchError}=await db.from('br_match_history').upsert({
+   id:runId,account_id:user.id,room_code:onlineMode?(multiplayerRoom||null):null,
+   character_id:normalizeCharacterId(selectedCharacterId),score:finalScore,
+   duration_seconds:Math.max(0,Math.round((Number(elapsed)||0)*100)/100),
+   outcome,started_at:activeRunStartedAt||new Date().toISOString(),finished_at:new Date().toISOString()
+  },{onConflict:'id',ignoreDuplicates:true});
+  if(matchError)throw matchError;
+  await refreshCloudLeaderboard();
+ }catch(error){
+  console.warn('[Blue Rush] No se pudo guardar la partida en las tablas SQL:',error);
+ }
+}
+
 function readScoreRecords(){
  try{const data=JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY)||'{}');return data&&typeof data==='object'&&!Array.isArray(data)?data:{}}
  catch(_){return {}}
@@ -45,9 +161,11 @@ function renderScoreboard(){
  if(scoreMeta)scoreMeta.textContent='PARTIDAS '+stats.runs+' · VICTORIAS '+stats.wins;
  if(!scoreRanking)return;
  scoreRanking.replaceChildren();
- DEMO_ACCOUNTS.map(account=>({account,stats:cleanScoreStats(records[account.id])}))
-  .sort((a,b)=>b.stats.bestScore-a.stats.bestScore||a.account.name.localeCompare(b.account.name))
-  .slice(0,3).forEach(entry=>{
+ const rankingEntries=Array.isArray(cloudLeaderboardCache)&&cloudLeaderboardCache.length
+  ?cloudLeaderboardCache.slice(0,3)
+  :DEMO_ACCOUNTS.map(account=>({account,stats:cleanScoreStats(records[account.id])}))
+    .sort((a,b)=>b.stats.bestScore-a.stats.bestScore||a.account.name.localeCompare(b.account.name)).slice(0,3);
+ rankingEntries.forEach(entry=>{
    const item=document.createElement('li'),name=document.createElement('span'),points=document.createElement('strong');
    if(authenticatedUser&&authenticatedUser.id===entry.account.id)item.classList.add('is-current');
    name.textContent=entry.account.name+(authenticatedUser&&authenticatedUser.id===entry.account.id?' · TÚ':'');
@@ -78,6 +196,7 @@ function recordRun(outcome){
  }
  records[authenticatedUser.id]=stats;
  if(writeScoreRecords(records))renderScoreboard();
+ void persistRunToSupabase(authenticatedUser,stats,outcome,finalScore);
 }
 function normalizeCharacterId(value){return Object.prototype.hasOwnProperty.call(CHARACTER_DATA,String(value||''))?String(value):'sonic'}
 function setSelectedCharacter(value,save=true){
@@ -116,6 +235,7 @@ function setSelectedCharacter(value,save=true){
  if(save&&authenticatedUser){
   try{localStorage.setItem(CHARACTER_STORAGE_KEY+authenticatedUser.id,selectedCharacterId)}
   catch(error){console.warn('[Blue Rush] No se pudo guardar el personaje elegido:',error)}
+  void saveCloudProfile(authenticatedUser,selectedCharacterId).catch(error=>console.warn('[Blue Rush] No se pudo guardar el personaje en Supabase:',error));
  }
 }
 function restoreSelectedCharacter(){
@@ -153,6 +273,7 @@ function setAuthenticatedUser(user,saveSession=true){
   restoreSelectedCharacter();
  }
  renderScoreboard();
+ if(loggedIn)void loadCloudAccountData(authenticatedUser);
 }
 function restoreDemoSession(){
  // Recupera la sesión solo al recargar la misma pestaña.
@@ -416,7 +537,7 @@ function startGame(){
   startScreen.querySelector('p:not(.start-kicker)').textContent='Escribe tu nombre para comenzar la aventura.';
   startButton.textContent='JUGAR SOLO';
   playerName=(playerNameInput.value||playerName||'').trim().slice(0,16)||'Sonic';playerNameInput.value=playerName;
-  currentRunRecorded=false;running=true;startScreen.classList.add('hidden');
+  currentRunRecorded=false;activeRunId=makeRunId();activeRunStartedAt=new Date().toISOString();running=true;startScreen.classList.add('hidden');
   status.textContent=onlineMode?'ONLINE · SALA '+multiplayerRoom:'¡CORRE POR LA ISLA Y DESCUBRE SUS RUTAS!';
   lastTime=performance.now();
  }
