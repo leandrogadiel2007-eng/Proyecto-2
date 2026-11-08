@@ -41,11 +41,12 @@ Blue Rush utiliza la hoja de sprites que ya estaba en el repositorio: `assets/kn
 Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippeados por Ren “Foxx” Ramos, [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/).
 
 ## Habilidades de Knuckles en Blue Rush
-- Segundo toque de salto en el aire y mantenerlo para planear; izquierda/derecha dirigen el desplazamiento.
-- El atlas de referencia usa 10 columnas; el PNG local de Blue Rush tiene 9 columnas porque se omitió la columna fuente 5. El código convierte los índices originales al índice local correcto en cada fila.
-- Animaciones: reposo (0–4), bola (7–10), carrera (11–16), Dash (21–28), Dash max (47–49), planeo (58–59), salto (29–32), caída (81–82) y swipe (70–73, 19), convertidas al atlas compacto.
-- Los fotogramas se recortan por transparencia y se anclan por su borde inferior a la base de la caja física del jugador, para mantener los pies a nivel del suelo y evitar que Knuckles parezca flotar.
-- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. El golpe reduce la velocidad al 28%; el tercer golpe la reduce al 20%.
+- Segundo toque de salto en el aire o mantener Espacio después del despegue para planear; izquierda/derecha dirigen el desplazamiento.
+- La escena fuente de Knuckles declara 10 columnas × 9 filas (celdas de 64 px). El PNG local de Blue Rush mide 576 × 576: conserva las primeras 9 columnas de cada fila y omite solo la columna fuente 9 (la décima). Conversión: `local = fila × 9 + columna` cuando `columna < 9`.
+- Mapeo convertido desde `Knuckles.tscn`: reposo [0–4], bola [7, 8, 10], carrera [11–16], Dash [21–28], Dash max [47–48], planeo [58], salto [30–32], caída [81–82] y swipe [70–73]. Los fotogramas de la décima columna se omiten.
+- El recorte de transparencia conserva el pivote central de cada celda, igual que el `Sprite2D` original, para mantener estable la posición entre fotogramas.
+- La bolita aparece solo durante Spin Dash activo en el suelo. El planeo se mantiene hasta aterrizar.
+- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. La animación solo se inicia desde una entrada de teclado o botón táctil y después de validar un rival al alcance.
 - No hay muros de roca ni escalada. Spin Dash sigue disponible con X.
 
 Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.

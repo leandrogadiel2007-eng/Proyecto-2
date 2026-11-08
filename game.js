@@ -501,6 +501,7 @@ async function startOnlineGame(){
 }
 function leaveOnlineRoom(){
  onlineMode=false;remotePlayers.clear();destroyedEnemyIds.clear();enemyExplosions=[];enemies.forEach(enemy=>enemy.alive=true);const channel=multiplayerChannel,client=multiplayerClient;multiplayerChannel=null;multiplayerClient=null;multiplayerRoom='';
+ if(player){player.knucklesPunchTimer=0;player.knucklesPunchCooldown=0;player.knucklesPunchInputAt=-1e9;}
  if(channel&&client)client.removeChannel(channel).catch(error=>console.warn('[Blue Rush] No se pudo cerrar la sala:',error));
 }
 function sendOnlineState(now){
@@ -508,7 +509,7 @@ function sendOnlineState(now){
  if(running){
   if(selectedCharacterId==='knuckles'&&player.knucklesGliding)animation='knucklesGlide';
   else if(selectedCharacterId==='knuckles'&&player.knucklesPunchTimer>0)animation='knucklesPunch';
-  else if(selectedCharacterId==='knuckles'&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115)animation='spin';
+  else if(selectedCharacterId==='knuckles'&&player.onGround&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115)animation='spin';
   else if(selectedCharacterId==='knuckles'&&!player.onGround)animation=player.vy<0?'jump':'fall';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)>=SONIC_MAX_SPEED_THRESHOLD)animation='knucklesMaxSpeed';
   else if(selectedCharacterId==='knuckles'&&Math.abs(player.vx)/Math.max(1,player.speed)>=.58)animation='dash';
@@ -711,7 +712,9 @@ function applyPlayerDamage(){
 }
 function startKnucklesGlide(){
  if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding)return false;
- player.knucklesGliding=true;player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
+ player.knucklesGliding=true;
+ player.spinDashRolling=false;player.spinDashRollTime=0;player.spinDashCharging=false;player.spinDashCharge=0;
+ player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
  status.textContent='KNUCKLES · PLANEANDO · ←/→ PARA DIRIGIR';
  return true;
 }
@@ -737,7 +740,10 @@ function jump(){
   player.spin=selectedCharacterId==='knuckles'?0:1;player.spinAngle=0;player.rolling=false;
   player.spinAttack=selectedCharacterId==='sonic';player.homingActive=false;
   player.knucklesGliding=false;
-  if(selectedCharacterId==='knuckles')player.knucklesJumpStartedAt=elapsed;
+  if(selectedCharacterId==='knuckles'){
+   player.spinDashRolling=false;player.spinDashRollTime=0;player.spinDashCharging=false;player.spinDashCharge=0;
+   player.knucklesJumpStartedAt=elapsed;
+  }
   return;
  }
  if(selectedCharacterId==='knuckles')startKnucklesGlide();
@@ -813,7 +819,9 @@ function tailsAttack(){
  if(!running||selectedCharacterId!=='tails'||player.tailsSwimming||(player.tailsAttackCooldown||0)>0)return false;
  player.tailsAttackTimer=.34;player.tailsAttackCooldown=.48;player.spinAttack=false;player.rolling=false;player.homingActive=false;player.homingTargetId=null;status.textContent='ATAQUE DE COLAS';return true;
 }
-function knucklesPunch(){
+function knucklesPunch(inputSource){
+ // Solo entradas reales del teclado o del botón táctil pueden solicitar el golpe.
+ if(inputSource!=='keyboard'&&inputSource!=='touch')return false;
  // El puñetazo solo se ejecuta en online y con un rival real al alcance.
  if(!running||selectedCharacterId!=='knuckles'||!onlineMode||!multiplayerChannel||
     (player.knucklesPunchCooldown||0)>0)return false;
@@ -833,7 +841,7 @@ function knucklesPunch(){
  // No se reproduce la animación hasta confirmar que el golpe tiene objetivo.
  player.knucklesPunchInputAt=inputNow;player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;
  player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.2;
- player.knucklesGliding=false;player.rolling=false;player.spin=0;player.spinAttack=false;
+ player.knucklesGliding=false;player.spinDashRolling=false;player.spinDashRollTime=0;player.rolling=false;player.spin=0;player.spinAttack=false;
  const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now(),slowDuration:stage===3?1.8:1.55,slowFactor:stage===3?.2:.28};
  multiplayerChannel.send({type:'broadcast',event:'player-punched',payload})
   .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el golpe al rival:',error));
@@ -841,7 +849,7 @@ function knucklesPunch(){
  status.textContent='¡GOLPEASTE A '+String(target.other.name||'TU RIVAL').toUpperCase()+'! · PIERDE VELOCIDAD';
  return true;
 }
-function activateCharacterAttack(){return selectedCharacterId==='tails'?tailsAttack():selectedCharacterId==='knuckles'?knucklesPunch():homingAttack()}
+function activateCharacterAttack(inputSource){return selectedCharacterId==='tails'?tailsAttack():selectedCharacterId==='knuckles'?knucklesPunch(inputSource):homingAttack()}
 
 const CONTROL_BINDINGS_STORAGE_KEY='blueRushControlBindingsV1';
 const DEFAULT_CONTROL_BINDINGS={left:'ArrowLeft',right:'ArrowRight',down:'ArrowDown',jump:'Space',spindash:'KeyX',peelout:'KeyC',homing:'KeyZ'};
@@ -917,6 +925,9 @@ function stopGameInputForMenu(){
  keys.left=keys.right=keys.jump=keys.down=keys.spindash=keys.peelout=keys.homing=false;keys.up=false;
  if(player){
   if(player.spinDashCharging){player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0}
+  if(selectedCharacterId==='knuckles'){
+   player.spinDashRolling=false;player.spinDashRollTime=0;player.spinDashCharging=false;player.spinDashCharge=0;player.spin=0;player.spinAngle=0;
+  }
   if(player.peelOutCharging){player.peelOutCharging=false;player.peelOutCharge=0;player.spin=0}
  }
 }
@@ -1017,7 +1028,7 @@ function setKey(key,down,code=''){
  }
  if(action==='homing'){
   const wasHeld=keys.homing;keys.homing=down;
-  if(down&&!wasHeld)activateCharacterAttack();
+  if(down&&!wasHeld)activateCharacterAttack('keyboard');
  }
  if(action==='jump'){
   const wasHeld=keys.jump;keys.jump=down;
@@ -1064,7 +1075,7 @@ document.querySelectorAll('[data-control]').forEach(b=>{
   else if(c==='up'){if(!running)startGame();keys.up=true}
   else if(c==='spindash'){if(!running)startGame();keys.spindash=true;beginSpinDash()}
   else if(c==='peelout'){if(!running)startGame();keys.peelout=true;beginSuperPeelOut()}
-  else if(c==='homing'){if(!running)startGame();activateCharacterAttack()}
+  else if(c==='homing'){if(!running)startGame();activateCharacterAttack('touch')}
   else{if(!running)startGame();keys[c]=true}
  };
  const release=e=>{
@@ -2113,30 +2124,28 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// La escena original de Knuckles usa 10 columnas. El PNG del repositorio
-// mide 576x576 y conserva 9 celdas por fila: se quitó la columna fuente 5.
-// Convertimos cada frame fuente a su índice local; nunca usamos el índice fuente
-// directamente sobre el atlas compacto porque desplaza las poses.
+// La escena fuente Knuckles usa 10 columnas x 9 filas (celdas de 64 px).
+// El PNG local del repositorio es 9x9: conserva las columnas fuente 0..8
+// de cada fila y omite únicamente la columna 9 (la décima).
 const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
 const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=5;
+const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=9;
 const KNUCKLES_SOURCE_FRAME_MAP={
  idle:[0,1,2,3,4,0],
- spin:[7,8,9,10],
+ spin:[7,8,10],
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
- maxSpeed:[47,48,49],
- glide:[58,59],
- jump:[29,30,31,32],
+ maxSpeed:[47,48],
+ glide:[58],
+ jump:[30,31,32],
  fall:[81,82],
- punch:[70,71,72,73,19]
+ punch:[70,71,72,73]
 };
 function knucklesSourceFrameToLocal(index){
  if(!Number.isInteger(index)||index<0)return -1;
  const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
  if(row>=KNUCKLES_ATLAS_ROWS||col===KNUCKLES_REMOVED_SOURCE_COLUMN)return -1;
- const localCol=col>KNUCKLES_REMOVED_SOURCE_COLUMN?col-1:col;
- return row*KNUCKLES_ATLAS_COLUMNS+localCol;
+ return row*KNUCKLES_ATLAS_COLUMNS+col;
 }
 const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
  name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
@@ -2186,7 +2195,7 @@ function loadKnucklesSprites(){
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-correct-local-map-foot-anchor-glide-14';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-source-last-column-map-center-pivot-20';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
@@ -2210,15 +2219,16 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
   });
   return;
  }
- const fps=name==='idle'?10.7:name==='run'||name==='glide'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:20;
- const frameIndex=Math.floor(phase*fps)%frames.length;
+ const fps=name==='idle'?10:name==='run'||name==='glide'?6.7:name==='dash'?13.3:name==='maxSpeed'?10:name==='fall'?13.3:name==='punch'?15:20;
+ const frameIndex=name==='punch'
+  ?Math.min(frames.length-1,Math.floor(phase*fps))
+  :Math.floor(phase*fps)%frames.length;
  const entry=frames[frameIndex],img=entry.img,c=entry.cell,b=entry.bounds||c;
  const scale=Math.min(88/c.width,86/c.height);
  const dw=b.width*scale,dh=b.height*scale;
- // screenY es el centro de la caja física; anclar el borde inferior visible
- // al borde inferior del jugador mantiene los pies sobre el suelo/plataforma.
- const anchorOffsetY=Number.isFinite(Number(options.anchorOffsetY))?Number(options.anchorOffsetY):21.5;
- const dx=-dw/2,dy=anchorOffsetY-dh;
+ // Pivote fijo en el centro de la celda, igual que Sprite2D en la escena original.
+ const dx=(b.x-c.x-c.width/2)*scale;
+ const dy=(b.y-c.y-c.height/2)*scale;
  const smoothing=g.imageSmoothingEnabled;
  g.save();g.translate(Math.round(screenX),Math.round(screenY));
  if(Number(options.facing)<0)g.scale(-1,1);
@@ -2463,12 +2473,12 @@ function drawPlayer(){
   let animation='idle',phase=elapsed;
   const floorY=player.platformId!==null&&platformById(player.platformId)?aerialPlatformY(platformById(player.platformId)):groundSurfaceAt(player.x+player.w/2);
   const spriteGrounded=player.onGround||(player.platformId===null&&!inUnderground&&player.vy>=0&&player.y+player.h>=floorY-3);
-  if(player.knucklesPunchTimer>0){
+  if(onlineMode&&multiplayerChannel&&player.knucklesPunchTimer>0){
    animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;
    phase=1-Math.max(0,player.knucklesPunchTimer)/duration;
   }else if(player.knucklesGliding){
    animation='glide';phase=elapsed;
-  }else if(player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115){
+  }else if(player.onGround&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115){
    animation='spin';phase=player.spinPhase;
   }else if(!spriteGrounded){
    animation=player.vy<0?'jump':'fall';phase=elapsed;
