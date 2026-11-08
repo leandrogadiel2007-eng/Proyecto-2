@@ -87,7 +87,7 @@ function setSelectedCharacter(value,save=true){
   player.spin=0;player.spinAngle=0;player.rolling=false;player.spinAttack=false;
   player.homingActive=false;player.homingTargetId=null;player.homingTimer=0;
   player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashRolling=false;player.spinDashRollTime=0;
-  player.knucklesGliding=false;player.knucklesPunchTimer=0;
+  player.knucklesGliding=false;player.knucklesJumpTapPending=false;player.knucklesPunchTimer=0;
   player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;player.tailsSwimming=false;player.tailsAttackTimer=0;
   if(!running){player.vx=0;player.vy=0;player.onGround=true;player.platformId=null;player.y=groundSurfaceAt(player.x+player.w/2)-player.h;}
  }
@@ -402,7 +402,7 @@ function destroyEnemy(enemy){
 
 function resetPlayer(){
  keys.left=keys.right=keys.jump=keys.down=keys.up=keys.spindash=keys.peelout=keys.homing=false;
- player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesJumpStartedAt:0,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,knucklesPunchInputAt:-1e9,hitSlowTimer:0,hitSlowFactor:1,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
+ player={x:90,y:terrainHeight(90)-43,w:34,h:43,vx:0,vy:0,speed:900,speedCharge:0,jump:625,onGround:true,facing:1,invincible:0,spin:0,spinAngle:0,runPhase:0,fallPhase:0,spinPhase:0,spinDashCharging:false,spinDashCharge:0,spinDashAnimTime:0,spinDashRolling:false,spinDashRollTime:0,rolling:false,spinAttack:false,homingActive:false,homingTargetId:null,homingTimer:0,peelOutCharging:false,peelOutCharge:0,peelOutAnimTime:0,peelOutBurst:0,peelOutBurstTime:0,peelOutSpeedFade:0,tailsFlying:false,tailsTired:false,tailsFlightTime:0,tailsSwimming:false,tailsAttackTimer:0,tailsAttackCooldown:0,tailsSwimStrokeCooldown:0,knucklesGliding:false,knucklesJumpTapPending:false,knucklesPunchTimer:0,knucklesPunchCooldown:0,knucklesPunchStage:0,knucklesPunchComboAge:0,knucklesPunchInputAt:-1e9,hitSlowTimer:0,hitSlowFactor:1,platformId:null};keys.spindash=false;keys.peelout=false;keys.homing=false;keys.up=false;camera=0;cameraY=0;elapsed=0;score=0;lives=3;checkpointX=90;levelCompleted=false;raceFinished=false;raceWinner=null;inUnderground=false;aerialSpring.cooldownUntil=0;aerialSpring.flashUntil=0;buildLevel()}
 function showLobbyMessage(title,message){
  startScreen.querySelector('h2').textContent=title;
  startScreen.querySelector('p:not(.start-kicker)').textContent=message;
@@ -711,11 +711,11 @@ function applyPlayerDamage(){
  player.vx=-player.facing*180;
 }
 function startKnucklesGlide(){
- if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding)return false;
+ if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding||!player.knucklesJumpTapPending)return false;
  // El planeo cancela cualquier animación de ataque anterior.
  player.knucklesPunchTimer=0;player.knucklesPunchStage=0;player.knucklesPunchComboAge=0;
  // El planeo es un estado aéreo independiente: nunca puede conservar poses de bola.
- player.knucklesGliding=true;player.onGround=false;
+ player.knucklesGliding=true;player.knucklesJumpTapPending=false;player.onGround=false;
  player.spinDashRolling=false;player.spinDashRollTime=0;
  player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashAnimTime=0;
  player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
@@ -746,7 +746,7 @@ function jump(){
   player.knucklesGliding=false;
   if(selectedCharacterId==='knuckles'){
    player.spinDashRolling=false;player.spinDashRollTime=0;player.spinDashCharging=false;player.spinDashCharge=0;
-   player.knucklesJumpStartedAt=elapsed;
+   player.knucklesJumpTapPending=true;
   }
   return;
  }
@@ -1132,10 +1132,6 @@ function update(dt){
  if(player.knucklesPunchTimer>0)player.knucklesPunchTimer=Math.max(0,player.knucklesPunchTimer-dt);
  if(player.knucklesPunchCooldown>0)player.knucklesPunchCooldown=Math.max(0,player.knucklesPunchCooldown-dt);
  if(player.hitSlowTimer>0){player.hitSlowTimer=Math.max(0,player.hitSlowTimer-dt);if(player.hitSlowTimer===0)player.hitSlowFactor=1;}
- // El segundo toque activa el planeo; mantener salto también lo activa
- // cuando ya está en el aire, sin exigir un toque con precisión de un frame.
- if(selectedCharacterId==='knuckles'&&!player.onGround&&!player.knucklesGliding&&keys.jump&&
-    elapsed-(Number.isFinite(Number(player.knucklesJumpStartedAt))?Number(player.knucklesJumpStartedAt):elapsed)>=.16)startKnucklesGlide();
   if(selectedCharacterId==='tails'&&player.tailsFlying&&!keys.jump){
   // El segundo toque activa el vuelo; al soltarlo, Tails deja de impulsarse.
   player.tailsFlying=false;
@@ -1304,7 +1300,7 @@ function update(dt){
   for(const cp of checkpoints){if(!cp.active&&player.x+player.w/2>=cp.x){cp.active=true;checkpointX=cp.x;addScore(250)}}
   }
  if(selectedCharacterId==='tails'&&player.onGround){player.tailsFlying=false;player.tailsTired=false;player.tailsFlightTime=0;}
- if(selectedCharacterId==='knuckles'&&player.onGround){player.knucklesGliding=false;player.knucklesJumpStartedAt=0;}
+ if(selectedCharacterId==='knuckles'&&player.onGround){player.knucklesGliding=false;player.knucklesJumpTapPending=false;}
  const speedRatio=Math.min(1,Math.abs(player.vx)/player.speed);
  if(selectedCharacterId==='tails'){
   if(player.onGround){

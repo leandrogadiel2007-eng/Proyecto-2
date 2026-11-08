@@ -70,3 +70,10 @@ La metadata `fly` del proyecto fuente apunta a los cuadros 58–59, pero en la h
 
 ### Nota de caché de la corrección de planeo
 La corrección también cambia el parámetro de versión de `game.js` en `index.html`, para obligar al navegador y a GitHub Pages a solicitar el JavaScript actualizado en lugar de reutilizar la versión anterior almacenada en caché.
+
+
+## Activación del planeo por doble toque
+- Primer toque de salto en el suelo: Knuckles salta y habilita un segundo toque aéreo.
+- Segundo toque separado (soltar y volver a pulsar) mientras está en el aire: activa el planeo.
+- Mantener salto desde el primer toque no activa el planeo; al aterrizar se reinicia la secuencia.
+- El mismo comportamiento se aplica al teclado y al botón táctil.
