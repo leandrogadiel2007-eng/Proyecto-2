@@ -712,8 +712,10 @@ function applyPlayerDamage(){
 }
 function startKnucklesGlide(){
  if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding)return false;
- player.knucklesGliding=true;
- player.spinDashRolling=false;player.spinDashRollTime=0;player.spinDashCharging=false;player.spinDashCharge=0;
+ // El planeo es un estado aéreo independiente: nunca puede conservar poses de bola.
+ player.knucklesGliding=true;player.onGround=false;
+ player.spinDashRolling=false;player.spinDashRollTime=0;
+ player.spinDashCharging=false;player.spinDashCharge=0;player.spinDashAnimTime=0;
  player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
  status.textContent='KNUCKLES · PLANEANDO · ←/→ PARA DIRIGIR';
  return true;
@@ -1095,7 +1097,14 @@ document.querySelectorAll('[data-control]').forEach(b=>{
 });
 // Tras el segundo toque, mantener salto permite a Tails compensar la gravedad y mantener el vuelo.
 function applyAirMotion(dt){
- if(selectedCharacterId==='knuckles'&&player.knucklesGliding){const descent=78;player.vy+=(descent-player.vy)*Math.min(1,5.2*dt);player.y+=player.vy*dt;return;}
+ if(selectedCharacterId==='knuckles'&&player.knucklesGliding){
+  // Mantén el cuerpo extendido y evita que Spin Dash u otras banderas
+  // puedan devolverlo a la animación de bola mientras está planeando.
+  player.spinDashRolling=false;player.spinDashRollTime=0;
+  player.spinDashCharging=false;player.spinDashCharge=0;
+  player.spin=0;player.spinAngle=0;player.spinAttack=false;player.rolling=false;
+  const descent=78;player.vy+=(descent-player.vy)*Math.min(1,5.2*dt);player.y+=player.vy*dt;return;
+ }
  if(selectedCharacterId==='tails'&&player.tailsFlying){
   const flightLift=-360;
   player.vy+=(flightLift-player.vy)*Math.min(1,9*dt);
@@ -2134,7 +2143,7 @@ const KNUCKLES_SOURCE_FRAME_MAP={
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
  maxSpeed:[47,48,49],
- glide:[58,59],
+ glide:[79,80], // Poses aéreas abiertas; evita el sprite enrollado del ciclo fly 58–59.
  jump:[29,30,31,32],
  fall:[81,82],
  punch:[70,71,72,73,19]
@@ -2466,11 +2475,11 @@ function drawPlayer(){
   let animation='idle',phase=elapsed;
   const floorY=player.platformId!==null&&platformById(player.platformId)?aerialPlatformY(platformById(player.platformId)):groundSurfaceAt(player.x+player.w/2);
   const spriteGrounded=player.onGround||(player.platformId===null&&!inUnderground&&player.vy>=0&&player.y+player.h>=floorY-3);
-  if(onlineMode&&multiplayerChannel&&player.knucklesPunchTimer>0){
+  if(player.knucklesGliding){
+   animation='glide';phase=elapsed;
+  }else if(onlineMode&&multiplayerChannel&&player.knucklesPunchTimer>0){
    animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;
    phase=1-Math.max(0,player.knucklesPunchTimer)/duration;
-  }else if(player.knucklesGliding){
-   animation='glide';phase=elapsed;
   }else if(player.onGround&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115){
    animation='spin';phase=player.spinPhase;
   }else if(!spriteGrounded){
