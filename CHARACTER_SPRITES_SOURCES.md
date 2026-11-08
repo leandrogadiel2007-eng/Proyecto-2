@@ -36,9 +36,7 @@ El nado personalizado de Blue Rush reutiliza los fotogramas de propulsión de vu
 - Nado bajo los puentes (↓ para sumergirse y salto para impulsarse).
 - Spin Dash con las poses de carga y bola correspondientes a la hoja original.
 
-Blue Rush utiliza la hoja de sprites que ya estaba en el repositorio: `assets/knuckles/knucklesheet.png` (576 × 576 px). Su distribución compacta es de 9 columnas × 9 filas, con celdas de 64 × 64 px. El juego ahora recorta exactamente una celda por fotograma y refleja horizontalmente la imagen para que Knuckles mire hacia la dirección de movimiento. Los sprites de reposo, carrera y bola proceden de esta hoja local; las poses especiales de planeo, escalada y puñetazo se muestran con el mismo personaje y sus estados de animación.
-
-Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippeados por Ren “Foxx” Ramos, [The Spriters Resource](https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/).
+La hoja antigua `assets/knuckles/knucklesheet.png` se conserva como referencia, pero no se utiliza en el juego porque su distribución no coincide con los índices de animación de la escena de Knuckles.
 
 ## Habilidades de Knuckles en Blue Rush
 - Segundo toque de salto en el aire o mantener Espacio después del despegue para planear; izquierda/derecha dirigen el desplazamiento.
@@ -62,3 +60,5 @@ El juego carga `assets/knuckles/knucklesheet-sauce.png`, copiada de la misma hoj
 | Puñetazo (`swipe`) | 70, 71, 72, 73, 19 |
 
 La hoja anterior `assets/knuckles/knucklesheet.png` se conserva en el repositorio como referencia, pero ya no se utiliza: su cuadrícula no coincidía con los índices de animación usados por el código. La hoja nueva procede del repositorio fuente, cuya licencia publicada es CC0; esto no cambia los derechos sobre los personajes de Sonic.
+
+Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.

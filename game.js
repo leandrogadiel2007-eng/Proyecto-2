@@ -2203,8 +2203,7 @@ function drawKnucklesCharacter(screenX,screenY,options={}){
  }
  const name=['idle','run','dash','maxSpeed','spin','glide','jump','fall','punch'].includes(animation)?animation:'idle';
  const frames=knucklesAnimations[name]||[];
- // Para planeo y puñetazo se usa el vector de Knuckles: el atlas local no
- // tiene secuencias confirmadas para esas acciones y no debe mostrar sprites ajenos.
+ // Respaldo seguro: si falta una secuencia, no reutiliza cuadros de otra acción.
  if(!frames.length){
   drawVectorCharacter('knuckles',screenX,screenY,{
    facing:options.facing,moving:animation==='run'||animation==='dash'||animation==='maxSpeed',
