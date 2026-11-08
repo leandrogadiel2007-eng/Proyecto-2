@@ -826,26 +826,33 @@ function tailsAttack(){
 function knucklesPunch(inputSource){
  // Solo entradas reales del teclado o del botón táctil pueden solicitar el golpe.
  if(inputSource!=='keyboard'&&inputSource!=='touch')return false;
- // El puñetazo solo se ejecuta en online y con un rival real al alcance.
- if(!running||selectedCharacterId!=='knuckles'||!onlineMode||!multiplayerChannel||
-    (player.knucklesPunchCooldown||0)>0)return false;
+ if(!running||selectedCharacterId!=='knuckles'||(player.knucklesPunchCooldown||0)>0)return false;
  const inputNow=performance.now();
  if(inputNow-(player.knucklesPunchInputAt||-1e9)<240)return false;
  const now=elapsed,stage=now-(player.knucklesPunchComboAge||0)<.72?((player.knucklesPunchStage||0)%3)+1:1;
- const facing=player.facing||1,reach=stage===3?166:132,centerX=player.x+player.w/2,centerY=player.y+player.h/2;
+ const facing=player.facing||1;
+ // La animación siempre se muestra al pulsar ataque, incluso al practicar en solitario
+ // o cuando no hay un rival dentro del alcance.
+ player.knucklesPunchInputAt=inputNow;player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;
+ player.knucklesPunchTimer=.25;player.knucklesPunchCooldown=.2;
+ player.knucklesGliding=false;player.knucklesJumpTapPending=false;
+ player.spinDashCharging=false;player.spinDashCharge=0;
+ player.spinDashRolling=false;player.spinDashRollTime=0;
+ player.rolling=false;player.spin=0;player.spinAngle=0;player.spinAttack=false;
+ if(!onlineMode||!multiplayerChannel){
+  status.textContent='KNUCKLES · ¡PUÑETAZO!';
+  return true;
+ }
+ const reach=stage===3?166:132,centerX=player.x+player.w/2,centerY=player.y+player.h/2;
  const target=[...remotePlayers.values()]
   .filter(other=>performance.now()-(other.lastSeen||0)<1800)
   .map(other=>({other,dx:(Number(other.targetX??other.x)+player.w/2-centerX)*facing,dy:Math.abs(Number(other.targetY??other.y)+player.h/2-centerY)}))
   .filter(item=>item.dx>=-12&&item.dx<=reach+28&&item.dy<86)
   .sort((a,b)=>a.dx-b.dx)[0];
  if(!target){
-  status.textContent='ACÉRCATE A TU RIVAL Y MÍRALO PARA GOLPEAR';
-  return false;
+  status.textContent='PUÑETAZO · ACÉRCATE A TU RIVAL PARA GOLPEARLO';
+  return true;
  }
- // No se reproduce la animación hasta confirmar que el golpe tiene objetivo.
- player.knucklesPunchInputAt=inputNow;player.knucklesPunchStage=stage;player.knucklesPunchComboAge=now;
- player.knucklesPunchTimer=stage===3?.4:.25;player.knucklesPunchCooldown=.2;
- player.knucklesGliding=false;player.spinDashRolling=false;player.spinDashRollTime=0;player.rolling=false;player.spin=0;player.spinAttack=false;
  const payload={by:multiplayerId,targetId:target.other.id,stage,direction:facing,at:Date.now(),slowDuration:stage===3?1.8:1.55,slowFactor:stage===3?.2:.28};
  multiplayerChannel.send({type:'broadcast',event:'player-punched',payload})
   .catch(error=>console.warn('[Blue Rush] No se pudo sincronizar el golpe al rival:',error));
@@ -2475,9 +2482,9 @@ function drawPlayer(){
   const spriteGrounded=player.onGround||(player.platformId===null&&!inUnderground&&player.vy>=0&&player.y+player.h>=floorY-3);
   if(player.knucklesGliding){
    animation='glide';phase=elapsed;
-  }else if(onlineMode&&multiplayerChannel&&player.knucklesPunchTimer>0){
-   animation='punch';const duration=player.knucklesPunchStage===3?.4:.25;
-   phase=1-Math.max(0,player.knucklesPunchTimer)/duration;
+  }else if(player.knucklesPunchTimer>0){
+   animation='punch';
+   phase=1-Math.max(0,player.knucklesPunchTimer)/.25;
   }else if(player.onGround&&player.spinDashRolling&&(player.spinDashRollTime||0)>0&&Math.abs(player.vx)>=115){
    animation='spin';phase=player.spinPhase;
   }else if(!spriteGrounded){

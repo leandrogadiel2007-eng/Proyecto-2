@@ -77,3 +77,7 @@ La corrección también cambia el parámetro de versión de `game.js` en `index.
 - Segundo toque separado (soltar y volver a pulsar) mientras está en el aire: activa el planeo.
 - Mantener salto desde el primer toque no activa el planeo; al aterrizar se reinicia la secuencia.
 - El mismo comportamiento se aplica al teclado y al botón táctil.
+
+
+### Animación del puñetazo de Knuckles
+Al pulsar el botón de ataque (Z por defecto o el control táctil), Blue Rush reproduce la secuencia de golpe de la hoja de Knuckles: cuadros 70, 71, 72, 73 y 19, con una duración de 0,25 s como en la animación `swipe` de la escena original. La pose se muestra también en modo individual o cuando no hay un rival dentro del alcance; el efecto de reducir velocidad se aplica únicamente al rival online alcanzado.
