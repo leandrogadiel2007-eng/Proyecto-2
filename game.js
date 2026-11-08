@@ -2143,7 +2143,7 @@ const KNUCKLES_SOURCE_FRAME_MAP={
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
  maxSpeed:[47,48,49],
- glide:[79,80], // Poses aéreas abiertas; evita el sprite enrollado del ciclo fly 58–59.
+ glide:[58,59], // Animación fly exacta del Knuckles.tscn original.
  jump:[29,30,31,32],
  fall:[81,82],
  punch:[70,71,72,73,19]
