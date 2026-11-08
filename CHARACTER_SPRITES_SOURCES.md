@@ -4,7 +4,7 @@
 |---|---|---|
 | Sonic | SauceK · Sonic Escape | https://www.patreon.com/SauceK/posts/free-original-4-92998423 |
 | Tails | SauceK · Sonic Escape | https://www.patreon.com/SauceK/posts/free-original-4-92998423 |
-| Knuckles | Sonic Advance 3 · Ren Ramos | https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7147/ |
+| Knuckles | SauceK · Sonic Escape (CC0) | https://github.com/Saucekye/SonicEscapeV |
 | Amy Rose | Sonic Advance 3 · Ren Ramos | https://www.spriters-resource.com/game_boy_advance/sonicadv3/asset/7148/ |
 | Shadow | Sonic Battle · QuadFactor | https://www.spriters-resource.com/game_boy_advance/sonicbattle/asset/10045/ |
 
@@ -42,11 +42,23 @@ Fuente declarada: *Sonic Advance 3*, Sega/Sonic Team; sprites de Knuckles rippea
 
 ## Habilidades de Knuckles en Blue Rush
 - Segundo toque de salto en el aire o mantener Espacio después del despegue para planear; izquierda/derecha dirigen el desplazamiento.
-- La escena fuente de Knuckles declara 10 columnas × 9 filas (celdas de 64 px). El PNG local de Blue Rush mide 576 × 576: conserva las primeras 9 columnas de cada fila y omite solo la columna fuente 9 (la décima). Conversión: `local = fila × 9 + columna` cuando `columna < 9`.
-- Mapeo convertido desde `Knuckles.tscn`: reposo [0–4], bola [7, 8, 10], carrera [11–16], Dash [21–28], Dash max [47–48], planeo [58], salto [30–32], caída [81–82] y swipe [70–73]. Los fotogramas de la décima columna se omiten.
-- El recorte de transparencia conserva el pivote central de cada celda, igual que el `Sprite2D` original, para mantener estable la posición entre fotogramas.
-- La bolita aparece solo durante Spin Dash activo en el suelo. El planeo se mantiene hasta aterrizar.
-- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. La animación solo se inicia desde una entrada de teclado o botón táctil y después de validar un rival al alcance.
+- La carrera, el Dash, la máxima velocidad, el salto, la caída, el planeo, la bola y el puñetazo usan secuencias independientes.
+- Z ejecuta un combo de tres puñetazos dirigido únicamente al jugador rival situado delante y cerca en la sala online. La animación solo se inicia después de validar un rival al alcance.
 - No hay muros de roca ni escalada. Spin Dash sigue disponible con X.
 
-Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
+## Hoja de sprites validada de Knuckles
+El juego carga `assets/knuckles/knucklesheet-sauce.png`, copiada de la misma hoja que usa la escena original de Knuckles en [SauceK/SonicEscapeV](https://github.com/Saucekye/SonicEscapeV). La hoja mide **640 × 576 px** y la escena declara **10 columnas × 9 filas**, con celdas de 64 × 64 px. El juego ahora conserva esa cuadrícula original y utiliza los números de cuadro de cada animación directamente, sin eliminar ni desplazar columnas.
+
+| Acción | Fotogramas de la escena original |
+|---|---|
+| Reposo (`stance`) | 0, 1, 2, 3, 4, 0 |
+| Bola (`ball`) | 7, 8, 9, 10 |
+| Carrera (`run`) | 11, 12, 13, 14, 15, 16 |
+| Dash | 21, 22, 23, 24, 25, 26, 27, 28 |
+| Máxima velocidad (`Dash max`) | 47, 48, 49 |
+| Planeo (`fly`) | 58, 59 |
+| Salto (`jump`) | 29, 30, 31, 32 |
+| Caída (`falling`) | 81, 82 |
+| Puñetazo (`swipe`) | 70, 71, 72, 73, 19 |
+
+La hoja anterior `assets/knuckles/knucklesheet.png` se conserva en el repositorio como referencia, pero ya no se utiliza: su cuadrícula no coincidía con los índices de animación usados por el código. La hoja nueva procede del repositorio fuente, cuya licencia publicada es CC0; esto no cambia los derechos sobre los personajes de Sonic.

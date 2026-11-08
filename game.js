@@ -2124,37 +2124,31 @@ function loadTailsSheetFrame(sheet,frameIndex){
  }
 }
 function tailsSheetFrames(sheet,indices){return indices.map(index=>loadTailsSheetFrame(sheet,index)).filter(Boolean)}
-// La escena fuente Knuckles usa 10 columnas x 9 filas (celdas de 64 px).
-// El PNG local del repositorio es 9x9: conserva las columnas fuente 0..8
-// de cada fila y omite únicamente la columna 9 (la décima).
-const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet.png';
-const KNUCKLES_ATLAS_COLUMNS=9,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
-const KNUCKLES_SOURCE_COLUMNS=10,KNUCKLES_REMOVED_SOURCE_COLUMN=9;
+// Hoja original de Knuckles usada por la escena fuente: 10 columnas x 9 filas,
+// celdas de 64 px. Los índices de animación son los mismos que Godot Sprite2D.
+const KNUCKLES_SHEET_PATH='./assets/knuckles/knucklesheet-sauce.png';
+const KNUCKLES_ATLAS_COLUMNS=10,KNUCKLES_ATLAS_ROWS=9,KNUCKLES_CELL_SIZE=64;
 const KNUCKLES_SOURCE_FRAME_MAP={
  idle:[0,1,2,3,4,0],
- spin:[7,8,10],
+ spin:[7,8,9,10],
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
- maxSpeed:[47,48],
- glide:[58],
- jump:[30,31,32],
+ maxSpeed:[47,48,49],
+ glide:[58,59],
+ jump:[29,30,31,32],
  fall:[81,82],
- punch:[70,71,72,73]
+ punch:[70,71,72,73,19]
 };
-function knucklesSourceFrameToLocal(index){
- if(!Number.isInteger(index)||index<0)return -1;
- const row=Math.floor(index/KNUCKLES_SOURCE_COLUMNS),col=index%KNUCKLES_SOURCE_COLUMNS;
- if(row>=KNUCKLES_ATLAS_ROWS||col===KNUCKLES_REMOVED_SOURCE_COLUMN)return -1;
- return row*KNUCKLES_ATLAS_COLUMNS+col;
-}
+// La hoja del juego es una copia exacta de la hoja fuente: no se desplaza,
+// elimina ni recalcula ninguna columna.
 const KNUCKLES_FRAME_MAP=Object.fromEntries(Object.entries(KNUCKLES_SOURCE_FRAME_MAP).map(([name,indices])=>[
- name,indices.map(knucklesSourceFrameToLocal).filter(index=>index>=0)
+ name,indices.slice()
 ]));
 let knucklesAnimations={idle:[],run:[],dash:[],maxSpeed:[],spin:[],glide:[],jump:[],fall:[],punch:[],ready:false};
 function loadKnucklesFrames(sheet,indices){
  const columns=KNUCKLES_ATLAS_COLUMNS,rows=KNUCKLES_ATLAS_ROWS,size=KNUCKLES_CELL_SIZE;
  if(sheet.naturalWidth!==columns*size||sheet.naturalHeight!==rows*size){
-  console.error('[Blue Rush] El atlas local de Knuckles debe medir 576 × 576:',sheet.naturalWidth,sheet.naturalHeight);
+  console.error('[Blue Rush] El atlas original de Knuckles debe medir 640 × 576:',sheet.naturalWidth,sheet.naturalHeight);
   return [];
  }
  const scan=document.createElement('canvas');scan.width=size;scan.height=size;
@@ -2190,12 +2184,12 @@ function loadKnucklesSprites(){
    punch:frames('punch'),ready:true
   };
   console.info('[Blue Rush] Atlas local de Knuckles cargado',{
-   size:[sheet.naturalWidth,sheet.naturalHeight],grid:'source 10x9 -> local 9x9',cell:[64,64],
-   sourceFrames:KNUCKLES_SOURCE_FRAME_MAP,localFrames:KNUCKLES_FRAME_MAP,animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length]))
+   size:[sheet.naturalWidth,sheet.naturalHeight],grid:'10x9 original (sin conversión)',cell:[64,64],
+   sourceFrames:KNUCKLES_SOURCE_FRAME_MAP,atlasFrames:KNUCKLES_FRAME_MAP,animations:Object.fromEntries(Object.entries(knucklesAnimations).filter(([name])=>name!=='ready').map(([name,items])=>[name,items.length]))
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-source-last-column-map-center-pivot-20';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-original-10x9-20261107-1';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
