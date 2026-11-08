@@ -54,7 +54,7 @@ El juego carga `assets/knuckles/knucklesheet-sauce.png`, copiada de la misma hoj
 | Carrera (`run`) | 11, 12, 13, 14, 15, 16 |
 | Dash | 21, 22, 23, 24, 25, 26, 27, 28 |
 | Máxima velocidad (`Dash max`) | 47, 48, 49 |
-| Planeo (`fly`) | 58, 59 |
+| Planeo (`glide`) | 83, 84 (poses horizontales verificadas visualmente en la hoja) |
 | Salto (`jump`) | 29, 30, 31, 32 |
 | Caída (`falling`) | 81, 82 |
 | Puñetazo (`swipe`) | 70, 71, 72, 73, 19 |
@@ -62,3 +62,7 @@ El juego carga `assets/knuckles/knucklesheet-sauce.png`, copiada de la misma hoj
 La hoja anterior `assets/knuckles/knucklesheet.png` se conserva en el repositorio como referencia, pero ya no se utiliza: su cuadrícula no coincidía con los índices de animación usados por el código. La hoja nueva procede del repositorio fuente, cuya licencia publicada es CC0; esto no cambia los derechos sobre los personajes de Sonic.
 
 Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección de personaje se guarda por cuenta y se sincroniza online.
+
+
+### Corrección visual del planeo de Knuckles
+La metadata `fly` del proyecto fuente apunta a los cuadros 58–59, pero en la hoja de sprites distribuida esos cuadros no muestran la pose horizontal clara de planeo. Blue Rush utiliza los cuadros 83–84, que sí muestran a Knuckles extendido en el aire. Al iniciar el planeo también se cancela cualquier temporizador de puñetazo para que no pueda reaparecer una pose de ataque durante el vuelo.

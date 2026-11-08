@@ -712,6 +712,8 @@ function applyPlayerDamage(){
 }
 function startKnucklesGlide(){
  if(selectedCharacterId!=='knuckles'||player.onGround||player.knucklesGliding)return false;
+ // El planeo cancela cualquier animación de ataque anterior.
+ player.knucklesPunchTimer=0;player.knucklesPunchStage=0;player.knucklesPunchComboAge=0;
  // El planeo es un estado aéreo independiente: nunca puede conservar poses de bola.
  player.knucklesGliding=true;player.onGround=false;
  player.spinDashRolling=false;player.spinDashRollTime=0;
@@ -2143,7 +2145,7 @@ const KNUCKLES_SOURCE_FRAME_MAP={
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
  maxSpeed:[47,48,49],
- glide:[58,59], // Animación fly exacta del Knuckles.tscn original.
+ glide:[83,84], // Poses horizontales de planeo verificadas visualmente en el atlas real.
  jump:[29,30,31,32],
  fall:[81,82],
  punch:[70,71,72,73,19]
@@ -2198,7 +2200,7 @@ function loadKnucklesSprites(){
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-original-10x9-20261107-1';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-glide-frames-83-84-20261107-2';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);
