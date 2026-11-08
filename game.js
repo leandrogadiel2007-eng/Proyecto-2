@@ -2145,7 +2145,7 @@ const KNUCKLES_SOURCE_FRAME_MAP={
  run:[11,12,13,14,15,16],
  dash:[21,22,23,24,25,26,27,28],
  maxSpeed:[47,48,49],
- glide:[83,84], // Poses horizontales de planeo verificadas visualmente en el atlas real.
+ glide:[58,59], // Cuadros fly declarados por la animación oficial de Knuckles.tscn.
  jump:[29,30,31,32],
  fall:[81,82],
  punch:[70,71,72,73,19]
@@ -2200,7 +2200,7 @@ function loadKnucklesSprites(){
   });
  };
  sheet.onerror=()=>{knucklesAnimations.ready=false;console.error('[Blue Rush] No se pudo cargar:',KNUCKLES_SHEET_PATH)};
- sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-glide-frames-83-84-20261107-2';
+ sheet.src=KNUCKLES_SHEET_PATH+'?v=knuckles-glide-source-frames-58-59-20261107-3';
 }
 function drawKnucklesCharacter(screenX,screenY,options={}){
  const animation=options.animation||'idle',phase=Math.max(0,Number(options.phase)||0);

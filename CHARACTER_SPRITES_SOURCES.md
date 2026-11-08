@@ -54,7 +54,7 @@ El juego carga `assets/knuckles/knucklesheet-sauce.png`, copiada de la misma hoj
 | Carrera (`run`) | 11, 12, 13, 14, 15, 16 |
 | Dash | 21, 22, 23, 24, 25, 26, 27, 28 |
 | Máxima velocidad (`Dash max`) | 47, 48, 49 |
-| Planeo (`glide`) | 83, 84 (poses horizontales verificadas visualmente en la hoja) |
+| Planeo (`fly`) | 58, 59 (cuadros declarados por la animación oficial `fly` de `Knuckles.tscn`) |
 | Salto (`jump`) | 29, 30, 31, 32 |
 | Caída (`falling`) | 81, 82 |
 | Puñetazo (`swipe`) | 70, 71, 72, 73, 19 |
@@ -66,3 +66,7 @@ Amy y Shadow todavía usan los dibujos vectoriales provisionales. La selección 
 
 ### Corrección visual del planeo de Knuckles
 La metadata `fly` del proyecto fuente apunta a los cuadros 58–59, pero en la hoja de sprites distribuida esos cuadros no muestran la pose horizontal clara de planeo. Blue Rush utiliza los cuadros 83–84, que sí muestran a Knuckles extendido en el aire. Al iniciar el planeo también se cancela cualquier temporizador de puñetazo para que no pueda reaparecer una pose de ataque durante el vuelo.
+
+
+### Nota de caché de la corrección de planeo
+La corrección también cambia el parámetro de versión de `game.js` en `index.html`, para obligar al navegador y a GitHub Pages a solicitar el JavaScript actualizado en lugar de reutilizar la versión anterior almacenada en caché.
